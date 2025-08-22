@@ -704,8 +704,8 @@ class IsraeliWhist {
             if (bidSpan) {
                 if (this.currentPhase === 'phase2') {
                     if (this.phase2Bids[player] !== null) {
-                        // Show Phase 2 takes prediction
-                        bidSpan.textContent = `takes: ${this.phase2Bids[player]}`;
+                        // Show Phase 2 bid amount
+                        bidSpan.textContent = `bid: ${this.phase2Bids[player]}`;
                     } else {
                         // Phase 2 but no bid yet - show waiting status
                         bidSpan.textContent = 'waiting...';
