@@ -855,42 +855,45 @@ h1 {
 /* Hint Modal Styles */
 .hint-modal {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
+    top: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    max-width: 400px;
+    min-width: 300px;
+    background: none;
+    backdrop-filter: none;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     z-index: 2000;
+    pointer-events: none;
 }
 
 .hint-content {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    border-radius: 15px;
+    border-radius: 12px;
     padding: 0;
-    max-width: 500px;
-    width: 90%;
-    max-height: 70vh;
+    width: 100%;
+    max-height: 300px;
     overflow-y: auto;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    pointer-events: all;
 }
 
 .hint-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 25px 15px;
+    padding: 12px 15px 8px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .hint-header h3 {
     margin: 0;
     color: #FFD700;
-    font-size: 18px;
+    font-size: 14px;
     font-weight: bold;
 }
 
@@ -898,11 +901,11 @@ h1 {
     background: none;
     border: none;
     color: #fff;
-    font-size: 24px;
+    font-size: 18px;
     cursor: pointer;
     padding: 0;
-    width: 30px;
-    height: 30px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -916,42 +919,43 @@ h1 {
 }
 
 .hint-body {
-    padding: 20px 25px;
+    padding: 12px 15px;
     color: #fff;
-    line-height: 1.6;
+    line-height: 1.4;
+    font-size: 13px;
 }
 
 .hint-body h4 {
     color: #4CAF50;
-    margin: 15px 0 10px 0;
-    font-size: 16px;
+    margin: 8px 0 6px 0;
+    font-size: 14px;
 }
 
 .hint-body ul {
-    margin: 10px 0;
-    padding-left: 20px;
+    margin: 6px 0;
+    padding-left: 16px;
 }
 
 .hint-body li {
-    margin: 8px 0;
+    margin: 4px 0;
     color: #e0e0e0;
 }
 
 .hint-body .card-suggestion {
     background: rgba(76, 175, 80, 0.1);
     border: 1px solid #4CAF50;
-    border-radius: 8px;
-    padding: 15px;
-    margin: 15px 0;
+    border-radius: 6px;
+    padding: 10px;
+    margin: 8px 0;
 }
 
 .hint-body .card-suggestion strong {
     color: #4CAF50;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .hint-footer {
-    padding: 15px 25px 20px;
+    padding: 8px 15px 12px;
     display: flex;
     justify-content: center;
 }
@@ -960,13 +964,13 @@ h1 {
     background: linear-gradient(135deg, #4CAF50, #45a049);
     color: white;
     border: none;
-    padding: 10px 25px;
-    border-radius: 25px;
-    font-size: 14px;
+    padding: 6px 16px;
+    border-radius: 16px;
+    font-size: 12px;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
 }
 
 .hint-btn-close:hover {
@@ -1117,7 +1121,7 @@ h1 {
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     transition: all 0.3s ease;
     font-weight: bold;
-    display: none;
+    display: block;
 }
 
 .hint-btn:hover {

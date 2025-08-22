@@ -85,6 +85,9 @@ class IsraeliWhist {
         this.shuffleDeck();
         this.updateDisplay();
         
+        // Initialize hint system
+        this.initializeHintSystem();
+        
         // Verify initialization
         if (this.deck.length === 52 && Object.keys(this.hands).length === 4) {
             console.log('Game initialized successfully');
@@ -413,7 +416,7 @@ class IsraeliWhist {
          if (turnMessage) {
              turnMessage.textContent = `Your turn to bid! Choose how many tricks you think you'll take.`;
              turnMessage.style.display = 'block';
-         }
+        }
     }
 
     makePhase2Bid(player, takes) {
@@ -799,6 +802,9 @@ class IsraeliWhist {
         // Update the winner's trick count display immediately
         this.updateTrickCount(winner);
         
+        // Update round display immediately after trick completion
+        this.updateDisplay();
+        
         // Animate cards moving to winner
         this.animateCardsToWinner(winner);
         
@@ -998,6 +1004,57 @@ class IsraeliWhist {
         return this.players.every(player => 
             this.phase2Bids[player] !== null && this.phase2Bids[player] !== undefined
         );
+    }
+    
+    getBestTrumpSuit(player, handStrength) {
+        // Determine the best trump suit for this player based on their hand
+        const hand = this.hands[player];
+        const suitAnalysis = {};
+        
+        // Analyze each suit
+        ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
+            const suitCards = hand.filter(card => card.suit === suit);
+            const suitLength = suitCards.length;
+            const suitHonors = suitCards.filter(card => ['A', 'K', 'Q', 'J'].includes(card.rank)).length;
+            
+            // Calculate suit strength score
+            let suitScore = 0;
+            suitScore += suitLength * 2; // Length is important
+            suitScore += suitHonors * 3; // Honors are valuable
+            
+            // Bonus for very long suits (6+ cards)
+            if (suitLength >= 6) {
+                suitScore += (suitLength - 5) * 2;
+            }
+            
+            suitAnalysis[suit] = {
+                length: suitLength,
+                honors: suitHonors,
+                score: suitScore
+            };
+        });
+        
+        // Check if no-trump might be better (balanced hand with high cards)
+        const isBalanced = handStrength.maxLength <= 5 && handStrength.minLength >= 2;
+        const hasHighCards = handStrength.score >= 25;
+        
+        if (isBalanced && hasHighCards) {
+            // Consider no-trump as best option for balanced strong hands
+            return 'notrump';
+        }
+        
+        // Find the suit with the highest score
+        let bestSuit = 'clubs';
+        let bestScore = suitAnalysis['clubs'].score;
+        
+        Object.entries(suitAnalysis).forEach(([suit, analysis]) => {
+            if (analysis.score > bestScore) {
+                bestSuit = suit;
+                bestScore = analysis.score;
+            }
+        });
+        
+        return bestSuit;
     }
 
     nextPlayerInTrick() {
@@ -1360,15 +1417,16 @@ class IsraeliWhist {
             }
         }
         
-        // Update round display (now shows tricks played in Phase 3, or bid totals in other phases)
+        // Update round display (shows current round 1-13 during Phase 3)
         const tricksIndicator = document.getElementById('tricks-indicator');
         if (tricksIndicator) {
             if (this.currentPhase === 'phase3' || this.currentPhase === 'scoring') {
-                // Show current tricks played during Phase 3
-                tricksIndicator.textContent = `${this.tricksPlayed}`;
+                // Show current round number (1-13) - tricksPlayed + 1 for current round
+                const currentRound = this.tricksPlayed + 1;
+                tricksIndicator.textContent = `${Math.min(currentRound, 13)}`;
                 tricksIndicator.style.color = '';
             } else {
-                // Show 0 for other phases (no rounds played yet)
+                // Show 0 for other phases (no rounds started yet)
                 tricksIndicator.textContent = '0';
                 tricksIndicator.style.color = '';
             }
@@ -1422,7 +1480,7 @@ class IsraeliWhist {
                  scoreElement.textContent = this.scores[player];
              }
          });
-     }
+    }
 
     updatePlayerInfoPanels() {
         // Update each player's bid display in their info panel
@@ -1801,11 +1859,19 @@ class IsraeliWhist {
             const currentBidValue = currentHighestBid.minTakes;
             const currentSuit = currentHighestBid.trumpSuit;
             
-            // Calculate our potential bid
-             const potentialBid = this.calculateHigherBid(currentBidValue, currentSuit, player);
+            // Strategic decision: Check if we want the same trump suit as the current bid
+            const ourBestSuit = this.getBestTrumpSuit(player, handStrength);
             
-             // Be much more aggressive in competitive bidding - lower threshold for bidding higher
-             if (potentialBid && (handStrength.score >= 14 || this.shouldBotBid(player, potentialBid, handStrength, currentHighestBid))) {
+            if (ourBestSuit === currentSuit) {
+                // We want the same trump - should pass and raise in Phase 2 if this trump wins
+                console.log(`${player} wants same trump (${currentSuit}) as current bid - passing to raise in Phase 2`);
+                shouldPass = true;
+            } else {
+                // Different trump suit - calculate if we can/should bid higher
+                const potentialBid = this.calculateHigherBid(currentBidValue, currentSuit, player);
+                
+                // Be much more aggressive in competitive bidding - lower threshold for bidding higher
+                if (potentialBid && (handStrength.score >= 14 || this.shouldBotBid(player, potentialBid, handStrength, currentHighestBid))) {
                 // Make the higher bid
                 this.phase1Bids[player] = potentialBid;
                 console.log(`${player} bids ${potentialBid.minTakes} ${potentialBid.trumpSuit}`);
@@ -1817,6 +1883,7 @@ class IsraeliWhist {
                 this.updateDisplay();
             } else {
                 shouldPass = true;
+                }
             }
         } else {
             // No current bid, evaluate whether we should make an opening bid
@@ -2268,6 +2335,12 @@ class IsraeliWhist {
             this.shuffleDeck();
         }
         
+        // Show deal button for new hand
+        const dealBtn = document.getElementById('deal-btn');
+        if (dealBtn) {
+            dealBtn.style.display = 'block';
+        }
+        
         this.updateDisplay();
     }
      
@@ -2320,6 +2393,9 @@ class IsraeliWhist {
              }
          });
          
+         // Update the score table display immediately
+         this.updateScoresDisplay();
+         
          // Check for game winner (first to reach 100 points)
          const winner = this.players.find(player => this.scores[player] >= 100);
          if (winner) {
@@ -2327,8 +2403,10 @@ class IsraeliWhist {
              alert(`🎉 ${winner.toUpperCase()} WINS THE GAME with ${this.scores[winner]} points!`);
              this.resetForNewGame();
          } else {
-             // Continue to next hand
+             // Continue to next hand - increment game number and show deal button
              console.log('No winner yet, continuing to next hand...');
+             this.currentRound++;
+             this.showDealButtonForNextHand();
              setTimeout(() => this.resetForNewHand(), 2000);
          }
      }
@@ -2339,6 +2417,310 @@ class IsraeliWhist {
          this.currentRound = 1;
          this.resetForNewHand();
      }
+     
+     showDealButtonForNextHand() {
+         // Show the deal button for the next hand
+         const dealBtn = document.getElementById('deal-btn');
+         if (dealBtn) {
+             dealBtn.style.display = 'block';
+             console.log('Deal button shown for next hand');
+         }
+         
+         // Update the display to show new game number
+         this.updateDisplay();
+     }
+     
+     initializeHintSystem() {
+         // Set up hint button click handler
+         const hintBtn = document.getElementById('hint-btn');
+         const hintModal = document.getElementById('hint-modal');
+         const hintClose = document.getElementById('hint-close');
+         const hintBtnClose = document.getElementById('hint-btn-close');
+         
+         if (hintBtn) {
+             hintBtn.addEventListener('click', () => this.showHint());
+         }
+         
+         if (hintClose) {
+             hintClose.addEventListener('click', () => this.hideHint());
+         }
+         
+         if (hintBtnClose) {
+             hintBtnClose.addEventListener('click', () => this.hideHint());
+         }
+         
+         // Close hint when clicking outside modal
+         if (hintModal) {
+             hintModal.addEventListener('click', (e) => {
+                 if (e.target === hintModal) {
+                     this.hideHint();
+                 }
+             });
+         }
+     }
+     
+     showHint() {
+         const hintBody = document.getElementById('hint-body');
+         const hintModal = document.getElementById('hint-modal');
+         
+         if (!hintBody || !hintModal) return;
+         
+         // Generate hint based on current game state
+         const hintContent = this.generateHint();
+         hintBody.innerHTML = hintContent;
+         
+         // Show the modal
+         hintModal.style.display = 'flex';
+     }
+     
+     hideHint() {
+         const hintModal = document.getElementById('hint-modal');
+         if (hintModal) {
+             hintModal.style.display = 'none';
+         }
+     }
+     
+     generateHint() {
+         // Generate strategic hints based on current game phase and state
+         if (this.currentPhase === 'phase1') {
+             return this.generatePhase1Hint();
+         } else if (this.currentPhase === 'phase2') {
+             return this.generatePhase2Hint();
+         } else if (this.currentPhase === 'phase3') {
+             return this.generatePhase3Hint();
+         } else {
+             return '<p>No hints available at this time. Deal cards to start a new hand!</p>';
+         }
+     }
+     
+     generatePhase1Hint() {
+         const hand = this.hands.south;
+         if (!hand || hand.length === 0) {
+             return '<p>No cards dealt yet. Click "Deal Cards" to start!</p>';
+         }
+         
+         const handStrength = this.evaluateHandStrength('south');
+         const bestSuit = this.getBestTrumpSuit('south', handStrength);
+         const currentBid = this.getCurrentHighestBid();
+         
+         let hint = '';
+         
+         // Hand strength assessment
+         if (handStrength.score >= 20) {
+             hint += '<p>🔥 <strong>Strong hand</strong> - good bidding opportunity</p>';
+         } else if (handStrength.score >= 15) {
+             hint += '<p>✅ <strong>Decent hand</strong> - consider bidding carefully</p>';
+         } else {
+             hint += '<p>⚠️ <strong>Weak hand</strong> - passing might be wise</p>';
+         }
+         
+         // Suit recommendation
+         hint += `<div class="card-suggestion">`;
+         hint += `<strong>Best Trump: ${this.getSuitSymbol(bestSuit)} ${bestSuit.charAt(0).toUpperCase() + bestSuit.slice(1)}</strong><br>`;
+         if (bestSuit !== 'notrump') {
+             const suitCards = hand.filter(card => card.suit === bestSuit);
+             hint += `${suitCards.length} cards with good strength`;
+         } else {
+             hint += `Balanced hand with high cards`;
+         }
+         hint += `</div>`;
+         
+         // Strategic advice
+         if (currentBid) {
+             const ourBestSuit = this.getBestTrumpSuit('south', handStrength);
+             if (ourBestSuit === currentBid.trumpSuit) {
+                 hint += '<p>💡 <strong>Same trump:</strong> Pass now, raise in Phase 2 if this wins</p>';
+             } else {
+                 hint += `<p>🎯 <strong>Compete:</strong> Try ${this.getSuitSymbol(bestSuit)} vs ${currentBid.minTakes} ${this.getSuitSymbol(currentBid.trumpSuit)}</p>`;
+             }
+         } else {
+             hint += '<p>🏁 <strong>Opening:</strong> Conservative 5-6 tricks recommended</p>';
+         }
+         
+         return hint;
+     }
+     
+     generatePhase2Hint() {
+         const hand = this.hands.south;
+         const handStrength = this.evaluateHandStrength('south');
+         const trumpSuit = this.trumpSuit;
+         const phase2Bid = this.phase2Bids.south;
+         
+         if (phase2Bid !== null && phase2Bid !== undefined) {
+             return '<p>✅ You have already bid. Wait for other players.</p>';
+         }
+         
+         let hint = `<p><strong>Trump:</strong> ${this.getSuitSymbol(trumpSuit)} ${trumpSuit.charAt(0).toUpperCase() + trumpSuit.slice(1)}</p>`;
+         
+         // Trump analysis
+         if (trumpSuit !== 'notrump') {
+             const trumpCards = hand.filter(card => card.suit === trumpSuit);
+             if (trumpCards.length >= 5) {
+                 hint += '<p>🔥 <strong>Excellent trump support</strong> - bid aggressively</p>';
+             } else if (trumpCards.length >= 3) {
+                 hint += '<p>✅ <strong>Good trump support</strong> - moderate bidding</p>';
+             } else {
+                 hint += '<p>⚠️ <strong>Weak trump support</strong> - be conservative</p>';
+             }
+         }
+         
+         // Suggested bid
+         const suggestedBid = this.calculateSmartPhase2Bid('south', handStrength, 0, 0, 7);
+         hint += `<div class="card-suggestion">`;
+         hint += `<strong>💡 Suggested: ${suggestedBid} tricks</strong><br>`;
+         hint += `Based on hand strength and trump support`;
+         hint += `</div>`;
+         
+         hint += '<p><strong>Key:</strong> Count Aces, Kings, and trump cards. Better to under-bid than over-bid!</p>';
+         
+         return hint;
+     }
+     
+     generatePhase3Hint() {
+         const hand = this.hands.south;
+         const currentTrick = this.currentTrick;
+         const tricksWon = this.tricksWon.south;
+         const targetBid = this.phase2Bids.south;
+         
+         if (!hand || hand.length === 0) {
+             return '<p>No cards left to play!</p>';
+         }
+         
+         const tricksNeeded = targetBid - tricksWon;
+         const tricksRemaining = 13 - this.tricksPlayed;
+         
+         let hint = `<p><strong>Bid:</strong> ${targetBid} | <strong>Taken:</strong> ${tricksWon} | <strong>Need:</strong> ${Math.max(0, tricksNeeded)}</p>`;
+         
+         // Get suggested card to play
+         const suggestedCard = this.getSuggestedCard(hand, currentTrick, tricksNeeded, tricksRemaining);
+         
+         if (suggestedCard) {
+             hint += `<div class="card-suggestion">`;
+             hint += `<strong>💡 Play: ${suggestedCard.rank}${this.getSuitSymbol(suggestedCard.suit)}</strong><br>`;
+             hint += `${suggestedCard.reason}`;
+             hint += `</div>`;
+         }
+         
+         // Brief strategy note
+         if (tricksNeeded <= 0) {
+             hint += '<p>🎯 <strong>Avoid extra tricks</strong> to prevent penalty</p>';
+         } else if (tricksNeeded > tricksRemaining) {
+             hint += '<p>🔥 <strong>Must win every remaining trick!</strong></p>';
+         } else {
+             hint += `<p>📈 <strong>Need ${tricksNeeded} from ${tricksRemaining} remaining</strong></p>`;
+         }
+         
+         return hint;
+     }
+     
+     getSuggestedCard(hand, currentTrick, tricksNeeded, tricksRemaining) {
+         if (!hand || hand.length === 0) return null;
+         
+         // Leading the trick
+         if (currentTrick.length === 0) {
+             if (tricksNeeded <= 0) {
+                 // Try to avoid winning - lead a low card
+                 const lowCards = hand.filter(card => this.getCardValue(card) <= 9);
+                 if (lowCards.length > 0) {
+                     const lowestCard = lowCards.reduce((lowest, card) => 
+                         this.getCardValue(card) < this.getCardValue(lowest) ? card : lowest
+                     );
+                     return { ...lowestCard, reason: "Low card to avoid winning" };
+                 }
+             } else {
+                 // Try to win - lead a high card or trump
+                 if (this.trumpSuit !== 'notrump') {
+                     const trumpCards = hand.filter(card => card.suit === this.trumpSuit);
+                     if (trumpCards.length > 0) {
+                         const highTrump = trumpCards.reduce((highest, card) => 
+                             this.getCardValue(card) > this.getCardValue(highest) ? card : highest
+                         );
+                         return { ...highTrump, reason: "Strong trump to lead and win" };
+                     }
+                 }
+                 
+                 // Lead highest non-trump
+                 const nonTrumps = hand.filter(card => card.suit !== this.trumpSuit);
+                 if (nonTrumps.length > 0) {
+                     const highCard = nonTrumps.reduce((highest, card) => 
+                         this.getCardValue(card) > this.getCardValue(highest) ? card : highest
+                     );
+                     if (this.getCardValue(highCard) >= 12) { // A, K, Q
+                         return { ...highCard, reason: "High card likely to win" };
+                     }
+                 }
+             }
+             
+             // Default: play any reasonable card
+             return { ...hand[0], reason: "Reasonable opening lead" };
+         }
+         
+         // Following in the trick
+         const leadCard = currentTrick[0].card;
+         const leadSuit = leadCard.suit;
+         const suitCards = hand.filter(card => card.suit === leadSuit);
+         
+         if (suitCards.length > 0) {
+             // Can follow suit
+             const highestPlayed = this.getHighestCardInTrick();
+             const canWin = suitCards.some(card => this.getCardValue(card) > this.getCardValue(highestPlayed));
+             
+             if (tricksNeeded > 0 && canWin) {
+                 // Try to win
+                 const winningCards = suitCards.filter(card => this.getCardValue(card) > this.getCardValue(highestPlayed));
+                 const bestWinner = winningCards.reduce((best, card) => 
+                     this.getCardValue(card) < this.getCardValue(best) ? card : best // Lowest winner
+                 );
+                 return { ...bestWinner, reason: "Lowest card that wins the trick" };
+             } else {
+                 // Play low to avoid winning or save high cards
+                 const lowestSuit = suitCards.reduce((lowest, card) => 
+                     this.getCardValue(card) < this.getCardValue(lowest) ? card : lowest
+                 );
+                 return { ...lowestSuit, reason: tricksNeeded <= 0 ? "Low to avoid winning" : "Save high cards" };
+             }
+         } else {
+             // Cannot follow suit - can trump or discard
+             if (this.trumpSuit !== 'notrump') {
+                 const trumpCards = hand.filter(card => card.suit === this.trumpSuit);
+                 if (trumpCards.length > 0 && tricksNeeded > 0) {
+                     // Trump to win
+                     const lowestTrump = trumpCards.reduce((lowest, card) => 
+                         this.getCardValue(card) < this.getCardValue(lowest) ? card : lowest
+                     );
+                     return { ...lowestTrump, reason: "Trump to win this trick" };
+                 }
+             }
+             
+             // Discard - play lowest useless card
+             const nonTrumps = hand.filter(card => card.suit !== this.trumpSuit);
+             if (nonTrumps.length > 0) {
+                 const lowestDiscard = nonTrumps.reduce((lowest, card) => 
+                     this.getCardValue(card) < this.getCardValue(lowest) ? card : lowest
+                 );
+                 return { ...lowestDiscard, reason: "Safe discard" };
+             }
+             
+             // Only trumps left
+             const lowestTrump = hand.reduce((lowest, card) => 
+                 this.getCardValue(card) < this.getCardValue(lowest) ? card : lowest
+             );
+             return { ...lowestTrump, reason: "Lowest available card" };
+         }
+     }
+     
+     getHighestCardInTrick() {
+         if (this.currentTrick.length === 0) return null;
+         
+         let highest = this.currentTrick[0].card;
+         for (let i = 1; i < this.currentTrick.length; i++) {
+             const card = this.currentTrick[i].card;
+             if (this.getCardValue(card) > this.getCardValue(highest)) {
+                 highest = card;
+             }
+         }
+         return highest;
+    }
 }
 
 // Initialize the game when the page loads
