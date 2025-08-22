@@ -21,10 +21,10 @@
         
         <!-- Game Status -->
         <div class="game-status">
-            <div class="round-counter">Round: <span id="round-indicator">1</span></div>
-            <div class="tricks-counter">Tricks: <span id="tricks-indicator">0</span></div>
+            <div class="round-counter">Game: <span id="round-indicator">1</span></div>
+            <div class="tricks-counter">Round: <span id="tricks-indicator">0</span></div>
             <div class="trump-suit">Trump: <span id="trump-indicator">-</span></div>
-            <div class="current-turn">Turn: <span id="turn-indicator">-</span></div>
+            <div class="current-turn">Total bid: <span id="turn-indicator">-</span></div>
             <div class="total-bids" id="total-bids" style="display: none;">Total Bids: <span id="total-bids-value">0</span></div>
         </div>
 
@@ -85,6 +85,7 @@
                     <div class="game-controls">
                         <button id="deal-btn" class="action-btn">Deal Cards</button>
                         <button id="force-bid-btn" class="action-btn" style="background: orange; color: white; font-weight: bold; display: none;" onclick="if(window.forceBidding) window.forceBidding();">Show Bidding</button>
+                        <button id="hint-btn" class="action-btn hint-btn" style="background: #4CAF50; color: white; display: none;">💡 Hint</button>
                     </div>
                 </div>
                 
@@ -273,6 +274,22 @@
                         </ul>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hint Modal -->
+    <div id="hint-modal" class="hint-modal" style="display: none;">
+        <div class="hint-content">
+            <div class="hint-header">
+                <h3>💡 Strategic Hint</h3>
+                <button class="hint-close" id="hint-close">&times;</button>
+            </div>
+            <div class="hint-body" id="hint-body">
+                <!-- Hint content will be populated by JavaScript -->
+            </div>
+            <div class="hint-footer">
+                <button class="hint-btn-close" id="hint-btn-close">Got it!</button>
             </div>
         </div>
     </div>
