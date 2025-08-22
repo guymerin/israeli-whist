@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Israeli Whist</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    
+    <div class="game-container">
+        <h1>Israeli Whist</h1>
+        
+        <!-- Game Control Buttons - positioned on the right side -->
+        <div class="game-control-buttons">
+            <button id="new-game-btn" class="new-game-btn">🔄 New Game</button>
+            <button id="rules-btn" class="rules-btn">📖 Rules</button>
+            <button id="hint-btn" class="hint-btn">💡 Hint</button>
+        </div>
+        
+        <!-- Game Status -->
+        <div class="game-status">
+            <div class="round-counter">Round: <span id="round-indicator">1</span></div>
+            <div class="tricks-counter">Tricks: <span id="tricks-indicator">0</span></div>
+            <div class="trump-suit">Trump: <span id="trump-indicator">-</span></div>
+            <div class="current-turn">Turn: <span id="turn-indicator">-</span></div>
+            <div class="total-bids" id="total-bids" style="display: none;">Total Bids: <span id="total-bids-value">0</span></div>
+        </div>
+
+        <!-- Total Score Box -->
+        <div class="total-score-box">
+            <div class="total-score-title">Total Score</div>
+            <div class="total-score-content">
+                <div class="score-item">
+                    <span class="player-label">North:</span>
+                    <span class="score-value" id="north-total-score">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="player-label">East:</span>
+                    <span class="score-value" id="east-total-score">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="player-label">South:</span>
+                    <span class="score-value" id="south-total-score">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="player-label">West:</span>
+                    <span class="score-value" id="west-total-score">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Board -->
+        <div class="game-board">
+            <!-- North Player (Bot) -->
+            <div class="player north-player" id="north-player">
+                <div class="player-info">
+                    <span class="player-name">North (Bot)</span>
+                    <span class="player-bid">Bid: <span id="north-bid">-</span></span>
+                    <span class="player-tricks">Takes: <span id="north-takes">0</span></span>
+                </div>
+                <div class="player-cards bot-cards" id="north-cards"></div>
+                <div class="trick-counter" id="north-tricks"></div>
+            </div>
+
+            <!-- West Player (Bot) -->
+            <div class="player west-player" id="west-player">
+                <div class="player-info">
+                    <span class="player-name">West (Bot)</span>
+                    <span class="player-bid">Bid: <span id="west-bid">-</span></span>
+                    <span class="player-tricks">Takes: <span id="west-takes">0</span></span>
+                </div>
+                <div class="player-cards bot-cards" id="west-cards"></div>
+                <div class="trick-counter" id="west-tricks"></div>
+            </div>
+
+            <!-- Center Area (Tricks) -->
+            <div class="center-area">
+                <div class="trick-area" id="trick-area">
+                    <div class="played-card north-played" id="north-played"></div>
+                    <div class="played-card west-played" id="west-played"></div>
+                    <div class="played-card south-played" id="south-played"></div>
+                    <div class="played-card east-played" id="east-played"></div>
+                    <div class="game-controls">
+                        <button id="deal-btn" class="action-btn">Deal Cards</button>
+                        <button id="force-bid-btn" class="action-btn" style="background: orange; color: white; font-weight: bold; display: none;" onclick="if(window.forceBidding) window.forceBidding();">Show Bidding</button>
+                    </div>
+                </div>
+                
+                <!-- Won Tricks Display -->
+                <div class="won-tricks-display" id="won-tricks-display">
+                    <div class="won-tricks north-won" id="north-won"></div>
+                    <div class="won-tricks west-won" id="west-won"></div>
+                    <div class="won-tricks south-won" id="south-won"></div>
+                    <div class="won-tricks east-won" id="east-won"></div>
+                </div>
+            </div>
+
+            <!-- East Player (Bot) -->
+            <div class="player east-player" id="east-player">
+                <div class="player-info">
+                    <span class="player-name">East (Bot)</span>
+                    <span class="player-bid">Bid: <span id="east-bid">-</span></span>
+                    <span class="player-tricks">Takes: <span id="east-takes">0</span></span>
+                </div>
+                <div class="player-cards bot-cards" id="east-cards"></div>
+                <div class="trick-counter" id="east-tricks"></div>
+            </div>
+
+            <!-- South Player (Human) -->
+            <div class="player south-player" id="south-player">
+                <div class="player-info">
+                    <span class="player-name">South (You)</span>
+                    <span class="player-bid">Bid: <span id="south-bid">-</span></span>
+                    <span class="player-tricks">Takes: <span id="south-takes">0</span></span>
+                </div>
+                <div class="player-cards human-cards" id="south-cards"></div>
+                <div class="trick-counter" id="south-tricks"></div>
+            </div>
+        </div>
+
+        <!-- Bidding Interface -->
+        <div class="bidding-interface" id="bidding-interface" style="display: none;">
+            <h3>Phase 1: Choose Trump & Minimum Takes</h3>
+
+            <div class="bid-controls">
+                <div class="input-row">
+                    <div class="tricks-selector">
+                        <label>Min Takes:</label>
+                        <div class="tricks-buttons" id="tricks-buttons">
+                            <!-- Buttons will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="suit-selector">
+                        <label>Trump Suit:</label>
+                        <div class="suit-buttons" id="suit-buttons">
+                            <!-- Buttons will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                <div class="button-row">
+                    <button id="bid-btn" class="action-btn">Bid</button>
+                    <button id="pass-btn" class="action-btn">Pass</button>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- Second Phase Bidding -->
+        <div class="second-phase-bidding" id="second-phase-bidding" style="display: none;">
+            <div class="phase2-header">
+                <h3>Trick Takes Phase</h3>
+                <div class="trump-reminder">
+                    Trump: <span id="trump-reminder"></span>
+                </div>
+            </div>
+            
+            <div class="predictions-status">
+                <h4>Players' Takes (Predicted Tricks):</h4>
+                <div class="prediction-list">
+                    <div class="prediction-item">
+                        <span class="player-name">N:</span>
+                        <span id="north-prediction" class="prediction-value">-</span>
+                    </div>
+                    <div class="prediction-item">
+                        <span class="player-name">E:</span>
+                        <span id="east-prediction" class="prediction-value">-</span>
+                    </div>
+                    <div class="prediction-item">
+                        <span class="player-name">S:</span>
+                        <span id="south-prediction" class="prediction-value">-</span>
+                    </div>
+                    <div class="prediction-item">
+                        <span class="player-name">W:</span>
+                        <span id="west-prediction" class="prediction-value">-</span>
+                    </div>
+                </div>
+                <div class="prediction-total">
+                    Total: <span id="prediction-total">0</span> / 13 
+                    <span id="prediction-status"></span>
+                </div>
+            </div>
+            
+            <div class="your-prediction" id="your-prediction-controls" style="display: none;">
+                <h4>How many tricks will you take?</h4>
+                <div class="tricks-prediction">
+                    <select id="prediction-select">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                        <option value="13">13</option>
+                    </select>
+                    <button id="predict-btn" class="action-btn">Submit Takes</button>
+                </div>
+            </div>
+            
+            <div class="waiting-message" id="waiting-message" style="display: none;">
+                <p>Waiting for other players to make their predictions...</p>
+            </div>
+        </div>
+        
+        <!-- Rules Modal -->
+        <div class="rules-modal" id="rules-modal" style="display: none;">
+            <div class="rules-content">
+                <div class="rules-header">
+                    <h2>📖 Israeli Whist Rules</h2>
+                    <button id="close-rules-btn" class="close-btn">×</button>
+                </div>
+                <div class="rules-body">
+                    <div class="rules-section">
+                        <h3>🎯 Game Overview</h3>
+                        <p>Israeli Whist is a trick-taking card game for 4 players. The goal is to win exactly the number of tricks you bid for.</p>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>🃏 Phase 1: Trump Bidding</h3>
+                        <ul>
+                            <li>Players bid on trump suit and minimum number of tricks (4-13)</li>
+                            <li>Each bid must be higher than the previous (more tricks OR same tricks with higher trump)</li>
+                            <li>Trump ranking: Clubs (♣) < Diamonds (♦) < Hearts (♥) < Spades (♠) < No Trump</li>
+                            <li>Trump winner leads the first trick</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>🎲 Phase 2: Takes Bidding</h3>
+                        <ul>
+                            <li>All players bid on how many tricks they will take</li>
+                            <li>Trump winner must bid at least their Phase 1 minimum</li>
+                            <li><strong>Total bids cannot equal exactly 13</strong></li>
+                            <li>Bidding order: Trump winner, then clockwise</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>🃏 Phase 3: Playing</h3>
+                        <ul>
+                            <li>Trump winner leads first trick, then clockwise</li>
+                            <li>Must follow suit if possible</li>
+                            <li>Trump can be played anytime</li>
+                            <li>Highest card of led suit wins, unless trumped</li>
+                            <li>Winner of each trick leads the next</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>🏆 Scoring</h3>
+                        <ul>
+                            <li>Score 10 points for each trick taken</li>
+                            <li>Bonus 10 points if you take exactly your bid</li>
+                            <li>Penalty: Lose 10 points for each trick over/under your bid</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>💡 Strategy Tips</h3>
+                        <ul>
+                            <li>Trump bidding: Consider hand strength and distribution</li>
+                            <li>Takes bidding: Be realistic about your hand's potential</li>
+                            <li>Playing: Adapt strategy based on whether you need more tricks or have enough</li>
+                            <li>Sometimes it's better to lose a trick than win an unwanted one</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
