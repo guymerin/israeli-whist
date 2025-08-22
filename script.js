@@ -188,22 +188,40 @@ class IsraeliWhist {
         });
         
         this.displayCards();
-        this.showBiddingInterface();
         this.updateDisplay();
+        
+        // Since we start with South (human player), show the bidding interface immediately
+        this.promptPhase1Bidder();
     }
 
     showBiddingInterface() {
+        console.log('showBiddingInterface called');
         const biddingInterface = document.getElementById('bidding-interface');
+        console.log('biddingInterface element:', biddingInterface);
         if (biddingInterface) {
             biddingInterface.style.display = 'block';
+            console.log('Bidding interface shown');
+        } else {
+            console.error('Bidding interface element not found!');
         }
         
         this.populateBiddingButtons();
     }
 
+    hideBiddingInterface() {
+        const biddingInterface = document.getElementById('bidding-interface');
+        if (biddingInterface) {
+            biddingInterface.style.display = 'none';
+        }
+    }
+
     populateBiddingButtons() {
+        console.log('populateBiddingButtons called');
         const tricksButtons = document.getElementById('tricks-buttons');
         const suitButtons = document.getElementById('suit-buttons');
+        
+        console.log('tricksButtons element:', tricksButtons);
+        console.log('suitButtons element:', suitButtons);
         
         if (!tricksButtons || !suitButtons) {
             console.error('Button containers not found!');
@@ -293,6 +311,9 @@ class IsraeliWhist {
         // Show bid animation
         this.showBidAnimation('south', `${minTakes} ${this.getSuitSymbol(this.selectedSuit)}`);
         
+        // Hide bidding interface after bid
+        this.hideBiddingInterface();
+        
         // Move to next player after animation
         setTimeout(() => {
             this.nextPhase1Bidder();
@@ -307,94 +328,131 @@ class IsraeliWhist {
          // Clear Phase 1 display and show Phase 2 status
          this.updateDisplay();
          
-         // The updateDisplay() call above already calls updatePlayerInfoPanels()
-         // which properly handles Phase 2 bid displays with "waiting..." for null values
+         // Force immediate refresh of all Phase 2 displays to clear Phase 1 state
+         this.forceDisplayUpdate();
          
          // Start Phase 2 bidding with trump winner
          // Then go clockwise (left) from there
          this.currentBidder = this.players.indexOf(this.trumpWinner);
          console.log(`Phase 2 bidding starts with ${this.trumpWinner} (player index: ${this.currentBidder})`);
+         
+         // Show Phase 2 interface first
+         this.showPhase2Interface();
+         
+         // Then prompt the current bidder
          this.promptPhase2Bidder();
      }
 
-    promptPhase2Bidder() {
-        if (this.currentBidder === 2) { // South (human)
-            this.showPhase2Interface();
-        } else {
-            this.botMakePhase2Bid();
-        }
-    }
-
-    showPhase2Interface() {
-        const phase2Interface = document.querySelector('.second-phase-bidding');
-        if (phase2Interface) {
-            phase2Interface.style.display = 'block';
-            
-            // Update trump reminder
-            const trumpReminder = document.getElementById('trump-reminder');
-            if (trumpReminder) {
-                trumpReminder.textContent = this.getSuitSymbol(this.trumpSuit);
-            }
-            
-            // Refresh all Phase 2 displays
-            this.refreshAllPhase2Displays();
-            
-            // Show current player's prediction controls if it's their turn
-            if (this.currentBidder === 2) { // South (human)
-                this.showHumanPhase2Controls();
-            }
-        }
-    }
-
-    showHumanPhase2Controls() {
-        const yourPredictionControls = document.getElementById('your-prediction-controls');
-        if (yourPredictionControls) {
-            yourPredictionControls.style.display = 'block';
-        }
-        
-        // Set minimum bid for trump winner
-        if (this.currentBidder === this.players.indexOf(this.trumpWinner)) {
-            // Trump winner must bid at least their Phase 1 minimum
-            const predictionSelect = document.getElementById('prediction-select');
-            if (predictionSelect) {
-                // Remove options below minimum
-                for (let i = 0; i < this.minimumTakes; i++) {
-                    const option = predictionSelect.querySelector(`option[value="${i}"]`);
-                    if (option) option.style.display = 'none';
-                }
-            }
-        }
-    }
-
-         makePhase2Bid(player, takes) {
-         // Validate minimum bid for trump winner
-         if (player === this.trumpWinner && takes < this.minimumTakes) {
-             console.error(`${player} must bid at least ${this.minimumTakes} as trump winner`);
-             return;
-         }
-         
-         this.phase2Bids[player] = takes;
-         console.log(`${player} predicts ${takes} takes`);
-         
-         // Update Phase 2 bid display immediately
-         this.updatePhase2BidDisplay(player, takes);
-         
-         // Force immediate DOM update
-         this.forceDisplayUpdate();
-         
-         // Update display immediately after bid
-         this.updateDisplay();
-         
-         // Move to next player in clockwise order
-         this.currentBidder = (this.currentBidder + 1) % 4;
-         console.log(`Phase 2 bidding: ${player} -> ${this.players[this.currentBidder]} (clockwise)`);
-         
-         if (this.currentBidder === 2) { // Back to South
-             this.startPhase3();
+         promptPhase2Bidder() {
+         if (this.currentBidder === 2) { // South (human)
+             this.showPhase2Interface();
+             // Show human player's prediction controls
+             this.showHumanPhase2Controls();
          } else {
              this.botMakePhase2Bid();
          }
      }
+
+         showPhase2Interface() {
+         const phase2Interface = document.querySelector('.second-phase-bidding');
+         if (phase2Interface) {
+             phase2Interface.style.display = 'block';
+             
+             // Update trump reminder
+             const trumpReminder = document.getElementById('trump-reminder');
+             if (trumpReminder) {
+                 trumpReminder.textContent = this.getSuitSymbol(this.trumpSuit);
+             }
+             
+             // Refresh all Phase 2 displays
+             this.refreshAllPhase2Displays();
+         }
+     }
+
+         showHumanPhase2Controls() {
+         const yourPredictionControls = document.getElementById('your-prediction-controls');
+         if (yourPredictionControls) {
+             yourPredictionControls.style.display = 'block';
+         }
+         
+         // Set minimum bid for trump winner
+         if (this.currentBidder === this.players.indexOf(this.trumpWinner)) {
+             // Trump winner must bid at least their Phase 1 minimum
+             const predictionSelect = document.getElementById('prediction-select');
+             if (predictionSelect) {
+                 // Remove options below minimum
+                 for (let i = 0; i < this.minimumTakes; i++) {
+                     const option = predictionSelect.querySelector(`option[value="${i}"]`);
+                     if (option) option.style.display = 'none';
+                 }
+             }
+         }
+         
+         // Update the prediction select to show current player's turn
+         const predictionSelect = document.getElementById('prediction-select');
+         if (predictionSelect) {
+             // Reset all options to be visible first
+             predictionSelect.querySelectorAll('option').forEach(option => {
+                 option.style.display = 'block';
+             });
+             
+             // Then hide options below minimum if this is trump winner
+             if (this.currentBidder === this.players.indexOf(this.trumpWinner)) {
+                 for (let i = 0; i < this.minimumTakes; i++) {
+                     const option = predictionSelect.querySelector(`option[value="${i}"]`);
+                     if (option) option.style.display = 'none';
+                 }
+             }
+         }
+         
+         // Show a message indicating it's the human player's turn
+         const turnMessage = document.getElementById('turn-message');
+         if (turnMessage) {
+             turnMessage.textContent = `Your turn to bid! Choose how many tricks you think you'll take.`;
+             turnMessage.style.display = 'block';
+         }
+     }
+
+                   makePhase2Bid(player, takes) {
+          // Validate minimum bid for trump winner
+          if (player === this.trumpWinner && takes < this.minimumTakes) {
+              console.error(`${player} must bid at least ${this.minimumTakes} as trump winner`);
+              return;
+          }
+          
+          this.phase2Bids[player] = takes;
+          console.log(`${player} predicts ${takes} takes`);
+          
+          // Update Phase 2 bid display immediately
+          this.updatePhase2BidDisplay(player, takes);
+          
+          // Force immediate DOM update
+          this.forceDisplayUpdate();
+          
+          // Update display immediately after bid
+          this.updateDisplay();
+          
+          // Check if all players have now bid
+          const allPlayersBid = this.players.every(p => this.phase2Bids[p] !== null && this.phase2Bids[p] !== undefined);
+          
+          if (allPlayersBid) {
+              console.log('All players have bid in Phase 2, moving to Phase 3...');
+              // Small delay to show the final bid before transitioning
+              setTimeout(() => this.startPhase3(), 1000);
+              return;
+          }
+          
+          // Move to next player in clockwise order
+          this.currentBidder = (this.currentBidder + 1) % 4;
+          console.log(`Phase 2 bidding: ${player} -> ${this.players[this.currentBidder]} (clockwise)`);
+          
+          if (this.currentBidder === 2) { // Back to South (human player)
+              // Human player's turn to bid
+              this.promptPhase2Bidder();
+          } else {
+              this.botMakePhase2Bid();
+          }
+      }
 
          botMakePhase2Bid() {
          const player = this.players[this.currentBidder];
@@ -439,41 +497,67 @@ class IsraeliWhist {
          this.makePhase2Bid(player, takes);
      }
 
-                   calculateSmartPhase2Bid(player, handStrength, currentTotal, minBid, maxBid) {
-          // Base bid on hand strength - be more aggressive
-          let baseBid = Math.floor(handStrength.score / 6); // Increased from /7 to /6 for even higher bids
-          
-          // Adjust based on trump suit
-          if (this.trumpSuit !== 'notrump') {
-              const trumpCards = this.hands[player].filter(card => card.suit === this.trumpSuit).length;
-              if (trumpCards >= 4) baseBid += 1;
-              if (trumpCards >= 6) baseBid += 1;
-              if (trumpCards >= 5) baseBid += 1; // Additional bonus for 5+ trump cards
-          }
-          
-          // Adjust based on current bidding situation
-          if (currentTotal < 8) {
-              // Early in bidding, be very aggressive
-              baseBid = Math.min(maxBid, baseBid + 3); // Increased from +2 to +3
-          } else if (currentTotal > 18) {
-              // Late in bidding, still be aggressive
-              baseBid = Math.max(minBid, baseBid + 1); // Added +1 instead of penalty
-          }
-          
-          // Add some randomness to make bidding more interesting
-          const randomAdjustment = Math.floor(Math.random() * 3) - 1; // -1, 0, or +1
-          baseBid += randomAdjustment;
-          
-          // Ensure bid is within valid range and never returns 0 unless forced
-          if (baseBid < minBid) baseBid = minBid;
-          if (baseBid > maxBid) baseBid = maxBid;
-          
-          // Ensure we always have a valid bid
-          if (baseBid < 0) baseBid = 0;
-          if (baseBid > 13) baseBid = 13;
-          
-          return baseBid;
-      }
+                                           calculateSmartPhase2Bid(player, handStrength, currentTotal, minBid, maxBid) {
+        // Much more conservative Phase 2 bidding - bids above 7-8 should be rare
+        
+        // Base bid calculation - very conservative divisor
+        let baseBid = Math.floor(handStrength.score / 10); // Much more conservative
+        
+        // Trump support analysis - crucial for realistic bidding
+        if (this.trumpSuit !== 'notrump') {
+            const trumpCards = this.hands[player].filter(card => card.suit === this.trumpSuit);
+            const trumpCount = trumpCards.length;
+            const trumpHonors = trumpCards.filter(card => ['A', 'K', 'Q', 'J'].includes(card.rank)).length;
+            
+            // Trump bonuses - much more conservative
+            if (trumpCount >= 5 && trumpHonors >= 3) baseBid += 1; // Very strong trump suit
+            else if (trumpCount >= 4 && trumpHonors >= 2) baseBid += 1; // Strong trump suit
+            else if (trumpCount >= 6) baseBid += 1; // Very long trump suit
+            
+            // Penalty for weak trump support
+            if (trumpCount <= 2 && trumpHonors === 0) baseBid = Math.max(0, baseBid - 1);
+        } else {
+            // No trump - adjust based on balanced hand
+            if (handStrength.maxLength <= 4 && handStrength.score >= 25) {
+                baseBid += 1; // Balanced hand with high cards
+            }
+        }
+        
+        // Strategic adjustments based on current bidding situation
+        if (currentTotal < 6) {
+            // Early bidding - be conservative
+            baseBid = Math.min(maxBid, baseBid + 0); // No bonus for early bidding
+        } else if (currentTotal > 15) {
+            // Late bidding - be more conservative
+            baseBid = Math.max(minBid, baseBid - 1);
+        }
+        
+        // Very strict constraints - bids above 8 should be extremely rare
+        if (baseBid > 8 && handStrength.score < 35) {
+            baseBid = 8; // Cap at 8 for most hands
+        }
+        if (baseBid > 10 && handStrength.score < 45) {
+            baseBid = 10; // Cap at 10 for exceptional hands only
+        }
+        
+        // Minimal randomness - only 10% chance for +1
+        if (Math.random() < 0.1 && baseBid < 8) {
+            baseBid += 1;
+        }
+        
+        // Ensure bid is within valid range
+        baseBid = Math.max(minBid, Math.min(maxBid, baseBid));
+        
+        // Final reality check - very high bids need exceptional hands
+        if (baseBid >= 9 && handStrength.score < 30) {
+            baseBid = Math.min(8, baseBid);
+        }
+        if (baseBid >= 11 && handStrength.score < 40) {
+            baseBid = Math.min(10, baseBid);
+        }
+        
+        return Math.max(0, Math.min(13, baseBid));
+    }
 
          startPhase3() {
          console.log('=== STARTING PHASE 3 ===');
@@ -586,6 +670,8 @@ class IsraeliWhist {
             const currentPlayerIndex = this.getCurrentPlayerIndex();
             playerName = this.players[currentPlayerIndex];
         }
+        
+        console.log(`Bot ${playerName} playing card...`);
         
         const hand = this.hands[playerName];
         if (hand.length === 0) return;
@@ -733,53 +819,67 @@ class IsraeliWhist {
         return colors[suit] || '#000000';
     }
 
-    showBidAnimation(player, bidText) {
-        // Create bid animation element
-        const bidAnimation = document.createElement('div');
-        bidAnimation.className = 'bid-animation';
-        
-        // Create content with player name and bid
-        const playerName = player.toUpperCase();
-        const isPass = bidText === 'Pass';
-        
-        bidAnimation.innerHTML = `
-            <div style="text-align: center;">
-                <div style="font-size: 12px; margin-bottom: 4px; color: #333;">${playerName}</div>
-                <div style="font-size: 18px; font-weight: bold; color: ${isPass ? '#FF6B6B' : '#4CAF50'};">
-                    ${bidText}
-                </div>
-            </div>
-        `;
-        
-        // Position the animation above the player's name
-        const playerInfo = document.querySelector(`.${player}-player`);
-        let animationTop = '50%';
-        let animationLeft = '50%';
-        
-        if (playerInfo) {
-            const rect = playerInfo.getBoundingClientRect();
-            const gameBoardRect = document.querySelector('.game-board').getBoundingClientRect();
-            
-            // Position above the player info panel
-            animationTop = `${rect.top - gameBoardRect.top - 120}px`;
-            animationLeft = `${rect.left - gameBoardRect.left + rect.width / 2}px`;
-        }
-        
-        bidAnimation.style.cssText = `
-            position: absolute;
-            top: ${animationTop};
-            left: ${animationLeft};
-            transform: translate(-50%, -50%);
-            background: rgba(255, 215, 0, 0.95);
-            color: #000;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: bold;
-            z-index: 1000;
-            animation: bidPulse 2s ease-in-out;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            border: 2px solid #FFD700;
-        `;
+         showBidAnimation(player, bidText) {
+         // Create bid animation element
+         const bidAnimation = document.createElement('div');
+         bidAnimation.className = 'bid-animation';
+         
+         // Create content with player name and bid
+         const playerName = player.toUpperCase();
+         const isPass = bidText === 'Pass';
+         
+         bidAnimation.innerHTML = `
+             <div style="text-align: center;">
+                 <div style="font-size: 10px; margin-bottom: 2px; color: #333;">${playerName}</div>
+                 <div style="font-size: 14px; font-weight: bold; color: ${isPass ? '#FF6B6B' : '#4CAF50'};">
+                     ${bidText}
+                 </div>
+             </div>
+         `;
+         
+         // Position the animation directly above the player's name
+         const playerInfo = document.querySelector(`.${player}-player`);
+         let animationTop = '50%';
+         let animationLeft = '50%';
+         
+         if (playerInfo) {
+             const rect = playerInfo.getBoundingClientRect();
+             const gameBoardRect = document.querySelector('.game-board').getBoundingClientRect();
+             
+             // Position above the player name (not the entire panel)
+             // Look for the player name element specifically
+             const playerNameElement = playerInfo.querySelector('.player-name') || 
+                                     playerInfo.querySelector('[class*="name"]') ||
+                                     playerInfo.querySelector('h3') ||
+                                     playerInfo.querySelector('h4');
+             
+             if (playerNameElement) {
+                 const nameRect = playerNameElement.getBoundingClientRect();
+                 // Position above the player name with smaller offset
+                 animationTop = `${nameRect.top - gameBoardRect.top - 40}px`;
+                 animationLeft = `${nameRect.left - gameBoardRect.left + nameRect.width / 2}px`;
+             } else {
+                 // Fallback: position above the player info panel with smaller offset
+                 animationTop = `${rect.top - gameBoardRect.top - 60}px`;
+                 animationLeft = `${rect.left - gameBoardRect.left + rect.width / 2}px`;
+             }
+         }
+         
+         bidAnimation.style.cssText = `
+             position: absolute;
+             top: ${animationTop};
+             left: ${animationLeft};
+             transform: translate(-50%, -50%);
+             background: rgba(255, 215, 0, 0.95);
+             color: #000;
+             padding: 6px 12px;
+             border-radius: 8px;
+             font-weight: bold;
+             z-index: 1000;
+             animation: bidPulse 2s ease-in-out;
+             box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+             border: 1px solid #FFD700;
+         `;
         
         // Add CSS animation
         if (!document.querySelector('#bid-animation-style')) {
@@ -911,45 +1011,44 @@ class IsraeliWhist {
          });
      }
 
-    updatePlayerInfoPanels() {
-        // Update each player's bid display in their info panel
-        this.players.forEach(player => {
-            // Try multiple selectors to find the bid span
-            let bidSpan = document.querySelector(`.${player}-player .player-bid`);
-            if (!bidSpan) {
-                bidSpan = document.querySelector(`#${player}-player .player-bid`);
-            }
-            if (!bidSpan) {
-                bidSpan = document.querySelector(`[id*="${player}"] .player-bid`);
-            }
-            
-            if (bidSpan) {
-                if (this.currentPhase === 'phase2') {
-                    if (this.phase2Bids[player] !== null && this.phase2Bids[player] !== undefined) {
-                        // Show Phase 2 bid amount
-                        bidSpan.textContent = `bid: ${this.phase2Bids[player]}`;
-                        console.log(`Updated ${player} Phase 2 bid display to: ${this.phase2Bids[player]}`);
-                    } else {
-                        // Phase 2 but no bid yet - show waiting status
-                        bidSpan.textContent = 'waiting...';
-                        console.log(`Updated ${player} Phase 2 bid display to: waiting...`);
-                    }
-                } else if (this.phase1Bids[player]) {
-                    // Show Phase 1 trump bid with colored suit
-                    const bid = this.phase1Bids[player];
-                    const suitSymbol = this.getSuitSymbol(bid.trumpSuit);
-                    const suitColor = this.getSuitColor(bid.trumpSuit);
-                    bidSpan.innerHTML = `bid: ${bid.minTakes} <span style="color: ${suitColor};">${suitSymbol}</span>`;
-                } else if (this.playersPassed[player]) {
-                    bidSpan.textContent = 'bid: Pass';
-                } else {
-                    bidSpan.textContent = 'bid: -';
-                }
-            } else {
-                console.warn(`Could not find bid span for player: ${player}`);
-            }
-        });
-    }
+         updatePlayerInfoPanels() {
+         // Update each player's bid display in their info panel
+         this.players.forEach(player => {
+             // Try multiple selectors to find the bid span
+             let bidSpan = document.querySelector(`.${player}-player .player-bid`);
+             if (!bidSpan) {
+                 bidSpan = document.querySelector(`#${player}-player .player-bid`);
+             }
+             if (!bidSpan) {
+                 bidSpan = document.querySelector(`[id*="${player}"] .player-bid`);
+             }
+             
+             if (bidSpan) {
+                 // Phase 2 takes priority - if we have a Phase 2 bid, show it regardless of Phase 1 state
+                 if (this.phase2Bids[player] !== null && this.phase2Bids[player] !== undefined) {
+                     // Show Phase 2 bid amount
+                     bidSpan.textContent = `bid: ${this.phase2Bids[player]}`;
+                     console.log(`Updated ${player} Phase 2 bid display to: ${this.phase2Bids[player]}`);
+                 } else if (this.currentPhase === 'phase2') {
+                     // Phase 2 but no bid yet - show waiting status
+                     bidSpan.textContent = 'waiting...';
+                     console.log(`Updated ${player} Phase 2 bid display to: waiting...`);
+                 } else if (this.phase1Bids[player]) {
+                     // Show Phase 1 trump bid with colored suit
+                     const bid = this.phase1Bids[player];
+                     const suitSymbol = this.getSuitSymbol(bid.trumpSuit);
+                     const suitColor = this.getSuitColor(bid.trumpSuit);
+                     bidSpan.innerHTML = `bid: ${bid.minTakes} <span style="color: ${suitColor};">${suitSymbol}</span>`;
+                 } else if (this.playersPassed[player]) {
+                     bidSpan.textContent = 'bid: Pass';
+                 } else {
+                     bidSpan.textContent = 'bid: -';
+                 }
+             } else {
+                 console.warn(`Could not find bid span for player: ${player}`);
+             }
+         });
+     }
 
          updatePhase2BidDisplay(player, takes) {
          // Specifically update Phase 2 bid display for a player
@@ -1025,6 +1124,11 @@ class IsraeliWhist {
          
          // Also update the Phase 2 interface
          this.updatePhase2Interface();
+         
+         // Force a complete refresh of player info panels to ensure Phase 1 state is cleared
+         setTimeout(() => {
+             this.updatePlayerInfoPanels();
+         }, 50);
      }
 
     updatePhase2Interface() {
@@ -1187,6 +1291,9 @@ class IsraeliWhist {
         // Show pass animation
         this.showBidAnimation('south', 'Pass');
         
+        // Hide bidding interface after pass
+        this.hideBiddingInterface();
+        
         // Update the display to show the pass
         this.updateDisplay();
         
@@ -1250,8 +1357,11 @@ class IsraeliWhist {
         }
         
         if (player === 'south') {
+            // Human player's turn - show bidding interface
             this.promptPhase1Bidder();
         } else {
+            // Bot player's turn - hide bidding interface
+            this.hideBiddingInterface();
             this.botMakePhase1Bid();
         }
     }
@@ -1359,6 +1469,11 @@ class IsraeliWhist {
     promptPhase1Bidder() {
         // Human player's turn to bid
         console.log('Human player turn to bid');
+        
+        // Show the bidding interface for the human player
+        console.log('About to call showBiddingInterface');
+        this.showBiddingInterface();
+        console.log('showBiddingInterface called');
     }
 
     getCurrentHighestBid() {
@@ -1458,100 +1573,111 @@ class IsraeliWhist {
             }
         });
         
-                 // Bonus for long suits and balanced distribution
-         if (maxLength >= 5) score += 4; // Long suit bonus (increased from 3)
-         if (maxLength >= 6) score += 3; // Very long suit bonus (increased from 2)
-         if (maxLength >= 7) score += 2; // Extremely long suit bonus
+                          // Realistic bonuses for long suits and distribution
+         if (maxLength >= 5) score += 3; // Long suit bonus (reduced from 4)
+         if (maxLength >= 6) score += 2; // Very long suit bonus (reduced from 3)
+         if (maxLength >= 7) score += 1; // Extremely long suit bonus (reduced from 2)
          
-         // Distribution bonus
+         // Distribution bonus - more conservative
          const shortSuits = Object.values(suitCounts).filter(count => count <= 2).length;
-         if (shortSuits >= 2) score += 3; // Short suit bonus (increased from 2)
+         if (shortSuits >= 2) score += 2; // Short suit bonus (reduced from 3)
          
-         // Additional strategic bonuses
-         if (suitCounts[longestSuit] >= 4 && score >= 20) {
-             score += 2; // Bonus for having a long suit with decent high cards
+         // Strategic bonuses - more realistic
+         if (suitCounts[longestSuit] >= 4 && score >= 18) {
+             score += 1; // Reduced bonus for having a long suit with decent high cards
          }
          
-         // Bonus for having multiple honors in the same suit
+         // Bonus for having multiple honors in the same suit - more realistic
          const honorsInLongestSuit = hand.filter(card => 
              card.suit === longestSuit && 
              ['A', 'K', 'Q', 'J'].includes(card.rank)
          ).length;
-         if (honorsInLongestSuit >= 2) score += 2;
+         if (honorsInLongestSuit >= 2) score += 1; // Reduced from 2
+         
+         // Penalty for very unbalanced hands
+         if (maxLength >= 8) score -= 1; // Too long suits can be a liability
+         if (shortSuits >= 3) score -= 1; // Too many short suits is bad
          
          return { score, longestSuit, suitCounts, maxLength };
     }
 
-                   calculateSmartOpeningBid(player, handStrength) {
-          // More realistic opening bids based on hand strength
-          let minTakes = 5; // Start with minimum bid (5 according to official rules)
-          
-          // Adjust based on hand strength - more aggressive
-          if (handStrength.score >= 18) minTakes = 6;
-          if (handStrength.score >= 22) minTakes = 7;
-          if (handStrength.score >= 26) minTakes = 8;
-          if (handStrength.score >= 30) minTakes = 9;
-          if (handStrength.score >= 35) minTakes = 10;
-         
-         // Prefer the longest suit as trump
-         let trumpSuit = handStrength.longestSuit;
-         
-         // Strategic trump selection
-         if (handStrength.maxLength >= 6) {
-             // Very long suit - prefer it as trump
-             trumpSuit = handStrength.longestSuit;
-         } else if (handStrength.score >= 25 && handStrength.maxLength <= 4) {
-             // Balanced hand with high points - consider no trump
-             trumpSuit = 'notrump';
-         } else if (handStrength.suitCounts[handStrength.longestSuit] <= 3 && handStrength.score >= 22) {
-             // Weak longest suit but decent points - consider no trump
-             trumpSuit = 'notrump';
-         }
-         
-         // Add some randomness to make bidding more interesting
-         if (Math.random() < 0.3 && minTakes < 8) {
-             minTakes += 1; // 30% chance to bid one higher
-         }
-         
-         return { minTakes, trumpSuit };
-     }
+                                           calculateSmartOpeningBid(player, handStrength) {
+        // Much more conservative opening bids - bids above 7-8 should be rare
+        let minTakes = 5; // Start with minimum bid (5 according to official rules)
+        
+        // Very conservative thresholds - bids above 7-8 should be extremely rare
+        if (handStrength.score >= 28) minTakes = 6;  // Only bid 6 with very strong hands
+        if (handStrength.score >= 35) minTakes = 7;  // Only bid 7 with exceptional hands
+        if (handStrength.score >= 42) minTakes = 8;  // Only bid 8 with extremely rare hands
+        if (handStrength.score >= 48) minTakes = 9;  // Almost never bid 9+
+        
+        // Cap at 9 - 10+ should be extremely rare
+        minTakes = Math.min(minTakes, 9);
+       
+       // Strategic trump selection based on actual hand composition
+       let trumpSuit = handStrength.longestSuit;
+       
+       // Analyze trump suitability
+       if (handStrength.maxLength >= 6 && handStrength.suitCounts[handStrength.longestSuit] >= 6) {
+           // Very long and strong suit - excellent trump
+           trumpSuit = handStrength.longestSuit;
+       } else if (handStrength.score >= 30 && handStrength.maxLength <= 4) {
+           // Balanced hand with high points - consider no trump
+           trumpSuit = 'notrump';
+       } else if (handStrength.suitCounts[handStrength.longestSuit] <= 3 && handStrength.score >= 28) {
+           // Weak longest suit but decent points - consider no trump
+           trumpSuit = 'notrump';
+       } else if (handStrength.maxLength >= 5 && handStrength.suitCounts[handStrength.longestSuit] >= 5) {
+           // Good length and strength - use as trump
+           trumpSuit = handStrength.longestSuit;
+       }
+       
+       // Very low randomness - only 5% chance to bid one higher
+       if (Math.random() < 0.05 && minTakes < 8) {
+           minTakes += 1; // 5% chance to bid one higher
+       }
+       
+       return { minTakes, trumpSuit };
+   }
 
-         shouldBotBid(player, potentialBid, handStrength, currentHighestBid) {
-         // Much more aggressive bidding - lower thresholds significantly
-         if (handStrength.score < 10) return false; // Lowered from 15
-         
-         // Don't bid if we're already at a very high level
-         if (potentialBid.minTakes > 12) return false; // Increased from 11
-         
-         // Be very aggressive with strong hands
-         if (handStrength.score >= 25) return true; // Lowered from 30
-         
-         // Be aggressive with moderate hands
-         if (handStrength.score >= 18) {
-             // 90% chance to bid with moderate hands (increased from 85%)
-             return Math.random() < 0.9;
-         }
-         
-         // Be more aggressive with weak hands
-         if (handStrength.score >= 14) {
-             // 80% chance to bid with weak hands (increased from 60%)
-             return Math.random() < 0.8;
-         }
-         
-         // Even consider bidding with very weak hands if we have a long suit
-         if (handStrength.score >= 12 && handStrength.maxLength >= 5) {
-             // 70% chance to bid with very weak hands if they have a long suit
-             return Math.random() < 0.7;
-         }
-         
-         // Add some randomness for very weak hands to create variety
-         if (handStrength.score >= 10) {
-             // 50% chance to bid with very weak hands just for variety
-             return Math.random() < 0.5;
-         }
-         
-         return false;
-     }
+                   shouldBotBid(player, potentialBid, handStrength, currentHighestBid) {
+          // Realistic bidding thresholds based on actual hand strength
+          if (handStrength.score < 12) return false; // Need decent hand to bid
+          
+          // Don't bid if we're already at a very high level
+          if (potentialBid.minTakes > 11) return false; // Cap at reasonable level
+          
+          // Strong hands - bid with confidence
+          if (handStrength.score >= 28) return true; // Raised threshold
+          
+          // Good hands - high probability to bid
+          if (handStrength.score >= 22) {
+              return Math.random() < 0.85; // Reduced from 90%
+          }
+          
+          // Moderate hands - moderate probability
+          if (handStrength.score >= 18) {
+              return Math.random() < 0.70; // Reduced from 80%
+          }
+          
+          // Weak hands - low probability, only if good trump support
+          if (handStrength.score >= 14) {
+              if (this.trumpSuit !== 'notrump') {
+                  const trumpCards = this.hands[player].filter(card => card.suit === this.trumpSuit).length;
+                  if (trumpCards >= 4) {
+                      return Math.random() < 0.60; // Only bid with trump support
+                  }
+              }
+              return Math.random() < 0.30; // Low probability without trump support
+          }
+          
+          // Very weak hands - rarely bid
+          if (handStrength.score >= 12) {
+              return Math.random() < 0.20; // Very low probability
+          }
+          
+          return false;
+      }
 
     getSuitRank(suit) {
         const suitRanks = {

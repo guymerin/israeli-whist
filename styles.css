@@ -1069,7 +1069,7 @@ h1 {
 
 .second-phase-bidding, .trump-announcement {
     position: absolute;
-    bottom: 0px;
+    bottom: 330px;
     left: 50%;
     transform: translateX(-50%);
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 60, 0.95) 100%);
