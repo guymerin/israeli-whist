@@ -216,7 +216,7 @@ h1 {
 
 .north-player {
     top: 15px;
-    left: 50%;
+    left: calc(50% + 50px);
     transform: translateX(-50%);
     z-index: 10;
     flex-direction: row;
@@ -234,13 +234,13 @@ h1 {
 
 .west-player {
     left: 15px;
-    top: 45%;
+    top: calc(45% + 70px);
     transform: translateY(-50%);
 }
 
 .east-player {
     right: 15px;
-    top: 45%;
+    top: calc(45% + 70px);
     transform: translateY(-50%);
 }
 
@@ -1042,7 +1042,7 @@ h1 {
 /* Bidding Interface */
 .bidding-interface {
     position: absolute;
-    top: 50%;
+    top: calc(50% + 30px);
     left: 50%;
     transform: translate(-50%, -50%);
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 60, 0.95) 100%);
@@ -1427,7 +1427,7 @@ h1 {
 
 .suit-buttons {
     grid-template-columns: repeat(5, 1fr);
-    max-width: 600px;
+    max-width: 400px;
 }
 
 .trick-button, .suit-button {
@@ -1448,9 +1448,9 @@ h1 {
 }
 
 .suit-button {
-    font-size: 32px;
-    min-height: 60px;
-    padding: 15px 10px;
+    font-size: 20px;
+    min-height: 40px;
+    padding: 10px 6px;
 }
 
 .trick-button:hover, .suit-button:hover {
