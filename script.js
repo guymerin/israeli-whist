@@ -196,6 +196,13 @@ class IsraeliWhist {
             west: this.hands.west.length
         });
         
+        // Log actual cards for each player for debugging
+        console.log('=== PLAYER HANDS ===');
+        this.players.forEach(player => {
+            console.log(`${player.toUpperCase()} hand:`, this.hands[player].map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`).join(' '));
+        });
+        console.log('=== END PLAYER HANDS ===');
+        
         this.displayCards();
         this.updateDisplay();
         
@@ -384,38 +391,28 @@ class IsraeliWhist {
         // Set minimum bid for trump winner
         if (this.currentBidder === this.players.indexOf(this.trumpWinner)) {
             // Trump winner must bid at least their Phase 1 minimum
-            const predictionSelect = document.getElementById('prediction-select');
-            if (predictionSelect) {
-                // Remove options below minimum
-                for (let i = 0; i < this.minimumTakes; i++) {
-                    const option = predictionSelect.querySelector(`option[value="${i}"]`);
-                    if (option) option.style.display = 'none';
+            const trickButtons = document.querySelectorAll('.trick-btn');
+            trickButtons.forEach(button => {
+                const value = parseInt(button.getAttribute('data-value'), 10);
+                if (value < this.minimumTakes) {
+                    button.disabled = true;
+                } else {
+                    button.disabled = false;
                 }
-            }
+            });
+        } else {
+            // Reset all buttons to be enabled
+            const trickButtons = document.querySelectorAll('.trick-btn');
+            trickButtons.forEach(button => {
+                button.disabled = false;
+            });
         }
-         
-         // Update the prediction select to show current player's turn
-         const predictionSelect = document.getElementById('prediction-select');
-         if (predictionSelect) {
-             // Reset all options to be visible first
-             predictionSelect.querySelectorAll('option').forEach(option => {
-                 option.style.display = 'block';
-             });
-             
-             // Then hide options below minimum if this is trump winner
-             if (this.currentBidder === this.players.indexOf(this.trumpWinner)) {
-                 for (let i = 0; i < this.minimumTakes; i++) {
-                     const option = predictionSelect.querySelector(`option[value="${i}"]`);
-                     if (option) option.style.display = 'none';
-                 }
-             }
-         }
-         
-         // Show a message indicating it's the human player's turn
-         const turnMessage = document.getElementById('turn-message');
-         if (turnMessage) {
-             turnMessage.textContent = `Your turn to bid! Choose how many tricks you think you'll take.`;
-             turnMessage.style.display = 'block';
+        
+        // Show a message indicating it's the human player's turn
+        const turnMessage = document.getElementById('turn-message');
+        if (turnMessage) {
+            turnMessage.textContent = `Your turn to bid! Choose how many tricks you think you'll take.`;
+            turnMessage.style.display = 'block';
         }
     }
 
@@ -843,7 +840,6 @@ class IsraeliWhist {
         if (trickCountElement) {
             const tricksWon = this.tricksWon[player];
             trickCountElement.textContent = `Takes: ${tricksWon}`;
-            console.log(`Updated ${player} trick count to: ${tricksWon}`);
         } else {
             console.warn(`Could not find trick count element for ${player}`);
         }
@@ -969,7 +965,7 @@ class IsraeliWhist {
                 playedCardDiv.innerHTML = '';
             }
         });
-        console.log('Played cards cleared from table');
+
     }
     
     updateHumanPlayerCards() {
@@ -1083,7 +1079,7 @@ class IsraeliWhist {
             playerName = this.players[currentPlayerIndex];
         }
         
-        console.log(`Bot ${playerName} playing card...`);
+
         
         const hand = this.hands[playerName];
         if (hand.length === 0) return;
@@ -1426,8 +1422,8 @@ class IsraeliWhist {
                 tricksIndicator.textContent = `${Math.min(currentRound, 13)}`;
                 tricksIndicator.style.color = '';
             } else {
-                // Show 0 for other phases (no rounds started yet)
-                tricksIndicator.textContent = '0';
+                // Show 1 for other phases (game starts with round 1)
+                tricksIndicator.textContent = '1';
                 tricksIndicator.style.color = '';
             }
         }
@@ -1445,7 +1441,7 @@ class IsraeliWhist {
                 const status = totalBids > 13 ? 'Over' : totalBids < 13 ? 'Under' : 'Exact';
                 const color = totalBids > 13 ? '#FF6B6B' : totalBids < 13 ? '#4CAF50' : '#FFD700';
                 
-                turnIndicator.innerHTML = `${totalBids}/13 (${status})`;
+                turnIndicator.innerHTML = `${totalBids} (${status})`;
                 turnIndicator.style.color = color;
             } else {
                 // Show 0 when no bids yet
@@ -1472,14 +1468,16 @@ class IsraeliWhist {
         this.updatePlayerInfoPanels();
     }
      
-     updateScoresDisplay() {
-         // Update each player's score display
-         this.players.forEach(player => {
-             const scoreElement = document.querySelector(`.${player}-player .player-score`);
-             if (scoreElement) {
-                 scoreElement.textContent = this.scores[player];
-             }
-         });
+         updateScoresDisplay() {
+        // Update each player's score display in the Total Score panel
+        this.players.forEach(player => {
+            const scoreElement = document.getElementById(`${player}-total-score`);
+            if (scoreElement) {
+                scoreElement.textContent = this.scores[player];
+            } else {
+                console.warn(`Could not find score element for ${player}: ${player}-total-score`);
+            }
+        });
     }
 
     updatePlayerInfoPanels() {
@@ -1621,13 +1619,16 @@ class IsraeliWhist {
                 const statusElement = document.getElementById('prediction-status');
                 if (statusElement) {
                     if (currentTotal === 13) {
-                        statusElement.textContent = '⚠️ Total equals 13!';
+                        statusElement.textContent = '⚠️ equals 13!';
                         statusElement.style.color = '#FF6B6B';
                     } else if (currentTotal > 13) {
-                        statusElement.textContent = '❌ Total exceeds 13!';
+                        statusElement.textContent = 'over';
                         statusElement.style.color = '#FF6B6B';
+                    } else if (currentTotal < 13) {
+                        statusElement.textContent = 'under';
+                        statusElement.style.color = '#4CAF50';
                     } else {
-                        statusElement.textContent = '✅ Valid total';
+                        statusElement.textContent = '';
                         statusElement.style.color = '#4CAF50';
                     }
                 }
@@ -1704,6 +1705,24 @@ class IsraeliWhist {
                     console.error('Please select both tricks and trump suit');
                     return;
                 }
+                
+                // Check if bid is valid (higher than current highest bid)
+                const currentHighestBid = this.getCurrentHighestBid();
+                if (currentHighestBid) {
+                    if (this.selectedTricks < currentHighestBid.minTakes) {
+                        alert(`Your bid must be at least ${currentHighestBid.minTakes} takes (current highest bid).`);
+                        return;
+                    }
+                    if (this.selectedTricks === currentHighestBid.minTakes) {
+                        const currentSuitRank = this.getSuitRank(currentHighestBid.trumpSuit);
+                        const selectedSuitRank = this.getSuitRank(this.selectedSuit);
+                        if (selectedSuitRank <= currentSuitRank) {
+                            alert(`With ${this.selectedTricks} takes, you need a higher ranking trump suit than ${currentHighestBid.trumpSuit}.`);
+                            return;
+                        }
+                    }
+                }
+                
                 this.makePhase1Bid(this.selectedTricks, this.selectedSuit);
             });
         }
@@ -1716,11 +1735,11 @@ class IsraeliWhist {
             });
         }
         
-        // Phase 2 prediction button
-        const predictBtn = document.getElementById('predict-btn');
-        if (predictBtn) {
-            predictBtn.addEventListener('click', () => {
-                const takes = parseInt(document.getElementById('prediction-select').value, 10);
+        // Phase 2 trick buttons
+        const trickButtons = document.querySelectorAll('.trick-btn');
+        trickButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const takes = parseInt(button.getAttribute('data-value'), 10);
                 if (!isNaN(takes)) {
                     // Check if this would make total exactly 13
                     const currentTotal = Object.values(this.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0);
@@ -1729,6 +1748,23 @@ class IsraeliWhist {
                         return;
                     }
                     this.makePhase2Bid('south', takes);
+                }
+            });
+        });
+
+        // More button for additional trick options
+        const moreBtn = document.getElementById('more-tricks-btn');
+        if (moreBtn) {
+            moreBtn.addEventListener('click', () => {
+                const extraButtons = document.getElementById('tricks-buttons-extra');
+                const mainButtons = document.querySelector('.tricks-buttons-main');
+                if (extraButtons && mainButtons) {
+                    extraButtons.style.display = 'block';
+                    // Add expanded class to both containers for better organization
+                    mainButtons.classList.add('expanded');
+                    extraButtons.classList.add('expanded');
+                    // Hide the More button after clicking it
+                    moreBtn.style.display = 'none';
                 }
             });
         }
@@ -1845,6 +1881,7 @@ class IsraeliWhist {
         
         // Get current highest bid to determine if we need to bid higher
         const currentHighestBid = this.getCurrentHighestBid();
+        console.log(`${player} evaluating bid. Current highest bid:`, currentHighestBid);
         
         // Evaluate hand strength for this player
         const handStrength = this.evaluateHandStrength(player);
@@ -1870,33 +1907,48 @@ class IsraeliWhist {
                 // Different trump suit - calculate if we can/should bid higher
                 const potentialBid = this.calculateHigherBid(currentBidValue, currentSuit, player);
                 
-                // Be much more aggressive in competitive bidding - lower threshold for bidding higher
-                if (potentialBid && (handStrength.score >= 14 || this.shouldBotBid(player, potentialBid, handStrength, currentHighestBid))) {
-                // Make the higher bid
-                this.phase1Bids[player] = potentialBid;
-                console.log(`${player} bids ${potentialBid.minTakes} ${potentialBid.trumpSuit}`);
-                const bidText = `${potentialBid.minTakes} ${this.getSuitSymbol(potentialBid.trumpSuit)}`;
-                this.showBidAnimation(player, bidText);
-                bidMade = true;
-                
-                // Update the display to show the new bid
-                this.updateDisplay();
-            } else {
-                shouldPass = true;
+                // Validate that the potential bid is actually higher than the current highest bid
+                if (potentialBid && this.isBidHigher(potentialBid, currentHighestBid)) {
+                    // Be much more aggressive in competitive bidding - lower threshold for bidding higher
+                    if (handStrength.score >= 14 || this.shouldBotBid(player, potentialBid, handStrength, currentHighestBid)) {
+                        // Make the higher bid
+                        this.phase1Bids[player] = potentialBid;
+                        console.log(`${player} bids ${potentialBid.minTakes} ${potentialBid.trumpSuit}`);
+                        const bidText = `${potentialBid.minTakes} ${this.getSuitSymbol(potentialBid.trumpSuit)}`;
+                        this.showBidAnimation(player, bidText);
+                        bidMade = true;
+                        
+                        // Update the display to show the new bid
+                        this.updateDisplay();
+                    } else {
+                        shouldPass = true;
+                    }
+                } else {
+                    // Can't bid higher or bid is not valid
+                    console.log(`${player} cannot bid higher than current bid, passing`);
+                    shouldPass = true;
                 }
             }
         } else {
             // No current bid, evaluate whether we should make an opening bid
-             if (handStrength.score >= 15) { // Lowered from 20 to 15 for much more aggressive opening bids
+            if (handStrength.score >= 15) { // Lowered from 20 to 15 for much more aggressive opening bids
                 const openingBid = this.calculateSmartOpeningBid(player, handStrength);
-                this.phase1Bids[player] = openingBid;
-                console.log(`${player} bids ${openingBid.minTakes} ${openingBid.trumpSuit}`);
-                const bidText = `${openingBid.minTakes} ${this.getSuitSymbol(openingBid.trumpSuit)}`;
-                this.showBidAnimation(player, bidText);
-                bidMade = true;
                 
-                // Update the display to show the new bid
-                this.updateDisplay();
+                // Check if this opening bid would duplicate an existing bid
+                const currentHighestBid = this.getCurrentHighestBid();
+                if (currentHighestBid && !this.isBidHigher(openingBid, currentHighestBid)) {
+                    console.log(`${player} opening bid would not be higher than current bid, passing instead`);
+                    shouldPass = true;
+                } else {
+                    this.phase1Bids[player] = openingBid;
+                    console.log(`${player} bids ${openingBid.minTakes} ${openingBid.trumpSuit}`);
+                    const bidText = `${openingBid.minTakes} ${this.getSuitSymbol(openingBid.trumpSuit)}`;
+                    this.showBidAnimation(player, bidText);
+                    bidMade = true;
+                    
+                    // Update the display to show the new bid
+                    this.updateDisplay();
+                }
             } else {
                 shouldPass = true;
             }
@@ -1963,6 +2015,22 @@ class IsraeliWhist {
         return highestBid;
     }
 
+    // New function to validate if a bid is higher than the current highest bid
+    isBidHigher(newBid, currentHighestBid) {
+        if (!currentHighestBid) return true; // No current bid, so any bid is higher
+        
+        // Higher number of tricks always wins
+        if (newBid.minTakes > currentHighestBid.minTakes) return true;
+        
+        // Same number of tricks, higher-ranking suit wins
+        if (newBid.minTakes === currentHighestBid.minTakes) {
+            const suitRanks = { 'clubs': 1, 'diamonds': 2, 'hearts': 3, 'spades': 4, 'notrump': 5 };
+            return suitRanks[newBid.trumpSuit] > suitRanks[currentHighestBid.trumpSuit];
+        }
+        
+        return false; // Lower number of tricks
+    }
+
     calculateHigherBid(currentBidValue, currentSuit, player) {
         console.log(`calculateHigherBid called with: currentBidValue=${currentBidValue}, currentSuit=${currentSuit} for ${player}`);
         const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
@@ -1972,8 +2040,8 @@ class IsraeliWhist {
         const handStrength = this.evaluateHandStrength(player);
         const hand = this.hands[player];
         
-        // Option 1: Higher number in same suit
-        if (currentBidValue < 8 && currentBidValue + 1 < 13) { // Conservative cap and never allow 13
+        // Option 1: Higher number in same suit (always valid if within limits)
+        if (currentBidValue < 8 && currentBidValue + 1 < 13) {
             const sameSuitBid = {
                 minTakes: currentBidValue + 1,
                 trumpSuit: currentSuit
@@ -1986,7 +2054,7 @@ class IsraeliWhist {
             }
         }
         
-        // Option 2: Same number in higher-ranking suit (if bot has strength in that suit)
+        // Option 2: Same number in higher-ranking suit (only if we have strong suit support)
         for (let i = currentSuitRank + 1; i < suits.length; i++) {
             const higherSuit = suits[i];
             
@@ -1998,15 +2066,18 @@ class IsraeliWhist {
                 trumpSuit: higherSuit
             };
             
-            // Check if bot has good cards in this suit and can support the bid
-            if (this.canSupportBid(player, higherSuitBid) && this.hasSuitStrength(player, higherSuit)) {
+            // More strict requirements for bidding same tricks in higher suit
+            // Need both good suit support AND strong overall hand
+            if (this.canSupportBid(player, higherSuitBid) && 
+                this.hasSuitStrength(player, higherSuit) && 
+                handStrength.score >= 20) { // Require stronger hand for this type of bid
                 console.log(`Bot can bid in higher suit:`, higherSuitBid);
                 return higherSuitBid;
             }
         }
         
-        // Option 3: Higher number in higher suit (double escalation)
-        if (currentBidValue < 7 && currentBidValue + 1 < 13) { // Conservative cap and never allow 13
+        // Option 3: Higher number in higher suit (double escalation - most aggressive)
+        if (currentBidValue < 7 && currentBidValue + 1 < 13) {
             for (let i = currentSuitRank + 1; i < suits.length; i++) {
                 const higherSuit = suits[i];
                 const higherBothBid = {
@@ -2014,7 +2085,10 @@ class IsraeliWhist {
                     trumpSuit: higherSuit
                 };
                 
-                if (this.canSupportBid(player, higherBothBid) && this.hasSuitStrength(player, higherSuit)) {
+                // Most strict requirements for double escalation
+                if (this.canSupportBid(player, higherBothBid) && 
+                    this.hasSuitStrength(player, higherSuit) && 
+                    handStrength.score >= 25) { // Require very strong hand
                     console.log(`Bot can bid higher tricks in higher suit:`, higherBothBid);
                     return higherBothBid;
                 }
@@ -2225,19 +2299,30 @@ class IsraeliWhist {
             if (handStrength.score < 35) return false;
         }
         
+        // If bidding same tricks in higher suit, be more conservative
+        if (potentialBid.minTakes === currentHighestBid.minTakes && 
+            potentialBid.trumpSuit !== currentHighestBid.trumpSuit) {
+            // Need stronger hand to justify same tricks in higher suit
+            if (handStrength.score < 25) return false;
+            // Also reduce probability even with strong hands
+            if (handStrength.score >= 25) {
+                return Math.random() < 0.40; // Lower probability for same tricks
+            }
+        }
+        
         // Strong hands - bid with confidence but not always
         if (handStrength.score >= 32) {
-            return Math.random() < 0.80; // Even strong hands don't always bid
+            return Math.random() < 0.70; // Reduced from 0.80
         }
         
         // Good hands - moderate probability to bid
         if (handStrength.score >= 26) {
-            return Math.random() < 0.65; // Reduced probability
+            return Math.random() < 0.50; // Reduced from 0.65
         }
         
         // Moderate hands - lower probability
         if (handStrength.score >= 20) {
-            return Math.random() < 0.45; // Much lower probability
+            return Math.random() < 0.30; // Reduced from 0.45
         }
         
         // Weak hands - low probability, need trump support
@@ -2246,10 +2331,10 @@ class IsraeliWhist {
             if (currentHighestBid && currentHighestBid.trumpSuit !== 'notrump') {
                 const trumpCards = this.hands[player].filter(card => card.suit === currentHighestBid.trumpSuit).length;
                 if (trumpCards >= 3) {
-                    return Math.random() < 0.25; // Low chance with trump support
+                    return Math.random() < 0.15; // Reduced from 0.25
                 }
             }
-            return Math.random() < 0.15; // Very low probability without trump support
+            return Math.random() < 0.10; // Reduced from 0.15
         }
         
         return false;

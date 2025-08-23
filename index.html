@@ -24,7 +24,7 @@
             <div class="round-counter">Game: <span id="round-indicator">1</span></div>
             <div class="tricks-counter">Round: <span id="tricks-indicator">0</span></div>
             <div class="trump-suit">Trump: <span id="trump-indicator">-</span></div>
-            <div class="current-turn">Total bid: <span id="turn-indicator">-</span></div>
+            <div class="current-turn">Bid: <span id="turn-indicator">-</span></div>
             <div class="total-bids" id="total-bids" style="display: none;">Total Bids: <span id="total-bids-value">0</span></div>
         </div>
 
@@ -177,7 +177,7 @@
                     </div>
                 </div>
                 <div class="prediction-total">
-                    Total: <span id="prediction-total">0</span> / 13 
+                    Bid: <span id="prediction-total">0</span> 
                     <span id="prediction-status"></span>
                 </div>
             </div>
@@ -185,23 +185,25 @@
             <div class="your-prediction" id="your-prediction-controls" style="display: none;">
                 <h4>How many tricks will you take?</h4>
                 <div class="tricks-prediction">
-                    <select id="prediction-select">
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                        <option value="6">6</option>
-                        <option value="7">7</option>
-                        <option value="8">8</option>
-                        <option value="9">9</option>
-                        <option value="10">10</option>
-                        <option value="11">11</option>
-                        <option value="12">12</option>
-                        <option value="13">13</option>
-                    </select>
-                    <button id="predict-btn" class="action-btn">Submit Takes</button>
+                    <div class="tricks-buttons-main">
+                        <button class="trick-btn" data-value="0">0</button>
+                        <button class="trick-btn" data-value="1">1</button>
+                        <button class="trick-btn" data-value="2">2</button>
+                        <button class="trick-btn" data-value="3">3</button>
+                        <button class="trick-btn" data-value="4">4</button>
+                        <button class="trick-btn" data-value="5">5</button>
+                        <button class="trick-btn" data-value="6">6</button>
+                        <button class="trick-btn" data-value="7">7</button>
+                    </div>
+                    <button class="more-btn" id="more-tricks-btn">More</button>
+                    <div class="tricks-buttons-extra" id="tricks-buttons-extra" style="display: none;">
+                        <button class="trick-btn" data-value="8">8</button>
+                        <button class="trick-btn" data-value="9">9</button>
+                        <button class="trick-btn" data-value="10">10</button>
+                        <button class="trick-btn" data-value="11">11</button>
+                        <button class="trick-btn" data-value="12">12</button>
+                        <button class="trick-btn" data-value="13">13</button>
+                    </div>
                 </div>
             </div>
             
