@@ -213,7 +213,6 @@ class IsraeliWhist {
     showBiddingInterface() {
         console.log('showBiddingInterface called');
         const biddingInterface = document.getElementById('bidding-interface');
-        console.log('biddingInterface element:', biddingInterface);
         if (biddingInterface) {
             biddingInterface.style.display = 'block';
             console.log('Bidding interface shown');
@@ -1759,12 +1758,24 @@ class IsraeliWhist {
                 const extraButtons = document.getElementById('tricks-buttons-extra');
                 const mainButtons = document.querySelector('.tricks-buttons-main');
                 if (extraButtons && mainButtons) {
-                    extraButtons.style.display = 'block';
-                    // Add expanded class to both containers for better organization
+                    // Add expanded class to both containers for unified grid layout
                     mainButtons.classList.add('expanded');
                     extraButtons.classList.add('expanded');
+                    
+                    // Add expanded class to parent container for unified grid
+                    const parentContainer = mainButtons.closest('.tricks-prediction');
+                    if (parentContainer) {
+                        parentContainer.classList.add('expanded');
+                    }
+                    
+                    // Show the extra buttons
+                    extraButtons.style.display = 'grid';
                     // Hide the More button after clicking it
                     moreBtn.style.display = 'none';
+                    
+                    // Ensure proper grid layout by forcing reflow
+                    mainButtons.offsetHeight;
+                    extraButtons.offsetHeight;
                 }
             });
         }

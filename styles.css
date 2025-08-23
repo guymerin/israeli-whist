@@ -1672,6 +1672,19 @@ h1 {
     }
 }
 
+/* Responsive trick buttons - now using unified grid */
+@media (max-width: 768px) {
+    .tricks-prediction.expanded {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .tricks-prediction.expanded {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
 /* Trump indicator styling - make it stand out */
 #trump-indicator {
     color: #FFD700;
@@ -2072,34 +2085,37 @@ h1 {
 }
 
 .tricks-buttons-extra {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: none;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 0;
 }
 
-/* When More button is clicked, organize all buttons nicely */
-.tricks-buttons-main.expanded {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-    margin-bottom: 12px;
-}
+/* Individual container styles removed - using unified grid approach */
 
-.tricks-buttons-extra.expanded {
+/* Create a unified 3-line layout when expanded */
+.tricks-prediction.expanded {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 8px;
-    margin-top: 8px;
 }
 
-/* Ensure consistent button sizing in expanded mode */
-.tricks-buttons-main.expanded .trick-btn,
-.tricks-buttons-extra.expanded .trick-btn {
-    min-width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.tricks-prediction.expanded .tricks-buttons-main,
+.tricks-prediction.expanded .tricks-buttons-extra {
+    display: contents;
+}
+
+/* Unified button styling for expanded mode - override all other styles */
+.tricks-prediction.expanded .trick-btn {
+    grid-column: span 1;
+    min-width: 45px !important;
+    width: 45px !important;
+    height: 45px !important;
+    font-size: 16px !important;
+    padding: 8px 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
 }
 
 .trick-btn {
