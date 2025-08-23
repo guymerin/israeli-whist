@@ -119,6 +119,7 @@ class IsraeliWhist {
         const suits = ['clubs', 'diamonds', 'hearts', 'spades'];
         const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
         
+        // Create a standard 52-card deck
         for (const suit of suits) {
             for (let i = 0; i < ranks.length; i++) {
                 const card = {
@@ -136,19 +137,216 @@ class IsraeliWhist {
             }
         }
         
-        // Verify deck integrity
+        // Comprehensive deck validation
+        if (!this.validateDeck()) {
+            console.error('Deck validation failed! Recreating deck...');
+            this.deck = [];
+            // Recreate deck if validation failed
+            for (const suit of suits) {
+                for (let i = 0; i < ranks.length; i++) {
+                    this.deck.push({
+                        suit: suit,
+                        rank: ranks[i],
+                        value: i + 2
+                    });
+                }
+            }
+        }
+        
+        // Final verification
         if (this.deck.length !== 52) {
-            console.error('Deck creation failed, expected 52 cards, got:', this.deck.length);
+            console.error('CRITICAL: Deck creation failed, expected 52 cards, got:', this.deck.length);
             return;
         }
         
-        // Shuffle
+        // Shuffle using Fisher-Yates algorithm
         for (let i = this.deck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
         }
         
-        console.log('Deck shuffled successfully, cards:', this.deck.length);
+        console.log('✅ Deck shuffled successfully:', this.deck.length, 'cards');
+        
+        // Show a sample of the shuffled deck
+        const sampleCards = this.deck.slice(0, 8).map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`);
+        console.log('   Sample cards:', sampleCards.join(', '), '...');
+    }
+    
+    validateDeck() {
+        // Check total count
+        if (this.deck.length !== 52) {
+            console.error(`❌ Invalid deck size: ${this.deck.length}, expected 52`);
+            return false;
+        }
+        
+        const suits = ['clubs', 'diamonds', 'hearts', 'spades'];
+        const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        
+        // Count cards per suit
+        const suitCounts = { clubs: 0, diamonds: 0, hearts: 0, spades: 0 };
+        const rankCounts = {};
+        
+        // Initialize rank counts
+        ranks.forEach(rank => {
+            rankCounts[rank] = 0;
+        });
+        
+        // Check each card and count
+        for (const card of this.deck) {
+            // Validate card structure
+            if (!card.suit || !card.rank || typeof card.value !== 'number') {
+                console.error('❌ Invalid card structure:', card);
+                return false;
+            }
+            
+            if (!suits.includes(card.suit)) {
+                console.error('❌ Invalid suit:', card.suit);
+                return false;
+            }
+            
+            if (!ranks.includes(card.rank)) {
+                console.error('❌ Invalid rank:', card.rank);
+                return false;
+            }
+            
+            // Validate value matches rank
+            const expectedValue = ranks.indexOf(card.rank) + 2;
+            if (card.value !== expectedValue) {
+                console.error(`❌ Invalid value for ${card.rank}: expected ${expectedValue}, got ${card.value}`);
+                return false;
+            }
+            
+            // Count this card
+            suitCounts[card.suit]++;
+            rankCounts[card.rank]++;
+        }
+        
+        // Verify exactly 13 cards per suit
+        for (const suit of suits) {
+            if (suitCounts[suit] !== 13) {
+                console.error(`❌ Invalid suit count for ${suit}: ${suitCounts[suit]}, expected 13`);
+                console.log('Suit distribution:', suitCounts);
+                return false;
+            }
+        }
+        
+        // Verify exactly 4 cards per rank
+        for (const rank of ranks) {
+            if (rankCounts[rank] !== 4) {
+                console.error(`❌ Invalid rank count for ${rank}: ${rankCounts[rank]}, expected 4`);
+                console.log('Rank distribution:', rankCounts);
+                return false;
+            }
+        }
+        
+        // Check for duplicates by creating a set of card identifiers
+        const cardIds = this.deck.map(card => `${card.rank}_${card.suit}`);
+        const uniqueCardIds = new Set(cardIds);
+        
+        if (cardIds.length !== uniqueCardIds.size) {
+            console.error('❌ Deck contains duplicate cards');
+            const duplicates = cardIds.filter((card, index) => cardIds.indexOf(card) !== index);
+            console.error('Duplicate cards:', duplicates);
+            return false;
+        }
+        
+        console.log('✅ Deck validation passed:');
+        console.log('  - 52 total cards');
+        console.log('  - 13 cards per suit:', suitCounts);
+        console.log('  - 4 cards per rank');
+        console.log('  - No duplicates');
+        return true;
+    }
+    
+    validateDealing() {
+        console.log('=== VALIDATING CARD DEALING ===');
+        
+        const suits = ['clubs', 'diamonds', 'hearts', 'spades'];
+        const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        
+        // Check each player has exactly 13 cards
+        const expectedCardsPerPlayer = 13;
+        let totalCardsDealt = 0;
+        
+        for (const player of this.players) {
+            const handSize = this.hands[player].length;
+            totalCardsDealt += handSize;
+            
+            if (handSize !== expectedCardsPerPlayer) {
+                console.error(`❌ ${player} has ${handSize} cards, expected ${expectedCardsPerPlayer}`);
+                return false;
+            }
+        }
+        
+        // Check total cards dealt
+        if (totalCardsDealt !== 52) {
+            console.error(`❌ Total cards dealt: ${totalCardsDealt}, expected 52`);
+            return false;
+        }
+        
+        // Count all dealt cards by suit and rank
+        const globalSuitCounts = { clubs: 0, diamonds: 0, hearts: 0, spades: 0 };
+        const globalRankCounts = {};
+        const allDealtCards = [];
+        
+        // Initialize rank counts
+        ranks.forEach(rank => {
+            globalRankCounts[rank] = 0;
+        });
+        
+        // Collect and count all cards
+        for (const player of this.players) {
+            console.log(`${player} hand:`, this.hands[player].map(c => `${c.rank}${this.getSuitSymbol(c.suit)}`).join(', '));
+            
+            for (const card of this.hands[player]) {
+                const cardId = `${card.rank}_${card.suit}`;
+                
+                // Check for duplicates
+                if (allDealtCards.includes(cardId)) {
+                    console.error(`❌ Duplicate card found: ${card.rank} of ${card.suit}`);
+                    return false;
+                }
+                allDealtCards.push(cardId);
+                
+                // Count by suit and rank
+                globalSuitCounts[card.suit]++;
+                globalRankCounts[card.rank]++;
+            }
+        }
+        
+        // Verify exactly 13 cards per suit were dealt
+        for (const suit of suits) {
+            if (globalSuitCounts[suit] !== 13) {
+                console.error(`❌ Invalid dealt suit count for ${suit}: ${globalSuitCounts[suit]}, expected 13`);
+                console.log('Dealt suit distribution:', globalSuitCounts);
+                return false;
+            }
+        }
+        
+        // Verify exactly 4 cards per rank were dealt
+        for (const rank of ranks) {
+            if (globalRankCounts[rank] !== 4) {
+                console.error(`❌ Invalid dealt rank count for ${rank}: ${globalRankCounts[rank]}, expected 4`);
+                console.log('Dealt rank distribution:', globalRankCounts);
+                return false;
+            }
+        }
+        
+        // Check remaining deck
+        if (this.deck.length !== 0) {
+            console.error(`❌ Deck should be empty after dealing, but has ${this.deck.length} cards remaining`);
+            return false;
+        }
+        
+        console.log('✅ Card dealing validation passed:');
+        console.log(`   - Each player has 13 cards`);
+        console.log(`   - Total cards dealt: 52`);
+        console.log(`   - 13 cards per suit:`, globalSuitCounts);
+        console.log(`   - 4 cards per rank distributed correctly`);
+        console.log(`   - No duplicate cards`);
+        console.log(`   - Deck is empty`);
+        
+        return true;
     }
 
     dealCards() {
@@ -182,6 +380,12 @@ class IsraeliWhist {
         for (let i = 0; i < 13; i++) {
             for (let j = 0; j < 4; j++) {
                 const player = this.players[j];
+                
+                if (this.deck.length === 0) {
+                    console.error('CRITICAL: Deck is empty during dealing!');
+                    this.shuffleDeck();
+                }
+                
                 const card = this.deck.pop();
                 
                 // Add safety check for card
@@ -194,11 +398,19 @@ class IsraeliWhist {
                     if (replacementCard && typeof replacementCard === 'object' && replacementCard.suit && replacementCard.rank) {
                         this.hands[player].push(replacementCard);
                     } else {
-                        console.error('Failed to get replacement card, game may be corrupted');
+                        console.error('Failed to get replacement card, reshuffling deck...');
+                        this.shuffleDeck();
+                        const newCard = this.deck.pop();
+                        if (newCard) {
+                            this.hands[player].push(newCard);
+                        }
                     }
                 }
             }
         }
+        
+        // Validate dealing results
+        this.validateDealing();
         
         // Verify each player has exactly 13 cards
         this.players.forEach(player => {
@@ -721,6 +933,8 @@ class IsraeliWhist {
             newCard.style.cursor = 'pointer';
         });
         
+        // Card highlighting removed
+        
         console.log(`${cards.length} cards are now clickable`);
     }
     
@@ -734,6 +948,8 @@ class IsraeliWhist {
             humanCardsContainer.classList.remove('player-turn');
         }
         
+        // Card highlighting removed
+        
         // Remove click handlers and pointer cursor
         cards.forEach(card => {
             const newCard = card.cloneNode(true);
@@ -741,6 +957,8 @@ class IsraeliWhist {
             newCard.style.cursor = 'default';
         });
     }
+    
+    // Card highlighting methods removed
 
     onCardClick(cardElement) {
         // Get the card data from the element's content using correct selectors
@@ -788,7 +1006,7 @@ class IsraeliWhist {
         
         const card = hand[cardIndex];
         
-        // Validate card play according to Israeli Whist rules
+        // Validate card play according to Israeli Whist rules (before removing from hand)
         if (!this.isValidCardPlay(player, card)) {
             console.error(`Invalid card play: ${player} cannot play ${card.rank}${this.getSuitSymbol(card.suit)}`);
             if (player === 'south') {
@@ -847,6 +1065,7 @@ class IsraeliWhist {
     isValidCardPlay(player, card) {
         // If this is the first card of the trick, any card is valid
         if (this.currentTrick.length === 0) {
+            console.log(`${player} can play ${card.rank}${this.getSuitSymbol(card.suit)} - first card of trick`);
             return true;
         }
         
@@ -854,18 +1073,24 @@ class IsraeliWhist {
         const leadSuit = this.currentTrick[0].card.suit;
         const hand = this.hands[player];
         
+        console.log(`Validating ${player} playing ${card.rank}${this.getSuitSymbol(card.suit)}, lead suit: ${leadSuit}`);
+        
         // If playing the same suit as led, it's valid
         if (card.suit === leadSuit) {
+            console.log(`${player} can play ${card.rank}${this.getSuitSymbol(card.suit)} - following suit`);
             return true;
         }
         
         // If player doesn't have any cards of the lead suit, they can play any card
         const hasLeadSuit = hand.some(handCard => handCard.suit === leadSuit);
         if (!hasLeadSuit) {
+            console.log(`${player} can play ${card.rank}${this.getSuitSymbol(card.suit)} - no ${leadSuit} cards in hand`);
             return true;
         }
         
         // Player has cards of the lead suit but didn't play one - invalid
+        const leadSuitCards = hand.filter(handCard => handCard.suit === leadSuit);
+        console.log(`${player} cannot play ${card.rank}${this.getSuitSymbol(card.suit)} - must follow suit. Has ${leadSuitCards.length} ${leadSuit} cards: ${leadSuitCards.map(c => `${c.rank}${this.getSuitSymbol(c.suit)}`).join(', ')}`);
         return false;
     }
     
@@ -1205,8 +1430,10 @@ class IsraeliWhist {
          console.log(`Trick progression: ${lastPlayer} -> ${nextPlayerName} (clockwise)`);
         
         if (nextPlayerIndex === 2) {
-            // Human player's turn
+            // Human player's turn - add small delay to ensure trick state is updated
+            setTimeout(() => {
             this.enableCardSelection();
+            }, 100);
         } else {
             // Bot player's turn
             this.disableCardSelection();
@@ -1608,8 +1835,8 @@ class IsraeliWhist {
         
         // Try to position above the player's cards first, then fallback to name area
         const playerCards = document.getElementById(`${player}-cards`);
-        const gameBoardRect = document.querySelector('.game-board').getBoundingClientRect();
-        
+            const gameBoardRect = document.querySelector('.game-board').getBoundingClientRect();
+            
         if (playerCards && gameBoardRect) {
             const cardsRect = playerCards.getBoundingClientRect();
             
@@ -1618,18 +1845,18 @@ class IsraeliWhist {
             animationLeft = `${cardsRect.left - gameBoardRect.left + cardsRect.width / 2}px`;
             
             console.log(`Positioning ${player} bid animation above cards: top=${animationTop}, left=${animationLeft}`);
-        } else {
+             } else {
             // Fallback: position above the player info panel
             const playerInfo = document.querySelector(`.${player}-player`);
             if (playerInfo && gameBoardRect) {
                 const rect = playerInfo.getBoundingClientRect();
                 
                 // Position above the player info panel
-                animationTop = `${rect.top - gameBoardRect.top - 60}px`;
-                animationLeft = `${rect.left - gameBoardRect.left + rect.width / 2}px`;
+                 animationTop = `${rect.top - gameBoardRect.top - 60}px`;
+            animationLeft = `${rect.left - gameBoardRect.left + rect.width / 2}px`;
                 
                 console.log(`Fallback positioning ${player} bid animation above info panel: top=${animationTop}, left=${animationLeft}`);
-            }
+             }
         }
         
         bidAnimation.style.cssText = `
@@ -3083,9 +3310,20 @@ class IsraeliWhist {
             const gameBoard = document.querySelector('.game-board');
             const gameBoardRect = gameBoard.getBoundingClientRect();
             
-            // Position animation above the player
-            const animationTop = (playerRect.top - gameBoardRect.top - 50) + 'px';
-            const animationLeft = (playerRect.left - gameBoardRect.left + playerRect.width / 2) + 'px';
+            // Position animation above the player (adjust for North player)
+            let animationTop, animationLeft;
+            
+            if (player === 'north') {
+                // For North player, position below instead of above
+                animationTop = (playerRect.bottom - gameBoardRect.top + 10) + 'px';
+                animationLeft = (playerRect.left - gameBoardRect.left + playerRect.width / 2) + 'px';
+            } else {
+                // For other players, position above
+                animationTop = (playerRect.top - gameBoardRect.top - 50) + 'px';
+                animationLeft = (playerRect.left - gameBoardRect.left + playerRect.width / 2) + 'px';
+            }
+            
+            console.log(`Score animation for ${player}: top=${animationTop}, left=${animationLeft}`);
             
             // Style the animation
             scoreAnimation.style.cssText = `
@@ -3289,7 +3527,7 @@ class IsraeliWhist {
          this.clearTrickArea();
          
                  // Reset for new hand
-        this.resetForNewHand();
+         this.resetForNewHand();
         
         // Ensure trick counts are reset in display
         this.players.forEach(player => {
