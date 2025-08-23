@@ -23,7 +23,7 @@
         <div class="game-status">
             <div class="round-counter">Game: <span id="round-indicator">1</span></div>
             <div class="tricks-counter">Round: <span id="tricks-indicator">0</span></div>
-            <div class="trump-suit">Trump: <span id="trump-indicator">-</span></div>
+            <div class="trump-suit"><span id="trump-indicator">-</span></div>
             <div class="current-turn">Bid: <span id="turn-indicator">-</span></div>
             <div class="total-bids" id="total-bids" style="display: none;">Total Bids: <span id="total-bids-value">0</span></div>
         </div>
@@ -122,7 +122,7 @@
 
         <!-- Bidding Interface -->
         <div class="bidding-interface" id="bidding-interface" style="display: none;">
-            <h3>Phase 1: Choose Trump & Minimum Takes</h3>
+            <h3>Phase: Trump selection</h3>
 
             <div class="bid-controls">
                 <div class="input-row">
@@ -132,7 +132,7 @@
                         </div>
                     </div>
                     <div class="suit-selector">
-                        <label>Trump Suit:</label>
+
                         <div class="suit-buttons" id="suit-buttons">
                             <!-- Buttons will be populated by JavaScript -->
                         </div>
@@ -176,8 +176,8 @@
                         <span id="west-prediction" class="prediction-value">-</span>
                     </div>
                 </div>
-                <div class="prediction-total">
-                    Bid: <span id="prediction-total">0</span> 
+                <div class="prediction-total" style="display: none;">
+                    <span id="prediction-total">0</span> 
                     <span id="prediction-status"></span>
                 </div>
             </div>
