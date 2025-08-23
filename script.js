@@ -964,7 +964,48 @@ class IsraeliWhist {
                 playedCardDiv.innerHTML = '';
             }
         });
-
+    }
+    
+    clearAllCards() {
+        // Clear all player hand cards
+        ['north', 'east', 'south', 'west'].forEach(player => {
+            const cardsDiv = document.getElementById(`${player}-cards`);
+            if (cardsDiv) {
+                cardsDiv.innerHTML = '';
+            }
+        });
+        
+        // Also clear played cards
+        this.clearPlayedCards();
+    }
+    
+    clearTrickArea() {
+        // Clear the trick area and reset trick display
+        const trickArea = document.getElementById('trick-area');
+        if (trickArea) {
+            // Clear any trick animations or indicators
+            ['north', 'east', 'south', 'west'].forEach(player => {
+                const playedCardDiv = document.getElementById(`${player}-played`);
+                if (playedCardDiv) {
+                    playedCardDiv.innerHTML = '';
+                    playedCardDiv.className = `played-card ${player}-played`;
+                }
+            });
+        }
+        
+        // Clear won tricks display
+        ['north', 'east', 'south', 'west'].forEach(player => {
+            const wonTricksDiv = document.getElementById(`${player}-won`);
+            if (wonTricksDiv) {
+                wonTricksDiv.innerHTML = '';
+            }
+            
+            // Reset trick counters
+            const trickCounter = document.getElementById(`${player}-tricks`);
+            if (trickCounter) {
+                trickCounter.innerHTML = '';
+            }
+        });
     }
     
     updateHumanPlayerCards() {
@@ -1614,18 +1655,12 @@ class IsraeliWhist {
                 const currentTotal = Object.values(this.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0);
                 totalElement.textContent = currentTotal;
                 
-                // Update status
+                // Update status - only show warning when equals 13
                 const statusElement = document.getElementById('prediction-status');
                 if (statusElement) {
                     if (currentTotal === 13) {
                         statusElement.textContent = '⚠️ equals 13!';
                         statusElement.style.color = '#FF6B6B';
-                    } else if (currentTotal > 13) {
-                        statusElement.textContent = 'over';
-                        statusElement.style.color = '#FF6B6B';
-                    } else if (currentTotal < 13) {
-                        statusElement.textContent = 'under';
-                        statusElement.style.color = '#4CAF50';
                     } else {
                         statusElement.textContent = '';
                         statusElement.style.color = '#4CAF50';
@@ -1790,6 +1825,40 @@ class IsraeliWhist {
                 } else {
                     console.log('Hint button: Not in Phase 2, current phase:', this.currentPhase);
                 }
+            });
+        }
+
+        // Rules button - show game rules
+        const rulesBtn = document.getElementById('rules-btn');
+        if (rulesBtn) {
+            rulesBtn.addEventListener('click', () => {
+                this.showRules();
+            });
+        }
+
+        // Close rules button
+        const closeRulesBtn = document.getElementById('close-rules-btn');
+        if (closeRulesBtn) {
+            closeRulesBtn.addEventListener('click', () => {
+                this.hideRules();
+            });
+        }
+
+        // Close rules when clicking outside the modal
+        const rulesModal = document.getElementById('rules-modal');
+        if (rulesModal) {
+            rulesModal.addEventListener('click', (e) => {
+                if (e.target === rulesModal) {
+                    this.hideRules();
+                }
+            });
+        }
+
+        // New Game button
+        const newGameBtn = document.getElementById('new-game-btn');
+        if (newGameBtn) {
+            newGameBtn.addEventListener('click', () => {
+                this.resetForNewGame();
             });
         }
     }
@@ -2507,11 +2576,61 @@ class IsraeliWhist {
          }
      }
      
+     updateRoundDisplay() {
+         // Update the round indicator to show current round
+         const roundIndicator = document.getElementById('round-indicator');
+         if (roundIndicator) {
+             roundIndicator.textContent = this.currentRound;
+         }
+         
+         // Reset tricks indicator
+         const tricksIndicator = document.getElementById('tricks-indicator');
+         if (tricksIndicator) {
+             tricksIndicator.textContent = '1';
+         }
+         
+         // Reset turn indicator
+         const turnIndicator = document.getElementById('turn-indicator');
+         if (turnIndicator) {
+             turnIndicator.textContent = '-';
+             turnIndicator.style.color = '';
+         }
+         
+         // Reset trump indicator
+         const trumpIndicator = document.getElementById('trump-indicator');
+         if (trumpIndicator) {
+             trumpIndicator.textContent = '-';
+         }
+     }
+     
      resetForNewGame() {
          console.log('=== RESETTING FOR NEW GAME ===');
+         
+         // Reset all scores to zero
          this.scores = { north: 0, east: 0, south: 0, west: 0 };
          this.currentRound = 1;
+         
+         // Reset game state completely
+         this.currentPhase = 'dealing';
+         this.trumpSuit = null;
+         this.trumpWinner = null;
+         this.minimumTakes = 0;
+         this.handType = null;
+         this.passCount = 0;
+         this.playersPassed = { north: false, east: false, south: false, west: false };
+         
+         // Clear all displays
+         this.updateScoresDisplay();
+         this.updateRoundDisplay();
+         this.hideBiddingInterface();
+         this.hidePhase2Interface();
+         this.clearAllCards();
+         this.clearTrickArea();
+         
+         // Reset for new hand
          this.resetForNewHand();
+         
+         console.log('New game started fresh!');
      }
      
      showDealButtonForNextHand() {
@@ -2573,6 +2692,20 @@ class IsraeliWhist {
          const hintModal = document.getElementById('hint-modal');
          if (hintModal) {
              hintModal.style.display = 'none';
+         }
+     }
+
+     showRules() {
+         const rulesModal = document.getElementById('rules-modal');
+         if (rulesModal) {
+             rulesModal.style.display = 'flex';
+         }
+     }
+
+     hideRules() {
+         const rulesModal = document.getElementById('rules-modal');
+         if (rulesModal) {
+             rulesModal.style.display = 'none';
          }
      }
      
