@@ -90,8 +90,6 @@ class IsraeliWhist {
     }
 
     initializeGame() {
-        console.log('=== INITIALIZING GAME ===');
-        
         // Ensure hands are properly initialized
         this.hands = {
             north: [],
@@ -107,9 +105,7 @@ class IsraeliWhist {
         this.initializeHintSystem();
         
         // Verify initialization
-        if (this.deck.length === 52 && Object.keys(this.hands).length === 4) {
-            console.log('Game initialized successfully');
-        } else {
+        if (this.deck.length !== 52 || Object.keys(this.hands).length !== 4) {
             console.error('Game initialization failed');
         }
     }
@@ -165,11 +161,7 @@ class IsraeliWhist {
             [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
         }
         
-        console.log('✅ Deck shuffled successfully:', this.deck.length, 'cards');
         
-        // Show a sample of the shuffled deck
-        const sampleCards = this.deck.slice(0, 8).map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`);
-        console.log('   Sample cards:', sampleCards.join(', '), '...');
     }
     
     validateDeck() {
@@ -225,7 +217,7 @@ class IsraeliWhist {
         for (const suit of suits) {
             if (suitCounts[suit] !== 13) {
                 console.error(`❌ Invalid suit count for ${suit}: ${suitCounts[suit]}, expected 13`);
-                console.log('Suit distribution:', suitCounts);
+
                 return false;
             }
         }
@@ -234,7 +226,7 @@ class IsraeliWhist {
         for (const rank of ranks) {
             if (rankCounts[rank] !== 4) {
                 console.error(`❌ Invalid rank count for ${rank}: ${rankCounts[rank]}, expected 4`);
-                console.log('Rank distribution:', rankCounts);
+
                 return false;
             }
         }
@@ -250,16 +242,10 @@ class IsraeliWhist {
             return false;
         }
         
-        console.log('✅ Deck validation passed:');
-        console.log('  - 52 total cards');
-        console.log('  - 13 cards per suit:', suitCounts);
-        console.log('  - 4 cards per rank');
-        console.log('  - No duplicates');
         return true;
     }
     
     validateDealing() {
-        console.log('=== VALIDATING CARD DEALING ===');
         
         const suits = ['clubs', 'diamonds', 'hearts', 'spades'];
         const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -296,8 +282,6 @@ class IsraeliWhist {
         
         // Collect and count all cards
         for (const player of this.players) {
-            console.log(`${player} hand:`, this.hands[player].map(c => `${c.rank}${this.getSuitSymbol(c.suit)}`).join(', '));
-            
             for (const card of this.hands[player]) {
                 const cardId = `${card.rank}_${card.suit}`;
                 
@@ -318,7 +302,7 @@ class IsraeliWhist {
         for (const suit of suits) {
             if (globalSuitCounts[suit] !== 13) {
                 console.error(`❌ Invalid dealt suit count for ${suit}: ${globalSuitCounts[suit]}, expected 13`);
-                console.log('Dealt suit distribution:', globalSuitCounts);
+
                 return false;
             }
         }
@@ -327,7 +311,7 @@ class IsraeliWhist {
         for (const rank of ranks) {
             if (globalRankCounts[rank] !== 4) {
                 console.error(`❌ Invalid dealt rank count for ${rank}: ${globalRankCounts[rank]}, expected 4`);
-                console.log('Dealt rank distribution:', globalRankCounts);
+
                 return false;
             }
         }
@@ -338,19 +322,10 @@ class IsraeliWhist {
             return false;
         }
         
-        console.log('✅ Card dealing validation passed:');
-        console.log(`   - Each player has 13 cards`);
-        console.log(`   - Total cards dealt: 52`);
-        console.log(`   - 13 cards per suit:`, globalSuitCounts);
-        console.log(`   - 4 cards per rank distributed correctly`);
-        console.log(`   - No duplicate cards`);
-        console.log(`   - Deck is empty`);
-        
         return true;
     }
 
     dealCards() {
-        console.log('=== DEALING CARDS ===');
           
           // Hide the deal button after it's clicked
           const dealBtn = document.getElementById('deal-btn');
@@ -419,19 +394,7 @@ class IsraeliWhist {
             }
         });
         
-        console.log('Dealing complete. Cards per player:', {
-            north: this.hands.north.length,
-            east: this.hands.east.length,
-            south: this.hands.south.length,
-            west: this.hands.west.length
-        });
-        
-        // Log actual cards for each player for debugging
-        console.log('=== PLAYER HANDS ===');
-        this.players.forEach(player => {
-            console.log(`${player.toUpperCase()} hand:`, this.hands[player].map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`).join(' '));
-        });
-        console.log('=== END PLAYER HANDS ===');
+
         
         this.displayCards();
         
@@ -444,11 +407,9 @@ class IsraeliWhist {
     }
 
     showBiddingInterface() {
-        console.log('showBiddingInterface called');
         const biddingInterface = document.getElementById('bidding-interface');
         if (biddingInterface) {
             biddingInterface.style.display = 'block';
-            console.log('Bidding interface shown');
         } else {
             console.error('Bidding interface element not found!');
         }
@@ -464,7 +425,6 @@ class IsraeliWhist {
     }
 
     populateBiddingButtons() {
-        console.log('populateBiddingButtons called');
         const tricksButtons = document.getElementById('tricks-buttons');
         const suitButtons = document.getElementById('suit-buttons');
         
@@ -508,13 +468,11 @@ class IsraeliWhist {
 
     // Button selection methods for Phase 1 bidding
     selectTricks(tricks) {
-        console.log(`Tricks selected: ${tricks}`);
         this.selectedTricks = tricks;
         this.updateButtonSelection('tricks', tricks);
     }
 
     selectSuit(suit) {
-        console.log(`Suit selected: ${suit}`);
         this.selectedSuit = suit;
         this.updateButtonSelection('suit', suit);
     }
@@ -542,7 +500,7 @@ class IsraeliWhist {
             return;
         }
         
-        console.log(`South bids: ${minTakes} ${trumpSuit}`);
+
         
         // Record the bid
         this.phase1Bids.south = {
@@ -566,7 +524,7 @@ class IsraeliWhist {
     }
 
     startPhase2() {
-        console.log('=== STARTING PHASE 2 ===');
+
         this.currentPhase = 'phase2';
         this.hideBiddingInterface();
         
@@ -579,7 +537,7 @@ class IsraeliWhist {
         // Start Phase 2 bidding with trump winner
          // Then go clockwise (left) from there
         this.currentBidder = this.players.indexOf(this.trumpWinner);
-         console.log(`Phase 2 bidding starts with ${this.trumpWinner} (player index: ${this.currentBidder})`);
+
          
          // Show Phase 2 interface first
          this.showPhase2Interface();
@@ -656,7 +614,7 @@ class IsraeliWhist {
         }
         
         this.phase2Bids[player] = takes;
-        console.log(`${player} predicts ${takes} takes`);
+
           
           // Update Phase 2 bid display immediately
           this.updatePhase2BidDisplay(player, takes);
@@ -671,7 +629,7 @@ class IsraeliWhist {
           const allPlayersBid = this.players.every(p => this.phase2Bids[p] !== null && this.phase2Bids[p] !== undefined);
           
           if (allPlayersBid) {
-              console.log('All players have bid in Phase 2, moving to Phase 3...');
+
               // Small delay to show the final bid before transitioning
               setTimeout(() => this.startPhase3(), 1000);
               return;
@@ -679,7 +637,7 @@ class IsraeliWhist {
           
           // Move to next player in clockwise order
         this.currentBidder = (this.currentBidder + 1) % 4;
-          console.log(`Phase 2 bidding: ${player} -> ${this.players[this.currentBidder]} (clockwise)`);
+
         
           if (this.currentBidder === 2) { // Back to South (human player)
               // Human player's turn to bid
@@ -725,10 +683,10 @@ class IsraeliWhist {
              } else {
                  takes = takes - 1; // Bid one lower
              }
-             console.log(`${player} adjusted bid from ${takes} to avoid total of 13`);
+
          }
         
-        console.log(`${player} Phase 2 bid: ${takes} (min: ${minBid}, max: ${maxBid}, current total: ${currentTotal})`);
+
         
         // Analyze bidding pattern for learning
         this.analyzeOpponentPattern(player, {
@@ -745,56 +703,101 @@ class IsraeliWhist {
     }
 
     calculateSmartPhase2Bid(player, handStrength, currentTotal, minBid, maxBid) {
-        // Realistic Phase 2 bidding - bids should total close to 13
+        // More aggressive and realistic Phase 2 bidding
         const playerPattern = this.botMemory.playerPatterns[player];
         const trumpSuit = this.trumpSuit;
         const hand = this.hands[player];
         
-        // More conservative trick estimation
+        // Base trick estimation - more aggressive than before
         let trickEstimate = this.calculateRealisticTricks(hand, trumpSuit, handStrength);
         
-        // Apply global constraint: total bids should be close to 13
-        const idealTotal = 13;
+        // Target total should be 11-15, with 12-14 being most common
         const playersRemaining = 4 - this.currentBidder;
-        const expectedRemainingBids = (idealTotal - currentTotal) / playersRemaining;
+        const idealRange = [11, 12, 13, 14, 15];
         
-        // If current total is already high, be much more conservative
-        if (currentTotal >= 10) {
-            trickEstimate = Math.min(trickEstimate, Math.max(0, 13 - currentTotal - 1));
-        } else if (currentTotal >= 8) {
-            trickEstimate = Math.min(trickEstimate, expectedRemainingBids + 1);
-        }
+        // Choose target total based on current total and remaining players
+        let targetTotal = 13; // Default to 13
         
-        // Adjust based on bot personality but keep it reasonable
-        const accuracy = playerPattern.accuracy;
-        const riskTolerance = playerPattern.riskTolerance;
-        
-        if (riskTolerance < 0.4) {
-            trickEstimate *= 0.85; // Conservative bots underbid more
-        } else if (riskTolerance > 0.7) {
-            trickEstimate *= 1.15; // Aggressive bots overbid slightly
-        }
-        
-        // Trump winner must bid at least minimum but be realistic
-        if (player === this.trumpWinner) {
-            trickEstimate = Math.max(trickEstimate, this.minimumTakes);
-            // But cap it if total would be too high
-            if (currentTotal + trickEstimate > 15) {
-                trickEstimate = Math.max(this.minimumTakes, 15 - currentTotal);
+        // If we're early in bidding, aim for a total that makes sense
+        if (playersRemaining > 2) {
+            // Early bidding - be more aggressive to ensure total is reasonable
+            if (currentTotal <= 3) {
+                targetTotal = 12 + Math.floor(Math.random() * 3); // 12-14
+            } else if (currentTotal <= 6) {
+                targetTotal = 13 + Math.floor(Math.random() * 2); // 13-14
+            } else {
+                targetTotal = 14;
+            }
+        } else if (playersRemaining === 2) {
+            // Second to last bidder - adjust to steer toward good total
+            const possibleTotals = idealRange.filter(total => total >= currentTotal + minBid);
+            if (possibleTotals.length > 0) {
+                targetTotal = possibleTotals[Math.floor(Math.random() * possibleTotals.length)];
+            } else {
+                targetTotal = Math.max(13, currentTotal + 2);
+            }
+        } else {
+            // Last bidder - choose total from ideal range if possible
+            const possibleTotals = idealRange.filter(total => {
+                const requiredBid = total - currentTotal;
+                return requiredBid >= minBid && requiredBid <= maxBid;
+            });
+            
+            if (possibleTotals.length > 0) {
+                // Weight toward 12-14
+                const preferredTotals = possibleTotals.filter(t => t >= 12 && t <= 14);
+                targetTotal = preferredTotals.length > 0 ? 
+                    preferredTotals[Math.floor(Math.random() * preferredTotals.length)] :
+                    possibleTotals[Math.floor(Math.random() * possibleTotals.length)];
+            } else {
+                targetTotal = currentTotal + minBid;
             }
         }
         
-        let bid = Math.round(trickEstimate);
+        // Calculate what we should bid to reach target total
+        const expectedRemainingBids = (targetTotal - currentTotal) / playersRemaining;
         
-        // Final safety check - prevent total from being too high
-        if (currentTotal + bid > 16) {
-            bid = Math.max(minBid, 16 - currentTotal);
+        // Blend our trick estimate with the target-based bid
+        let strategicBid = expectedRemainingBids;
+        
+        // Weight between realistic assessment and strategic target
+        const blendWeight = 0.6; // 60% strategic, 40% realistic
+        let bid = (strategicBid * blendWeight) + (trickEstimate * (1 - blendWeight));
+        
+        // Adjust based on bot personality - make more aggressive
+        const riskTolerance = playerPattern.riskTolerance;
+        
+        if (riskTolerance < 0.3) {
+            bid *= 0.9; // Slightly conservative
+        } else if (riskTolerance > 0.7) {
+            bid *= 1.2; // More aggressive
+        } else {
+            bid *= 1.05; // Slightly aggressive by default
         }
         
-        // Ensure bid is in valid range
+        // Trump winner must bid at least minimum
+        if (player === this.trumpWinner) {
+            bid = Math.max(bid, this.minimumTakes);
+        }
+        
+        // Round and constrain to valid range
+        bid = Math.round(bid);
         bid = Math.max(minBid, Math.min(maxBid, bid));
         
-        console.log(`${player} realistic bid: estimate=${trickEstimate.toFixed(2)}, bid=${bid}, currentTotal=${currentTotal}, expectedRemaining=${expectedRemainingBids.toFixed(1)}`);
+        // Final adjustment: if we're the last bidder and can create ideal total, do it
+        if (playersRemaining === 1) {
+            const finalTotal = currentTotal + bid;
+            if (finalTotal < 11 || finalTotal > 15) {
+                // Try to get into ideal range
+                for (const ideal of [13, 12, 14, 11, 15]) {
+                    const requiredBid = ideal - currentTotal;
+                    if (requiredBid >= minBid && requiredBid <= maxBid) {
+                        bid = requiredBid;
+                        break;
+                    }
+                }
+            }
+        }
         
         return bid;
     }
@@ -885,7 +888,7 @@ class IsraeliWhist {
     }
 
     startPhase3() {
-        console.log('=== STARTING PHASE 3 ===');
+
         this.currentPhase = 'phase3';
         this.hidePhase2Interface();
         this.updateDisplay();
@@ -893,7 +896,7 @@ class IsraeliWhist {
          // Calculate if this will be an Over or Under hand
          const totalBids = Object.values(this.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0);
          this.handType = totalBids > 13 ? 'over' : 'under';
-         console.log(`Hand type: ${this.handType} (total bids: ${totalBids})`);
+
         
         // Start first trick
         this.startTrick();
@@ -913,7 +916,6 @@ class IsraeliWhist {
     }
 
     enableCardSelection() {
-        console.log('Enabling card selection for human player');
         const cards = document.querySelectorAll('#south-cards .card');
         const humanCardsContainer = document.getElementById('south-cards');
         
@@ -935,11 +937,10 @@ class IsraeliWhist {
         
         // Card highlighting removed
         
-        console.log(`${cards.length} cards are now clickable`);
+
     }
     
     disableCardSelection() {
-        console.log('Disabling card selection for human player');
         const cards = document.querySelectorAll('#south-cards .card');
         const humanCardsContainer = document.getElementById('south-cards');
         
@@ -967,7 +968,7 @@ class IsraeliWhist {
         
         if (!cardRankElement || !cardSuitElement) {
             console.error('Could not find rank or suit elements in clicked card');
-            console.log('Card element structure:', cardElement.innerHTML);
+
             return;
         }
         
@@ -992,11 +993,11 @@ class IsraeliWhist {
         
         if (cardIndex === -1) {
             console.error(`Card ${cardRank} of ${cardSuit} not found in player's hand`);
-            console.log('Available cards:', hand.map(c => `${c.rank} of ${c.suit}`));
+
             return;
         }
         
-        console.log(`Player clicked on ${cardRank} of ${cardSuit} (index ${cardIndex})`);
+
         this.playCard('south', cardIndex);
     }
 
@@ -1015,7 +1016,7 @@ class IsraeliWhist {
             return;
         }
         
-        console.log(`${player} plays ${card.rank}${this.getSuitSymbol(card.suit)}`);
+
         
         // Update AI memory with card played
         this.updateCardMemory(card, player);
@@ -1037,9 +1038,7 @@ class IsraeliWhist {
         this.currentTrick.push({ player, card });
         
         // Remove card from hand
-        console.log(`${player} had ${hand.length} cards, removing ${card.rank}${this.getSuitSymbol(card.suit)}`);
         hand.splice(cardIndex, 1);
-        console.log(`${player} now has ${hand.length} cards remaining`);
         
         // For human player, immediately update their card display
         if (player === 'south') {
@@ -1065,7 +1064,7 @@ class IsraeliWhist {
     isValidCardPlay(player, card) {
         // If this is the first card of the trick, any card is valid
         if (this.currentTrick.length === 0) {
-            console.log(`${player} can play ${card.rank}${this.getSuitSymbol(card.suit)} - first card of trick`);
+
             return true;
         }
         
@@ -1073,24 +1072,24 @@ class IsraeliWhist {
         const leadSuit = this.currentTrick[0].card.suit;
         const hand = this.hands[player];
         
-        console.log(`Validating ${player} playing ${card.rank}${this.getSuitSymbol(card.suit)}, lead suit: ${leadSuit}`);
+
         
         // If playing the same suit as led, it's valid
         if (card.suit === leadSuit) {
-            console.log(`${player} can play ${card.rank}${this.getSuitSymbol(card.suit)} - following suit`);
+
             return true;
         }
         
         // If player doesn't have any cards of the lead suit, they can play any card
         const hasLeadSuit = hand.some(handCard => handCard.suit === leadSuit);
         if (!hasLeadSuit) {
-            console.log(`${player} can play ${card.rank}${this.getSuitSymbol(card.suit)} - no ${leadSuit} cards in hand`);
+
             return true;
         }
         
         // Player has cards of the lead suit but didn't play one - invalid
         const leadSuitCards = hand.filter(handCard => handCard.suit === leadSuit);
-        console.log(`${player} cannot play ${card.rank}${this.getSuitSymbol(card.suit)} - must follow suit. Has ${leadSuitCards.length} ${leadSuit} cards: ${leadSuitCards.map(c => `${c.rank}${this.getSuitSymbol(c.suit)}`).join(', ')}`);
+
         return false;
     }
     
@@ -1110,7 +1109,7 @@ class IsraeliWhist {
         playedCardDiv.innerHTML = '';
         playedCardDiv.appendChild(cardElement);
         
-        console.log(`Card ${card.rank}${this.getSuitSymbol(card.suit)} displayed on table for ${player}`);
+
     }
      
     completeTrick() {
@@ -1119,7 +1118,7 @@ class IsraeliWhist {
         this.tricksWon[winner]++;
         this.tricksPlayed++;
         
-        console.log(`Trick ${this.tricksPlayed} won by ${winner}. Cards: ${this.currentTrick.map(c => `${c.player}: ${c.card.rank}${this.getSuitSymbol(c.card.suit)}`).join(', ')}`);
+
         
         // Update the winner's trick count display immediately
         this.updateTrickCount(winner);
@@ -1132,8 +1131,7 @@ class IsraeliWhist {
         
         // Check if all 13 tricks have been played
         if (this.tricksPlayed >= 13) {
-            console.log('=== PHASE 3 COMPLETE ===');
-            console.log('All 13 tricks completed, calculating scores...');
+
             this.currentPhase = 'scoring';
             this.updateDisplay();
             setTimeout(() => this.endHand(), 3000);
@@ -1144,7 +1142,7 @@ class IsraeliWhist {
         this.trickLeader = this.players.indexOf(winner);
         this.currentTrick = [];
         
-        console.log(`Next trick will be led by ${winner}`);
+
         
         // Start next trick after animation completes
         setTimeout(() => {
@@ -1172,7 +1170,7 @@ class IsraeliWhist {
     }
     
     animateCardsToWinner(winner) {
-        console.log(`Animating cards to ${winner}'s name`);
+
         
         // Get all played card elements
         const playedCards = ['north', 'east', 'south', 'west'].map(player => {
@@ -1348,7 +1346,7 @@ class IsraeliWhist {
                 southCardsDiv.appendChild(cardElement);
             });
             
-            console.log(`Human player card display updated: ${this.hands.south.length} cards remaining`);
+
             
             // Re-enable card selection if it's still the human player's turn
             if (this.currentPhase === 'phase3' && this.currentTrick.length < 4) {
@@ -1418,6 +1416,38 @@ class IsraeliWhist {
         });
         
         return bestSuit;
+    }
+    
+    getSuitStrength(player, suit) {
+        const hand = this.hands[player];
+        
+        if (suit === 'notrump') {
+            // For no trump, consider overall hand strength and balance
+            const handStrength = this.evaluateHandStrength(player);
+            const isBalanced = handStrength.maxLength <= 5 && handStrength.minLength >= 2;
+            return isBalanced ? handStrength.score / 4 : handStrength.score / 6;
+        }
+        
+        const suitCards = hand.filter(card => card.suit === suit);
+        const suitLength = suitCards.length;
+        const suitHonors = suitCards.filter(card => ['A', 'K', 'Q', 'J'].includes(card.rank)).length;
+        
+        // Calculate suit strength score
+        let strength = 0;
+        strength += suitLength * 2; // Length is important
+        strength += suitHonors * 3; // Honors are valuable
+        
+        // Bonus for very long suits
+        if (suitLength >= 6) {
+            strength += (suitLength - 5) * 2;
+        }
+        
+        // Penalty for very short suits
+        if (suitLength <= 2) {
+            strength *= 0.5;
+        }
+        
+        return strength;
     }
 
     nextPlayerInTrick() {
@@ -2500,12 +2530,14 @@ class IsraeliWhist {
             const currentBidValue = currentHighestBid.minTakes;
             const currentSuit = currentHighestBid.trumpSuit;
             
-            // Strategic decision: Check if we want the same trump suit as the current bid
+            // Strategic decision: Avoid bidding the same trump suit as others unless it's significantly better
             const ourBestSuit = this.getBestTrumpSuit(player, handStrength);
+            const ourSuitStrength = this.getSuitStrength(player, ourBestSuit);
+            const theirSuitStrength = this.getSuitStrength(player, currentSuit);
             
-            if (ourBestSuit === currentSuit) {
-                // We want the same trump - should pass and raise in Phase 2 if this trump wins
-                console.log(`${player} wants same trump (${currentSuit}) as current bid - passing to raise in Phase 2`);
+            // Only bid same trump if our hand is significantly stronger in that suit
+            if (ourBestSuit === currentSuit && theirSuitStrength < ourSuitStrength * 1.5) {
+                // We want the same trump but don't have overwhelming strength - pass and raise in Phase 2
                 shouldPass = true;
             } else {
                 // Different trump suit - calculate if we can/should bid higher
@@ -2636,7 +2668,6 @@ class IsraeliWhist {
     }
 
     calculateHigherBid(currentBidValue, currentSuit, player) {
-        console.log(`calculateHigherBid called with: currentBidValue=${currentBidValue}, currentSuit=${currentSuit} for ${player}`);
         const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
         const currentSuitRank = suits.indexOf(currentSuit);
         
@@ -2644,25 +2675,61 @@ class IsraeliWhist {
         const handStrength = this.evaluateHandStrength(player);
         const hand = this.hands[player];
         
-        // Option 1: Higher number in same suit (always valid if within limits)
-        if (currentBidValue < 8 && currentBidValue + 1 < 13) {
+        // Get player's best trump suit to prioritize it over same-suit bidding
+        const ourBestSuit = this.getBestTrumpSuit(player, handStrength);
+        const ourBestSuitRank = suits.indexOf(ourBestSuit);
+        
+        // Prioritize bidding our best suit over just raising the current suit
+        // Option 1: Same number in our best suit (if it's higher ranking than current)
+        if (ourBestSuitRank > currentSuitRank && currentBidValue < 13) {
+            const ourSuitBid = {
+                minTakes: currentBidValue,
+                trumpSuit: ourBestSuit
+            };
+            
+            // Check if we have strong support for our best suit
+            if (this.hasSuitStrength(player, ourBestSuit) && 
+                this.canSupportBid(player, ourSuitBid)) {
+                return ourSuitBid;
+            }
+        }
+        
+        // Option 2: Higher number in our best suit (if it's any ranking)
+        if (currentBidValue < 7 && currentBidValue + 1 < 13) {
+            const ourSuitHigherBid = {
+                minTakes: currentBidValue + 1,
+                trumpSuit: ourBestSuit
+            };
+            
+            if (this.hasSuitStrength(player, ourBestSuit) && 
+                this.canSupportBid(player, ourSuitHigherBid) &&
+                handStrength.score >= 18) {
+                return ourSuitHigherBid;
+            }
+        }
+        
+        // Option 3: Higher number in same suit (last resort - avoid trump suit duplication)
+        if (currentBidValue < 6 && currentBidValue + 1 < 13) {
             const sameSuitBid = {
                 minTakes: currentBidValue + 1,
                 trumpSuit: currentSuit
             };
             
-            // Check if this player can actually support this bid
-            if (this.canSupportBid(player, sameSuitBid)) {
-                console.log(`Bot can bid higher in same suit:`, sameSuitBid);
+            // Only bid same suit if we have very strong support for it
+            if (this.canSupportBid(player, sameSuitBid) && 
+                this.hasSuitStrength(player, currentSuit) &&
+                handStrength.score >= 22) {
                 return sameSuitBid;
             }
         }
         
-        // Option 2: Same number in higher-ranking suit (only if we have strong suit support)
+        // Option 4: Same number in other higher-ranking suits (explore alternatives)
         for (let i = currentSuitRank + 1; i < suits.length; i++) {
             const higherSuit = suits[i];
             
-            // Never allow bids of 13
+            // Skip our best suit as we already tried it
+            if (higherSuit === ourBestSuit) continue;
+            
             if (currentBidValue >= 13) continue;
             
             const higherSuitBid = {
@@ -2670,37 +2737,15 @@ class IsraeliWhist {
                 trumpSuit: higherSuit
             };
             
-            // More strict requirements for bidding same tricks in higher suit
-            // Need both good suit support AND strong overall hand
+            // More strict requirements for bidding in a suit that's not our best
             if (this.canSupportBid(player, higherSuitBid) && 
                 this.hasSuitStrength(player, higherSuit) && 
-                handStrength.score >= 20) { // Require stronger hand for this type of bid
-                console.log(`Bot can bid in higher suit:`, higherSuitBid);
+                handStrength.score >= 24) {
                 return higherSuitBid;
             }
         }
         
-        // Option 3: Higher number in higher suit (double escalation - most aggressive)
-        if (currentBidValue < 7 && currentBidValue + 1 < 13) {
-            for (let i = currentSuitRank + 1; i < suits.length; i++) {
-                const higherSuit = suits[i];
-                const higherBothBid = {
-                    minTakes: currentBidValue + 1,
-                    trumpSuit: higherSuit
-                };
-                
-                // Most strict requirements for double escalation
-                if (this.canSupportBid(player, higherBothBid) && 
-                    this.hasSuitStrength(player, higherSuit) && 
-                    handStrength.score >= 25) { // Require very strong hand
-                    console.log(`Bot can bid higher tricks in higher suit:`, higherBothBid);
-                    return higherBothBid;
-                }
-            }
-        }
-        
-        // Can't bid higher
-        console.log(`Bot cannot bid higher than ${currentBidValue} ${currentSuit}`);
+        // Can't bid higher with any sensible combination
         return null;
     }
     
@@ -3025,47 +3070,41 @@ class IsraeliWhist {
         minTakes = Math.min(minTakes, 8);
         
         // Strategic trump selection based on actual hand composition
-        let trumpSuit = handStrength.longestSuit;
+        let trumpSuit = this.getBestTrumpSuit(player, handStrength);
         
-        // Analyze trump suitability more carefully
-        // hand is already declared above
+        // Get suit counts for trump evaluation
         const suitCounts = handStrength.suitCounts;
         
-        // Check for strong suits (4+ cards with honors)
-        let bestSuit = null;
-        let bestSuitScore = 0;
-        
-        ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
-            const suitCards = hand.filter(card => card.suit === suit);
-            const suitLength = suitCards.length;
-            const honors = suitCards.filter(card => ['A', 'K', 'Q', 'J'].includes(card.rank)).length;
-            
-            // Score based on length and honors
-            let suitScore = 0;
-            if (suitLength >= 4) suitScore += suitLength;
-            if (suitLength >= 5) suitScore += 2; // Bonus for 5+ cards
-            if (suitLength >= 6) suitScore += 3; // Bonus for 6+ cards
-            suitScore += honors * 2; // Honor cards are important
-            
-            if (suitScore > bestSuitScore) {
-                bestSuitScore = suitScore;
-                bestSuit = suit;
+        // Check if there are already bids for this trump suit - avoid duplication
+        const existingTrumpSuits = new Set();
+        Object.values(this.phase1Bids).forEach(bid => {
+            if (bid && bid.trumpSuit) {
+                existingTrumpSuits.add(bid.trumpSuit);
             }
         });
         
-        // Choose trump suit
-        if (bestSuitScore >= 8 && suitCounts[bestSuit] >= 5) {
-            // Strong long suit - use as trump
-            trumpSuit = bestSuit;
-        } else if (handStrength.score >= 28 && handStrength.maxLength <= 4) {
-            // Balanced hand with high cards - consider no trump
-            trumpSuit = 'notrump';
-        } else if (handStrength.maxLength >= 5) {
-            // Use longest suit as trump
-            trumpSuit = handStrength.longestSuit;
-        } else {
-            // Weak hand - default to longest suit or clubs
-            trumpSuit = handStrength.longestSuit || 'clubs';
+        // If our best suit is already bid, find next best alternative
+        if (existingTrumpSuits.has(trumpSuit)) {
+        
+            // Find alternative suits that aren't already bid
+            const alternativeSuits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump']
+                .filter(suit => !existingTrumpSuits.has(suit));
+            
+            let bestAlternative = null;
+            let bestAlternativeScore = 0;
+            
+            alternativeSuits.forEach(suit => {
+                const strength = this.getSuitStrength(player, suit);
+                if (strength > bestAlternativeScore) {
+                    bestAlternativeScore = strength;
+                    bestAlternative = suit;
+                }
+            });
+            
+            // Only switch if the alternative is reasonable (at least 60% as good)
+            if (bestAlternative && bestAlternativeScore >= this.getSuitStrength(player, trumpSuit) * 0.6) {
+                trumpSuit = bestAlternative;
+            }
         }
         
         // Be more conservative - reduce bid if trump suit is weak
