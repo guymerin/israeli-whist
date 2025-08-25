@@ -420,7 +420,13 @@ class IsraeliWhist {
             }
         });
         
-
+        // Log all initial hands for analysis
+        console.log(`\n🃏 INITIAL HANDS DEALT:`);
+        this.players.forEach(player => {
+            const hand = this.hands[player].map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`).sort();
+            console.log(`   ${this.getPlayerDisplayName(player)}: ${hand.join(' ')}`);
+        });
+        console.log('');
         
         this.displayCards();
         
@@ -986,6 +992,16 @@ class IsraeliWhist {
          const totalBids = Object.values(this.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0);
          this.handType = totalBids > 13 ? 'over' : 'under';
 
+        // Log Phase 3 start with all player hands for analysis
+        console.log(`\n🎮 PHASE 3 STARTING - CARD PLAY:`);
+        console.log(`   Trump: ${this.trumpSuit || 'No Trump'} | Total Bids: ${totalBids} (${this.handType.toUpperCase()})`);
+        console.log(`   Current Hands:`);
+        this.players.forEach(player => {
+            const hand = this.hands[player].map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`).sort();
+            const bid = this.phase2Bids[player];
+            console.log(`     ${this.getPlayerDisplayName(player)}: ${hand.join(' ')} (bid: ${bid})`);
+        });
+        console.log('');
         
         // Start first trick
         this.startTrick();
@@ -1126,6 +1142,11 @@ class IsraeliWhist {
         // Add card to current trick
         this.currentTrick.push({ player, card });
         
+        // Log the card play
+        const cardDisplay = `${card.rank}${this.getSuitSymbol(card.suit)}`;
+        const trickPosition = this.currentTrick.length;
+        console.log(`🃏 ${this.getPlayerDisplayName(player)} plays ${cardDisplay} (position ${trickPosition}/4)`);
+        
         // Remove card from hand
         hand.splice(cardIndex, 1);
         
@@ -1207,7 +1228,11 @@ class IsraeliWhist {
         this.tricksWon[winner]++;
         this.tricksPlayed++;
         
-
+        // Log the complete trick
+        const trickCards = this.currentTrick.map(play => 
+            `${this.getPlayerDisplayName(play.player)}: ${play.card.rank}${this.getSuitSymbol(play.card.suit)}`
+        ).join(', ');
+        console.log(`🏆 TRICK ${this.tricksPlayed} WINNER: ${this.getPlayerDisplayName(winner)} | Cards played: ${trickCards}`);
         
         // Update the winner's trick count display immediately
         this.updateTrickCount(winner);
@@ -1545,8 +1570,6 @@ class IsraeliWhist {
          const lastPlayerIndex = this.players.indexOf(lastPlayer);
          const nextPlayerIndex = (lastPlayerIndex + 1) % 4; // Clockwise progression
         const nextPlayerName = this.players[nextPlayerIndex];
-         
-         console.log(`Trick progression: ${lastPlayer} -> ${nextPlayerName} (clockwise)`);
         
         if (nextPlayerIndex === 2) {
             // Human player's turn - add small delay to ensure trick state is updated
