@@ -1221,6 +1221,21 @@ h1 {
     transform: translateY(-1px);
 }
 
+.action-btn:disabled {
+    background: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    border-color: #999;
+    transform: none;
+    box-shadow: none;
+}
+
+.action-btn:disabled:hover {
+    background: #ccc;
+    transform: none;
+    box-shadow: none;
+}
+
 /* Bidding Interface */
 .bidding-interface {
     position: absolute;

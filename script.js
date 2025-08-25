@@ -434,6 +434,9 @@ class IsraeliWhist {
         this.disableCardSelection();
         this.updateDisplay();
         
+        // Reset pass button state for new hand
+        this.resetPassButtonState();
+        
         // Since we start with South (human player), show the bidding interface immediately
         this.promptPhase1Bidder();
     }
@@ -447,6 +450,7 @@ class IsraeliWhist {
         }
         
         this.populateBiddingButtons();
+        this.updatePassButtonState();
     }
 
     hideBiddingInterface() {
@@ -454,6 +458,9 @@ class IsraeliWhist {
         if (biddingInterface) {
             biddingInterface.style.display = 'none';
         }
+        
+        // Reset pass button state when hiding interface
+        this.resetPassButtonState();
     }
 
     populateBiddingButtons() {
@@ -502,11 +509,13 @@ class IsraeliWhist {
     selectTricks(tricks) {
         this.selectedTricks = tricks;
         this.updateButtonSelection('tricks', tricks);
+        this.updatePassButtonState();
     }
 
     selectSuit(suit) {
         this.selectedSuit = suit;
         this.updateButtonSelection('suit', suit);
+        this.updatePassButtonState();
     }
 
     updateButtonSelection(type, value) {
@@ -518,6 +527,37 @@ class IsraeliWhist {
             document.querySelectorAll('.suit-button').forEach(btn => btn.classList.remove('selected'));
             document.querySelector(`.suit-button[data-value="${value}"]`)?.classList.add('selected');
         }
+    }
+
+    updatePassButtonState() {
+        // Disable pass button if both tricks and suit are selected
+        const passBtn = document.getElementById('pass-btn');
+        if (passBtn) {
+            if (this.selectedTricks && this.selectedSuit) {
+                passBtn.disabled = true;
+                passBtn.title = 'Cannot pass after selecting a bid';
+            } else {
+                passBtn.disabled = false;
+                passBtn.title = '';
+            }
+        }
+    }
+
+    resetPassButtonState() {
+        // Reset pass button to enabled state and clear any selections
+        const passBtn = document.getElementById('pass-btn');
+        if (passBtn) {
+            passBtn.disabled = false;
+            passBtn.title = '';
+        }
+        
+        // Clear selections when hiding interface
+        this.selectedTricks = null;
+        this.selectedSuit = null;
+        
+        // Clear button selections
+        document.querySelectorAll('.trick-button').forEach(btn => btn.classList.remove('selected'));
+        document.querySelectorAll('.suit-button').forEach(btn => btn.classList.remove('selected'));
     }
 
     makePhase1Bid(minTakes, trumpSuit) {
@@ -3435,6 +3475,9 @@ class IsraeliWhist {
         this.selectedSuit = null;
          this.handType = null;
          
+        // Reset pass button state for new hand
+        this.resetPassButtonState();
+         
         // Update trick count display for all players
         this.players.forEach(player => {
             this.updateTrickCount(player);
@@ -3705,6 +3748,9 @@ class IsraeliWhist {
          this.hidePhase2Interface();
          this.clearAllCards();
          this.clearTrickArea();
+         
+         // Reset pass button state for new game
+         this.resetPassButtonState();
          
                  // Reset for new hand
          this.resetForNewHand();
