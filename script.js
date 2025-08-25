@@ -26,6 +26,15 @@ class IsraeliWhist {
             south: 0,
             west: 0
         };
+        this.cumulativeScores = {
+            north: 0,
+            east: 0,
+            south: 0,
+            west: 0
+        };
+        this.gamesPlayed = 0;
+        this.gameHistory = []; // Track individual game data for scorecard
+        this.extendedViewActive = false; // Track which view is currently shown
         
         // Phase 1 - Trump bidding
         this.phase1Bids = {
@@ -73,6 +82,7 @@ class IsraeliWhist {
         // Button selection state
         this.selectedTricks = null;
         this.selectedSuit = null;
+        this.phase2BiddingExpanded = false; // Track if user has expanded Phase 2 bidding view
         
         // Advanced AI System - More conservative bots
         this.botMemory = {
@@ -581,6 +591,152 @@ class IsraeliWhist {
         this.showGameNotification('Bid selections cleared. You can now pass or make a new selection.', 'info');
     }
 
+    expandPhase2Bidding() {
+        const extraButtons = document.getElementById('tricks-buttons-extra');
+        const mainButtons = document.querySelector('.tricks-buttons-main');
+        const moreBtn = document.getElementById('more-tricks-btn');
+        const lessBtn = document.getElementById('less-tricks-btn');
+        
+        if (extraButtons && mainButtons) {
+            // Hide main buttons (0-7) and show full range (0-13)
+            mainButtons.style.display = 'none';
+            extraButtons.style.display = 'grid';
+            
+            // Show Less button, hide More button
+            if (moreBtn) moreBtn.style.display = 'none';
+            if (lessBtn) lessBtn.style.display = 'block';
+            
+            // Remember user preference for this round
+            this.phase2BiddingExpanded = true;
+        }
+    }
+
+    collapsePhase2Bidding() {
+        const extraButtons = document.getElementById('tricks-buttons-extra');
+        const mainButtons = document.querySelector('.tricks-buttons-main');
+        const moreBtn = document.getElementById('more-tricks-btn');
+        const lessBtn = document.getElementById('less-tricks-btn');
+        
+        if (extraButtons && mainButtons) {
+            // Show main buttons (0-7) and hide full range
+            mainButtons.style.display = 'grid';
+            extraButtons.style.display = 'none';
+            
+            // Show More button, hide Less button
+            if (moreBtn) moreBtn.style.display = 'block';
+            if (lessBtn) lessBtn.style.display = 'none';
+            
+            // Update user preference
+            this.phase2BiddingExpanded = false;
+        }
+    }
+
+    getTotalBidsForPlayer(player) {
+        // Calculate total Phase 2 bids for this player across all hands in current game
+        // For now, return 0 as placeholder - we'll need to track this properly
+        return 0;
+    }
+
+    toggleExtendedView() {
+        this.extendedViewActive = !this.extendedViewActive;
+        
+        const normalContent = document.getElementById('total-score-content');
+        const extendedContent = document.getElementById('extended-score-content');
+        const viewTitle = document.getElementById('score-view-title');
+        const toggleBtn = document.getElementById('extended-view-btn');
+        
+        if (this.extendedViewActive) {
+            // Show extended view
+            normalContent.style.display = 'none';
+            extendedContent.style.display = 'block';
+            viewTitle.textContent = 'Game History';
+            toggleBtn.textContent = '📋';
+            toggleBtn.title = 'Show current scores';
+            this.generateExtendedScorecard();
+        } else {
+            // Show normal view
+            normalContent.style.display = 'flex';
+            extendedContent.style.display = 'none';
+            viewTitle.textContent = 'Total Score';
+            toggleBtn.textContent = '📊';
+            toggleBtn.title = 'Show extended scorecard';
+        }
+    }
+
+    generateExtendedScorecard() {
+        const extendedContent = document.getElementById('extended-score-content');
+        if (!extendedContent) return;
+
+        // If no games completed yet, show message
+        if (this.gameHistory.length === 0) {
+            extendedContent.innerHTML = '<div style="text-align: center; color: #FFD700; padding: 10px;">No completed games yet</div>';
+            return;
+        }
+
+        // Generate scorecard table
+        let tableHTML = '<table class="scorecard-table">';
+        
+        // Header row
+        tableHTML += '<tr>';
+        tableHTML += '<th rowspan="2" class="game-number">#</th>';
+        
+        // Player headers with Bid/Score columns
+        this.players.forEach(player => {
+            const displayName = this.getPlayerDisplayName(player).split(' ')[0]; // First part only
+            tableHTML += `<th colspan="2" class="player-header">${displayName}</th>`;
+        });
+        
+        tableHTML += '<th rowspan="2" class="total-row">Total<br/>Bid</th>';
+        tableHTML += '</tr>';
+        
+        // Sub-header row (Bid/Score)
+        tableHTML += '<tr>';
+        this.players.forEach(() => {
+            tableHTML += '<th class="bid-col">Bid</th>';
+            tableHTML += '<th class="score-col">Score</th>';
+        });
+        tableHTML += '</tr>';
+        
+        // Game rows
+        this.gameHistory.forEach((game, index) => {
+            tableHTML += '<tr>';
+            tableHTML += `<td class="game-number">${game.gameNumber}</td>`;
+            
+            let totalBid = 0;
+            this.players.forEach(player => {
+                const playerData = game.players[player];
+                const bid = playerData.totalBids;
+                totalBid += bid;
+                tableHTML += `<td class="bid-col">${bid}</td>`;
+                tableHTML += `<td class="score-col">${playerData.finalScore}</td>`;
+            });
+            
+            tableHTML += `<td class="total-row">${totalBid}</td>`;
+            tableHTML += '</tr>';
+        });
+        
+        // Total row
+        tableHTML += '<tr class="total-row">';
+        tableHTML += '<td><strong>Total</strong></td>';
+        
+        this.players.forEach(player => {
+            const totalBids = this.gameHistory.reduce((sum, game) => sum + game.players[player].totalBids, 0);
+            const cumulativeScore = this.cumulativeScores[player];
+            tableHTML += `<td><strong>${totalBids}</strong></td>`;
+            tableHTML += `<td><strong>${cumulativeScore}</strong></td>`;
+        });
+        
+        const grandTotalBids = this.gameHistory.reduce((sum, game) => {
+            return sum + this.players.reduce((gameSum, player) => gameSum + game.players[player].totalBids, 0);
+        }, 0);
+        tableHTML += `<td><strong>${grandTotalBids}</strong></td>`;
+        tableHTML += '</tr>';
+        
+        tableHTML += '</table>';
+        
+        extendedContent.innerHTML = tableHTML;
+    }
+
     makePhase1Bid(minTakes, trumpSuit) {
         if (!this.selectedTricks || !this.selectedSuit) {
             this.showGameNotification('Please select both tricks and trump suit before bidding!', 'warning');
@@ -670,6 +826,9 @@ class IsraeliWhist {
         if (yourPredictionControls) {
             yourPredictionControls.style.display = 'block';
         }
+        
+        // Always start with collapsed view (0-7) for new rounds
+        this.collapsePhase2Bidding();
         
         // Set minimum bid for trump winner
         if (this.currentBidder === this.players.indexOf(this.trumpWinner)) {
@@ -2572,6 +2731,14 @@ class IsraeliWhist {
             });
         }
         
+        // Extended view button
+        const extendedViewBtn = document.getElementById('extended-view-btn');
+        if (extendedViewBtn) {
+            extendedViewBtn.addEventListener('click', () => {
+                this.toggleExtendedView();
+            });
+        }
+        
         // Phase 2 trick buttons
         const trickButtons = document.querySelectorAll('.trick-btn');
         trickButtons.forEach(button => {
@@ -2593,28 +2760,15 @@ class IsraeliWhist {
         const moreBtn = document.getElementById('more-tricks-btn');
         if (moreBtn) {
             moreBtn.addEventListener('click', () => {
-                const extraButtons = document.getElementById('tricks-buttons-extra');
-                const mainButtons = document.querySelector('.tricks-buttons-main');
-                if (extraButtons && mainButtons) {
-                    // Add expanded class to both containers for unified grid layout
-                    mainButtons.classList.add('expanded');
-                    extraButtons.classList.add('expanded');
-                    
-                    // Add expanded class to parent container for unified grid
-                    const parentContainer = mainButtons.closest('.tricks-prediction');
-                    if (parentContainer) {
-                        parentContainer.classList.add('expanded');
-                    }
-                    
-                    // Show the extra buttons
-                    extraButtons.style.display = 'grid';
-                    // Hide the More button after clicking it
-                    moreBtn.style.display = 'none';
-                    
-                    // Ensure proper grid layout by forcing reflow
-                    mainButtons.offsetHeight;
-                    extraButtons.offsetHeight;
-                }
+                this.expandPhase2Bidding();
+            });
+        }
+        
+        // Less button to collapse trick options
+        const lessBtn = document.getElementById('less-tricks-btn');
+        if (lessBtn) {
+            lessBtn.addEventListener('click', () => {
+                this.collapsePhase2Bidding();
             });
         }
         
@@ -3546,6 +3700,7 @@ class IsraeliWhist {
         this.playersPassed = { north: false, east: false, south: false, west: false };
         this.selectedTricks = null;
         this.selectedSuit = null;
+        this.phase2BiddingExpanded = false; // Reset to collapsed view for new hand
          this.handType = null;
          
         // Reset pass button state for new hand
@@ -3713,6 +3868,25 @@ class IsraeliWhist {
             const winnerDisplayName = this.getPlayerDisplayName(winner);
             console.log(`🏆 GAME WINNER: ${winnerDisplayName} with ${this.scores[winner]} points!`);
             this.showGameNotification(`🎉 ${winnerDisplayName} WINS THE GAME with ${this.scores[winner]} points!`, 'success', 5000);
+            
+            // Save current game data to history before resetting
+            const gameData = {
+                gameNumber: this.gamesPlayed + 1,
+                players: {}
+            };
+            
+            this.players.forEach(player => {
+                gameData.players[player] = {
+                    finalScore: this.scores[player],
+                    // We'll need to track total bids per game - for now use placeholder
+                    totalBids: this.getTotalBidsForPlayer(player)
+                };
+                this.cumulativeScores[player] += this.scores[player];
+            });
+            
+            this.gameHistory.push(gameData);
+            this.gamesPlayed++;
+            
             this.resetForNewGame();
         } else {
              // Continue to next hand - increment game number and show deal button
@@ -3801,7 +3975,7 @@ class IsraeliWhist {
          // Show name modal again for new game
          this.showNameModal();
          
-         // Reset all scores to zero
+         // Reset current game scores to zero (but keep cumulative scores)
          this.scores = { north: 0, east: 0, south: 0, west: 0 };
          this.currentRound = 1;
          

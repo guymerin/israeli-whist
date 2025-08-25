@@ -33,9 +33,15 @@
 
         <!-- Total Score Box -->
         <div class="total-score-box">
-            <div class="total-score-title">Total Score</div>
+            <div class="total-score-header">
+                <div class="total-score-title" id="score-view-title">Total Score</div>
+                <button class="extended-view-btn" id="extended-view-btn" title="Show extended scorecard">📊</button>
+            </div>
             <div class="total-score-content" id="total-score-content">
                 <!-- Score items will be dynamically generated and sorted by JavaScript -->
+            </div>
+            <div class="extended-score-content" id="extended-score-content" style="display: none;">
+                <!-- Extended scorecard table will be generated here -->
             </div>
         </div>
 
@@ -184,8 +190,15 @@
                         <button class="trick-btn" data-value="6">6</button>
                         <button class="trick-btn" data-value="7">7</button>
                     </div>
-                    <button class="more-btn" id="more-tricks-btn">More</button>
                     <div class="tricks-buttons-extra" id="tricks-buttons-extra" style="display: none;">
+                        <button class="trick-btn" data-value="0">0</button>
+                        <button class="trick-btn" data-value="1">1</button>
+                        <button class="trick-btn" data-value="2">2</button>
+                        <button class="trick-btn" data-value="3">3</button>
+                        <button class="trick-btn" data-value="4">4</button>
+                        <button class="trick-btn" data-value="5">5</button>
+                        <button class="trick-btn" data-value="6">6</button>
+                        <button class="trick-btn" data-value="7">7</button>
                         <button class="trick-btn" data-value="8">8</button>
                         <button class="trick-btn" data-value="9">9</button>
                         <button class="trick-btn" data-value="10">10</button>
@@ -193,6 +206,8 @@
                         <button class="trick-btn" data-value="12">12</button>
                         <button class="trick-btn" data-value="13">13</button>
                     </div>
+                    <button class="more-btn" id="more-tricks-btn">More</button>
+                    <button class="less-btn" id="less-tricks-btn" style="display: none;">Less</button>
                 </div>
             </div>
             
