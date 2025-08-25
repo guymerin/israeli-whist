@@ -75,24 +75,38 @@ h1 {
 }
 
 .player-label {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-weight: 600;
-    font-size: 1em;
+    font-family: 'Kalam', cursive;
+    font-weight: 400;
+    font-size: 1.1em;
     color: #FFD700;
     text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
 }
 
 .score-value {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-weight: bold;
-    font-size: 1.1em;
+    font-family: 'Kalam', cursive;
+    font-weight: 700;
+    font-size: 1.2em;
     color: #FFFFFF;
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%);
     padding: 4px 8px;
-    border-radius: 6px;
     min-width: 40px;
     text-align: center;
+}
+
+/* Ranking indicators for top 3 positions */
+.score-item.first-place .score-value {
+    color: #FFD700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+}
+
+.score-item.second-place .score-value {
+    color: #C0C0C0;
+    text-shadow: 0 0 10px rgba(192, 192, 192, 0.8);
+}
+
+.score-item.third-place .score-value {
+    color: #CD7F32;
+    text-shadow: 0 0 10px rgba(205, 127, 50, 0.8);
 }
 
 /* Game Status */
@@ -1234,6 +1248,15 @@ h1 {
     background: #ccc;
     transform: none;
     box-shadow: none;
+}
+
+/* Clear button specific styling */
+#clear-btn.action-btn {
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+}
+
+#clear-btn.action-btn:hover {
+    background: linear-gradient(135deg, #F57C00, #E65100);
 }
 
 /* Bidding Interface */

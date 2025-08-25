@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Israeli Whist</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -31,23 +34,8 @@
         <!-- Total Score Box -->
         <div class="total-score-box">
             <div class="total-score-title">Total Score</div>
-            <div class="total-score-content">
-                <div class="score-item">
-                    <span class="player-label">Botti (N):</span>
-                    <span class="score-value" id="north-total-score">0</span>
-                </div>
-                <div class="score-item">
-                    <span class="player-label">Droidi (E):</span>
-                    <span class="score-value" id="east-total-score">0</span>
-                </div>
-                <div class="score-item">
-                    <span class="player-label" id="south-score-label">South:</span>
-                    <span class="score-value" id="south-total-score">0</span>
-                </div>
-                <div class="score-item">
-                    <span class="player-label">Chati (W):</span>
-                    <span class="score-value" id="west-total-score">0</span>
-                </div>
+            <div class="total-score-content" id="total-score-content">
+                <!-- Score items will be dynamically generated and sorted by JavaScript -->
             </div>
         </div>
 
@@ -141,6 +129,7 @@
                 <div class="button-row">
                     <button id="bid-btn" class="action-btn">Bid</button>
                     <button id="pass-btn" class="action-btn">Pass</button>
+                    <button id="clear-btn" class="action-btn">Clear</button>
                 </div>
             </div>
         </div>

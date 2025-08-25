@@ -127,7 +127,12 @@ class IsraeliWhist {
         };
         
         this.shuffleDeck();
+        
+        // Update botNames for south player before updating displays
+        this.botNames.south = `${this.playerName} (S)`;
+        
         this.updateDisplay();
+        this.updateScoresDisplay();
         this.updatePlayerNameDisplay();
         
         // Verify initialization
@@ -558,6 +563,22 @@ class IsraeliWhist {
         // Clear button selections
         document.querySelectorAll('.trick-button').forEach(btn => btn.classList.remove('selected'));
         document.querySelectorAll('.suit-button').forEach(btn => btn.classList.remove('selected'));
+    }
+
+    clearBidSelections() {
+        // Clear current bid selections and re-enable pass button
+        this.selectedTricks = null;
+        this.selectedSuit = null;
+        
+        // Clear button selections
+        document.querySelectorAll('.trick-button').forEach(btn => btn.classList.remove('selected'));
+        document.querySelectorAll('.suit-button').forEach(btn => btn.classList.remove('selected'));
+        
+        // Re-enable pass button
+        this.updatePassButtonState();
+        
+        // Show feedback to user
+        this.showGameNotification('Bid selections cleared. You can now pass or make a new selection.', 'info');
     }
 
     makePhase1Bid(minTakes, trumpSuit) {
@@ -2224,14 +2245,58 @@ class IsraeliWhist {
     }
      
          updateScoresDisplay() {
-        // Update each player's score display in the Total Score panel
-        this.players.forEach(player => {
-            const scoreElement = document.getElementById(`${player}-total-score`);
-            if (scoreElement) {
-                scoreElement.textContent = this.scores[player];
+        // Ensure botNames.south is up to date with current player name
+        if (this.playerName && this.playerName !== 'Player') {
+            this.botNames.south = `${this.playerName} (S)`;
+        }
+        
+        // Create an array of players with their scores for sorting
+        const playerScores = this.players.map(player => ({
+            player: player,
+            score: this.scores[player],
+            displayName: this.getPlayerDisplayName(player)
+        }));
+        
+        // Sort players by score (highest to lowest), then alphabetically if scores are equal
+        playerScores.sort((a, b) => {
+            if (b.score !== a.score) {
+                return b.score - a.score; // Sort by score first (highest to lowest)
             } else {
-                console.warn(`Could not find score element for ${player}: ${player}-total-score`);
+                return a.displayName.localeCompare(b.displayName); // Alphabetical sort if scores are equal
             }
+        });
+        
+        // Get the total score content container
+        const totalScoreContent = document.getElementById('total-score-content');
+        if (!totalScoreContent) {
+            console.warn('Could not find total-score-content element');
+            return;
+        }
+        
+        // Clear existing content
+        totalScoreContent.innerHTML = '';
+        
+        // Generate score items in sorted order
+        playerScores.forEach((playerData, index) => {
+            const scoreItem = document.createElement('div');
+            scoreItem.className = 'score-item';
+            
+            // Add ranking indicator for top 3 positions
+            let rankingClass = '';
+            if (index === 0) rankingClass = 'first-place';
+            else if (index === 1) rankingClass = 'second-place';
+            else if (index === 2) rankingClass = 'third-place';
+            
+            if (rankingClass) {
+                scoreItem.classList.add(rankingClass);
+            }
+            
+            scoreItem.innerHTML = `
+                <span class="player-label">${playerData.displayName}:</span>
+                <span class="score-value" id="${playerData.player}-total-score">${playerData.score}</span>
+            `;
+            
+            totalScoreContent.appendChild(scoreItem);
         });
     }
 
@@ -2496,6 +2561,14 @@ class IsraeliWhist {
         if (passBtn) {
             passBtn.addEventListener('click', () => {
                 this.passPhase1();
+            });
+        }
+        
+        // Clear button
+        const clearBtn = document.getElementById('clear-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                this.clearBidSelections();
             });
         }
         
