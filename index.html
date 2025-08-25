@@ -33,19 +33,19 @@
             <div class="total-score-title">Total Score</div>
             <div class="total-score-content">
                 <div class="score-item">
-                    <span class="player-label">North:</span>
+                    <span class="player-label">Botti:</span>
                     <span class="score-value" id="north-total-score">0</span>
                 </div>
                 <div class="score-item">
-                    <span class="player-label">East:</span>
+                    <span class="player-label">Droidi:</span>
                     <span class="score-value" id="east-total-score">0</span>
                 </div>
                 <div class="score-item">
-                    <span class="player-label">South:</span>
+                    <span class="player-label" id="south-score-label">South:</span>
                     <span class="score-value" id="south-total-score">0</span>
                 </div>
                 <div class="score-item">
-                    <span class="player-label">West:</span>
+                    <span class="player-label">Chati:</span>
                     <span class="score-value" id="west-total-score">0</span>
                 </div>
             </div>
@@ -56,7 +56,7 @@
             <!-- North Player (Bot) -->
             <div class="player north-player" id="north-player">
                 <div class="player-info">
-                    <span class="player-name">North (Bot)</span>
+                    <span class="player-name">Botti</span>
                     <span class="player-bid">Bid: <span id="north-bid">-</span></span>
                     <span class="player-tricks">Takes: <span id="north-takes">0</span></span>
                 </div>
@@ -67,7 +67,7 @@
             <!-- West Player (Bot) -->
             <div class="player west-player" id="west-player">
                 <div class="player-info">
-                    <span class="player-name">West (Bot)</span>
+                    <span class="player-name">Chati</span>
                     <span class="player-bid">Bid: <span id="west-bid">-</span></span>
                     <span class="player-tricks">Takes: <span id="west-takes">0</span></span>
                 </div>
@@ -100,7 +100,7 @@
             <!-- East Player (Bot) -->
             <div class="player east-player" id="east-player">
                 <div class="player-info">
-                    <span class="player-name">East (Bot)</span>
+                    <span class="player-name">Droidi</span>
                     <span class="player-bid">Bid: <span id="east-bid">-</span></span>
                     <span class="player-tricks">Takes: <span id="east-takes">0</span></span>
                 </div>
@@ -111,7 +111,7 @@
             <!-- South Player (Human) -->
             <div class="player south-player" id="south-player">
                 <div class="player-info">
-                    <span class="player-name">South (You)</span>
+                    <span class="player-name" id="south-player-name">South (You)</span>
                     <span class="player-bid">Bid: <span id="south-bid">-</span></span>
                     <span class="player-tricks">Takes: <span id="south-takes">0</span></span>
                 </div>
@@ -160,19 +160,19 @@
                 <h4>Players' Takes (Predicted Tricks):</h4>
                 <div class="prediction-list">
                     <div class="prediction-item">
-                        <span class="player-name">N:</span>
+                        <span class="player-name">B:</span>
                         <span id="north-prediction" class="prediction-value">-</span>
                     </div>
                     <div class="prediction-item">
-                        <span class="player-name">E:</span>
+                        <span class="player-name">D:</span>
                         <span id="east-prediction" class="prediction-value">-</span>
                     </div>
                     <div class="prediction-item">
-                        <span class="player-name">S:</span>
+                        <span class="player-name" id="south-prediction-label">S:</span>
                         <span id="south-prediction" class="prediction-value">-</span>
                     </div>
                     <div class="prediction-item">
-                        <span class="player-name">W:</span>
+                        <span class="player-name">C:</span>
                         <span id="west-prediction" class="prediction-value">-</span>
                     </div>
                 </div>
@@ -212,6 +212,20 @@
             </div>
         </div>
         
+        <!-- Player Name Modal -->
+        <div class="name-modal" id="name-modal" style="display: block;">
+            <div class="name-content">
+                <div class="name-header">
+                    <h2>🎮 Welcome to Israeli Whist!</h2>
+                </div>
+                <div class="name-body">
+                    <p>Please enter your name to begin:</p>
+                    <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" autocomplete="name">
+                    <button id="start-game-btn" class="action-btn">Start Game</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Rules Modal -->
         <div class="rules-modal" id="rules-modal" style="display: none;">
             <div class="rules-content">
