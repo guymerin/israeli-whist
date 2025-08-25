@@ -640,10 +640,10 @@ class IsraeliWhist {
             return;
         }
         
-        this.phase2Bids[player] = takes;
-
-          
-          // Update Phase 2 bid display immediately
+                this.phase2Bids[player] = takes;
+        console.log(`🎯 PHASE 2: ${this.getPlayerDisplayName(player)} predicts ${takes} tricks`);
+           
+           // Update Phase 2 bid display immediately
           this.updatePhase2BidDisplay(player, takes);
           
           // Force immediate DOM update
@@ -655,10 +655,13 @@ class IsraeliWhist {
           // Check if all players have now bid
           const allPlayersBid = this.players.every(p => this.phase2Bids[p] !== null && this.phase2Bids[p] !== undefined);
           
-          if (allPlayersBid) {
-
-              // Small delay to show the final bid before transitioning
-              setTimeout(() => this.startPhase3(), 1000);
+                     if (allPlayersBid) {
+               // Calculate total bids for analysis
+               const totalBids = Object.values(this.phase2Bids).reduce((sum, bid) => sum + bid, 0);
+               console.log(`📊 PHASE 2 COMPLETE: Total bids = ${totalBids} (${totalBids === 13 ? 'EXACT' : totalBids > 13 ? 'OVER' : 'UNDER'})`);
+               
+               // Small delay to show the final bid before transitioning
+               setTimeout(() => this.startPhase3(), 1000);
               return;
           }
           
@@ -1966,8 +1969,7 @@ class IsraeliWhist {
                 animationLeft = `${cardsRect.left - gameBoardRect.left + cardsRect.width / 2}px`;
             }
             
-            console.log(`Positioning ${player} bid animation: top=${animationTop}, left=${animationLeft}`);
-             } else {
+                 } else {
             // Fallback: position above the player info panel
             const playerInfo = document.querySelector(`.${player}-player`);
             if (playerInfo && gameBoardRect) {
@@ -1982,8 +1984,6 @@ class IsraeliWhist {
                     animationTop = `${rect.top - gameBoardRect.top - 60}px`;
                     animationLeft = `${rect.left - gameBoardRect.left + rect.width / 2}px`;
                 }
-                
-                console.log(`Fallback positioning ${player} bid animation: top=${animationTop}, left=${animationLeft}`);
              }
         }
         
@@ -2210,8 +2210,7 @@ class IsraeliWhist {
      }
 
          updatePhase2BidDisplay(player, takes) {
-         // Specifically update Phase 2 bid display for a player
-         console.log(`Updating Phase 2 bid display for ${player}: ${takes}`);
+                 // Specifically update Phase 2 bid display for a player
          
          // Try multiple selectors to find the bid span
          let bidSpan = document.querySelector(`.${player}-player .player-bid`);
@@ -2324,7 +2323,6 @@ class IsraeliWhist {
 
     refreshAllPhase2Displays() {
         // Force refresh all Phase 2 bid displays
-        console.log('Refreshing all Phase 2 bid displays...');
         this.players.forEach(player => {
             this.updatePhase2BidDisplay(player, this.phase2Bids[player]);
         });
@@ -2344,24 +2342,13 @@ class IsraeliWhist {
         // Check DOM elements
         this.players.forEach(player => {
             const bidSpan = document.querySelector(`.${player}-player .player-bid`);
-            console.log(`${player} bid span:`, bidSpan);
-            if (bidSpan) {
-                console.log(`${player} bid span text:`, bidSpan.textContent);
-            }
         });
         
         // Check Phase 2 interface
         const phase2Interface = document.querySelector('.second-phase-bidding');
         console.log('Phase 2 interface:', phase2Interface);
-        if (phase2Interface) {
-            console.log('Phase 2 interface display:', phase2Interface.style.display);
-        }
-        
-        // Additional debugging for Phase 2 bid updates
-        console.log('=== PHASE 2 BID UPDATE DEBUG ===');
-        this.players.forEach(player => {
-            console.log(`${player}: phase2Bids[${player}] = ${this.phase2Bids[player]} (type: ${typeof this.phase2Bids[player]})`);
-        });
+        // Check bids data (debug only)
+        console.log('Phase 2 Bids:', this.phase2Bids);
     }
 
     getPhaseDisplayText() {
@@ -2501,7 +2488,7 @@ class IsraeliWhist {
             hintBtn.addEventListener('click', () => {
                 if (this.currentPhase === 'phase2') {
                     this.refreshAllPhase2Displays();
-                    console.log('Hint button: Refreshed Phase 2 displays');
+
                 } else {
                     console.log('Hint button: Not in Phase 2, current phase:', this.currentPhase);
                 }
@@ -2592,7 +2579,6 @@ class IsraeliWhist {
         } while (this.playersPassed[this.players[this.currentBidder]]);
         
         const player = this.players[this.currentBidder];
-         console.log(`Phase 1 bidding: next player is ${this.getPlayerDisplayName(player)} (clockwise progression)`);
         
         // Check if all 4 players have passed
         if (this.passCount >= 4) {
@@ -2631,7 +2617,6 @@ class IsraeliWhist {
         
         // Check if this player has already passed - if so, they can't bid again
         if (this.playersPassed[player]) {
-            console.log(`${this.getPlayerDisplayName(player)} has already passed, moving to next player`);
             setTimeout(() => {
                 this.currentBidder = (this.currentBidder + 1) % 4;
                 this.nextPhase1Bidder();
@@ -2641,11 +2626,8 @@ class IsraeliWhist {
         
         // Get current highest bid to determine if we need to bid higher
         const currentHighestBid = this.getCurrentHighestBid();
-        console.log(`${this.getPlayerDisplayName(player)} evaluating bid. Current highest bid:`, currentHighestBid);
-        
-        // Evaluate hand strength for this player
+                // Evaluate hand strength for this player
         const handStrength = this.evaluateHandStrength(player);
-        console.log(`${this.getPlayerDisplayName(player)} hand strength: ${handStrength.score} points, ${handStrength.longestSuit} longest suit`);
         
         // Decide whether to pass or bid based on hand strength and current bidding
         let shouldPass = false;
@@ -2675,7 +2657,7 @@ class IsraeliWhist {
                     if (handStrength.score >= 14 || this.shouldBotBid(player, potentialBid, handStrength, currentHighestBid)) {
                         // Make the higher bid
                         this.phase1Bids[player] = potentialBid;
-                        console.log(`${this.getPlayerDisplayName(player)} bids ${potentialBid.minTakes} ${potentialBid.trumpSuit}`);
+                        console.log(`🃏 PHASE 1: ${this.getPlayerDisplayName(player)} bids ${potentialBid.minTakes} ${potentialBid.trumpSuit}`);
                         const bidText = `${potentialBid.minTakes} ${this.getSuitSymbol(potentialBid.trumpSuit)}`;
                         this.showBidAnimation(player, bidText);
                         bidMade = true;
@@ -2687,7 +2669,6 @@ class IsraeliWhist {
                     }
                 } else {
                     // Can't bid higher or bid is not valid
-                    console.log(`${this.getPlayerDisplayName(player)} cannot bid higher than current bid, passing`);
                     shouldPass = true;
                 }
             }
@@ -2699,11 +2680,10 @@ class IsraeliWhist {
                 // Check if this opening bid would duplicate an existing bid
                 const currentHighestBid = this.getCurrentHighestBid();
                 if (currentHighestBid && !this.isBidHigher(openingBid, currentHighestBid)) {
-                    console.log(`${this.getPlayerDisplayName(player)} opening bid would not be higher than current bid, passing instead`);
                     shouldPass = true;
                 } else {
                     this.phase1Bids[player] = openingBid;
-                    console.log(`${this.getPlayerDisplayName(player)} bids ${openingBid.minTakes} ${openingBid.trumpSuit}`);
+                    console.log(`🃏 PHASE 1: ${this.getPlayerDisplayName(player)} opens ${openingBid.minTakes} ${openingBid.trumpSuit}`);
                     const bidText = `${openingBid.minTakes} ${this.getSuitSymbol(openingBid.trumpSuit)}`;
                     this.showBidAnimation(player, bidText);
                     bidMade = true;
@@ -2719,7 +2699,7 @@ class IsraeliWhist {
         if (shouldPass) {
             this.playersPassed[player] = true;
             this.passCount++;
-            console.log(`${this.getPlayerDisplayName(player)} passed`);
+            console.log(`🚫 PHASE 1: ${this.getPlayerDisplayName(player)} passed`);
             this.showBidAnimation(player, 'Pass');
             
             // Update the display to show the pass
@@ -2755,12 +2735,9 @@ class IsraeliWhist {
 
     promptPhase1Bidder() {
         // Human player's turn to bid
-        console.log('Human player turn to bid');
         
         // Show the bidding interface for the human player
-        console.log('About to call showBiddingInterface');
         this.showBiddingInterface();
-        console.log('showBiddingInterface called');
     }
 
     getCurrentHighestBid() {
@@ -3384,7 +3361,17 @@ class IsraeliWhist {
             this.trumpSuit = highestBid.trumpSuit;
             this.minimumTakes = highestBid.minTakes;
             const winnerDisplayName = this.getPlayerDisplayName(trumpWinner);
-            console.log(`Phase 1 complete. ${winnerDisplayName} won with ${highestBid.minTakes} ${highestBid.trumpSuit}`);
+            console.log(`🏆 PHASE 1 WINNER: ${winnerDisplayName} won with ${highestBid.minTakes} ${highestBid.trumpSuit}`);
+            
+            // Show all player hands for analysis
+            console.log(`\n🃏 PLAYER HANDS ANALYSIS:`);
+            this.players.forEach(player => {
+                const hand = this.hands[player].map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`).sort();
+                const handStrength = this.evaluateHandStrength(player);
+                console.log(`   ${this.getPlayerDisplayName(player)}: ${hand.join(' ')} (${handStrength.score} pts)`);
+            });
+            console.log(''); // Empty line for readability
+            
             this.startPhase2();
         } else {
             // All passed, redeal
@@ -3489,7 +3476,7 @@ class IsraeliWhist {
                 animationLeft = (playerRect.left - gameBoardRect.left + playerRect.width / 2) + 'px';
             }
             
-            console.log(`Score animation for ${player}: top=${animationTop}, left=${animationLeft}`);
+
             
             // Style the animation
             scoreAnimation.style.cssText = `
@@ -3546,8 +3533,9 @@ class IsraeliWhist {
      
      // End hand and calculate scores
      endHand() {
-         console.log('=== ENDING HAND & CALCULATING SCORES ===');
-         console.log(`Final trick counts: ${Object.entries(this.tricksWon).map(([p, t]) => `${p}: ${t}`).join(', ')}`);
+                 console.log('🏁 HAND COMPLETE - Final Results:');
+        const results = Object.entries(this.tricksWon).map(([p, t]) => `${this.getPlayerDisplayName(p)}: ${t} tricks`).join(', ');
+        console.log(`   Tricks Won: ${results}`);
          
          // Calculate scores for each player and collect score changes
          const scoreChanges = {};
@@ -3559,11 +3547,12 @@ class IsraeliWhist {
              if (bid === 0) {
                  // Special scoring for zero bids
                  score = this.calculateZeroBidScore(player, tricks);
-                 console.log(`${this.getPlayerDisplayName(player)}: bid 0, won ${tricks} tricks, score: ${score} (total: ${this.scores[player] + score})`);
+                 console.log(`   💯 ${this.getPlayerDisplayName(player)}: bid 0, took ${tricks} → ${score > 0 ? '+' : ''}${score} pts (${this.scores[player]} → ${this.scores[player] + score})`);
              } else {
                  // Regular scoring
                  score = this.calculateScore(player, bid, tricks);
-                 console.log(`${this.getPlayerDisplayName(player)}: bid ${bid}, won ${tricks} tricks, score: ${score} (total: ${this.scores[player] + score})`);
+                 const status = tricks === bid ? '✅ EXACT' : tricks > bid ? '📈 OVER' : '📉 UNDER';
+                 console.log(`   ${status} ${this.getPlayerDisplayName(player)}: bid ${bid}, took ${tricks} → ${score > 0 ? '+' : ''}${score} pts (${this.scores[player]} → ${this.scores[player] + score})`);
              }
              
              scoreChanges[player] = score;
@@ -3580,13 +3569,13 @@ class IsraeliWhist {
          setTimeout(() => this.updateScoresDisplay(), 2000);
          
          // Check for game winner (first to reach 100 points)
-         const winner = this.players.find(player => this.scores[player] >= 100);
-         if (winner) {
-             const winnerDisplayName = this.getPlayerDisplayName(winner);
-             console.log(`🎉 ${winnerDisplayName} WINS THE GAME with ${this.scores[winner]} points!`);
-             this.showGameNotification(`🎉 ${winnerDisplayName} WINS THE GAME with ${this.scores[winner]} points!`, 'success', 5000);
-             this.resetForNewGame();
-         } else {
+                 const winner = this.players.find(player => this.scores[player] >= 100);
+        if (winner) {
+            const winnerDisplayName = this.getPlayerDisplayName(winner);
+            console.log(`🏆 GAME WINNER: ${winnerDisplayName} with ${this.scores[winner]} points!`);
+            this.showGameNotification(`🎉 ${winnerDisplayName} WINS THE GAME with ${this.scores[winner]} points!`, 'success', 5000);
+            this.resetForNewGame();
+        } else {
              // Continue to next hand - increment game number and show deal button
              console.log('No winner yet, continuing to next hand...');
              this.currentRound++;
@@ -3632,13 +3621,11 @@ class IsraeliWhist {
              const recentAccuracy = this.calculateBiddingAccuracy(player);
              if (recentAccuracy < 0.5 && pattern.biddingStyle === 'aggressive') {
                  pattern.biddingStyle = 'balanced';
-                 console.log(`${this.getPlayerDisplayName(player)} adapting: aggressive → balanced due to poor accuracy`);
+                 console.log(`🤖 ${this.getPlayerDisplayName(player)}: adapting to BALANCED (poor accuracy)`);
              } else if (recentAccuracy > 0.8 && pattern.biddingStyle === 'conservative') {
                  pattern.biddingStyle = 'balanced';
-                 console.log(`${this.getPlayerDisplayName(player)} adapting: conservative → balanced due to high accuracy`);
+                 console.log(`🤖 ${this.getPlayerDisplayName(player)}: adapting to BALANCED (high accuracy)`);
              }
-             
-             console.log(`${this.getPlayerDisplayName(player)} learning update: predicted=${predictedTricks}, actual=${actualTricks}, accuracy=${pattern.accuracy.toFixed(3)}, risk=${pattern.riskTolerance.toFixed(3)}`);
          });
      }
      
@@ -4203,11 +4190,7 @@ document.addEventListener('DOMContentLoaded', () => {
          window.forceUpdate = () => window.game.forceDisplayUpdate();
          window.testBidUpdate = (player, takes) => window.game.updatePhase2BidDisplay(player, takes);
          
-         console.log('Debug methods available:');
-         console.log('- debugPhase2Bids() - Check Phase 2 bid state');
-         console.log('- refreshPhase2Displays() - Refresh all Phase 2 displays');
-         console.log('- forceUpdate() - Force immediate display update');
-         console.log('- testBidUpdate(player, takes) - Test updating a specific player\'s bid');
+                 // Debug helper functions available in console
     } catch (error) {
         console.error('Error initializing game:', error);
     }
