@@ -6,10 +6,10 @@ class IsraeliWhist {
         this.players = ['north', 'east', 'south', 'west'];
         this.playerName = 'Player'; // Human player's name (default)
         this.botNames = {
-            north: 'Botti',
-            east: 'Droidi',
+            north: 'Botti (N)',
+            east: 'Droidi (E)',
             south: this.playerName, // Will be updated when player enters name
-            west: 'Chati'
+            west: 'Chati (W)'
         };
         this.currentDealer = 0; // North starts as dealer
         this.currentRound = 1; // Track current round
@@ -97,7 +97,10 @@ class IsraeliWhist {
     }
 
     initializeGame() {
-        // Show name modal first
+        // Check if we have a cached name
+        const cachedName = localStorage.getItem('israeliWhist_playerName');
+        
+        // Show name modal first (it will auto-fill the cached name if available)
         this.showNameModal();
         
         // Initialize hint system
@@ -106,6 +109,11 @@ class IsraeliWhist {
 
     startGameWithName(playerName) {
         this.playerName = playerName || 'Player';
+        
+        // Cache the player name in localStorage for future games
+        if (playerName && playerName.trim()) {
+            localStorage.setItem('israeliWhist_playerName', playerName.trim());
+        }
         
         // Hide name modal
         document.getElementById('name-modal').style.display = 'none';
@@ -722,88 +730,134 @@ class IsraeliWhist {
     }
 
     calculateSmartPhase2Bid(player, handStrength, currentTotal, minBid, maxBid) {
-        // Smarter, more conservative Phase 2 bidding based primarily on hand strength
+        // Expert-level Phase 2 bidding - aim for optimal totals of 12 or 14
         const playerPattern = this.botMemory.playerPatterns[player];
         const trumpSuit = this.trumpSuit;
         const hand = this.hands[player];
+        const playersRemaining = 4 - this.currentBidder;
         
-        // Base trick estimation - primary factor
+        // Base trick estimation
         let trickEstimate = this.calculateRealisticTricks(hand, trumpSuit, handStrength);
         
-        // Hand strength check - prevent overbidding with weak hands
+        // Expert strategic bidding - prioritize achieving optimal totals
+        let optimalBid = trickEstimate;
+        
+        if (playersRemaining === 1) {
+            // Last bidder - we control the final total, so be very strategic
+            const targetTotals = [12, 14]; // Optimal totals in order of preference
+            let bestBid = Math.round(trickEstimate);
+            let bestScore = -1000;
+            
+            // Evaluate each possible bid
+            for (let testBid = minBid; testBid <= maxBid; testBid++) {
+                const resultingTotal = currentTotal + testBid;
+                let bidScore = 0;
+                
+                // Heavily favor optimal totals
+                if (resultingTotal === 12) {
+                    bidScore += 100; // Best total
+                } else if (resultingTotal === 14) {
+                    bidScore += 90;  // Second best total
+                } else if (resultingTotal === 11 || resultingTotal === 15) {
+                    bidScore += 20;  // Decent totals
+                } else if (resultingTotal === 10 || resultingTotal === 16) {
+                    bidScore += 10;  // OK totals
+                } else if (resultingTotal === 13) {
+                    bidScore -= 200; // Forbidden total
+                } else {
+                    bidScore -= Math.abs(resultingTotal - 13) * 10; // Penalty for distance from 13
+                }
+                
+                // Factor in how close the bid is to our hand strength
+                const handFit = 1 - Math.abs(testBid - trickEstimate) / 10;
+                bidScore += handFit * 50;
+                
+                // Penalty for extreme overbidding/underbidding
+                if (testBid > trickEstimate * 1.5) {
+                    bidScore -= 30; // Overbidding penalty
+                } else if (testBid < trickEstimate * 0.6) {
+                    bidScore -= 20; // Underbidding penalty
+                }
+                
+                if (bidScore > bestScore) {
+                    bestScore = bidScore;
+                    bestBid = testBid;
+                }
+            }
+            
+            optimalBid = bestBid;
+            
+        } else {
+            // Not last bidder - coordinate towards optimal totals
+            const remainingPlayers = playersRemaining;
+            
+            // Calculate what total we're aiming for
+            let targetTotal = 12; // Default preference
+            
+            // If we're early in bidding, consider both 12 and 14
+            const projectedFor12 = (12 - currentTotal) / remainingPlayers;
+            const projectedFor14 = (14 - currentTotal) / remainingPlayers;
+            
+            // Choose the target that's more reasonable given our hand
+            if (Math.abs(trickEstimate - projectedFor14) < Math.abs(trickEstimate - projectedFor12)) {
+                targetTotal = 14;
+            }
+            
+            const targetBidForOptimal = (targetTotal - currentTotal) / remainingPlayers;
+            
+            // Balance between our hand strength and optimal total contribution
+            const handWeight = 0.6; // 60% hand strength
+            const optimalWeight = 0.4; // 40% optimal total targeting
+            
+            optimalBid = (trickEstimate * handWeight) + (targetBidForOptimal * optimalWeight);
+            
+            // Adjust based on position in bidding order
+            if (this.currentBidder === 0) {
+                // First bidder - be slightly conservative to allow room for others
+                optimalBid *= 0.9;
+            } else if (this.currentBidder === 1) {
+                // Second bidder - moderate approach
+                optimalBid *= 0.95;
+            } else {
+                // Third bidder - more aggressive to set up last bidder
+                optimalBid *= 1.05;
+            }
+        }
+        
+        // Apply bot personality (but keep it smaller)
+        const riskTolerance = playerPattern.riskTolerance;
+        if (riskTolerance < 0.3) {
+            optimalBid *= 0.95; // Slightly conservative
+        } else if (riskTolerance > 0.6) {
+            optimalBid *= 1.05; // Slightly aggressive
+        }
+        
+        // Trump winner constraint
+        if (player === this.trumpWinner) {
+            optimalBid = Math.max(optimalBid, this.minimumTakes);
+        }
+        
+        // Hand strength reality checks
         const isWeakHand = handStrength.score < 18;
         const isStrongHand = handStrength.score >= 25;
         
-        // Conservative adjustment for weak hands
-        if (isWeakHand) {
-            trickEstimate *= 0.7; // Be much more conservative with weak hands
-        } else if (isStrongHand) {
-            trickEstimate *= 1.1; // Slightly more aggressive with strong hands
+        if (isWeakHand && optimalBid > 4) {
+            optimalBid = Math.min(4, Math.max(minBid, optimalBid * 0.8));
+        } else if (isStrongHand && optimalBid < 2) {
+            optimalBid = Math.max(2, optimalBid);
         }
         
-        // Strategic considerations (but secondary to hand strength)
-        const playersRemaining = 4 - this.currentBidder;
-        let strategicAdjustment = 0;
+        // Final constraints
+        let finalBid = Math.round(optimalBid);
+        finalBid = Math.max(minBid, Math.min(maxBid, finalBid));
         
-        // Only make strategic adjustments if they don't contradict hand strength too much
-        if (playersRemaining === 1) {
-            // Last bidder - try to avoid total of exactly 13 if possible
-            const potentialTotal = currentTotal + Math.round(trickEstimate);
-            if (potentialTotal === 13) {
-                // Try to avoid 13 but only within reasonable bounds
-                const lowerBid = Math.round(trickEstimate) - 1;
-                const higherBid = Math.round(trickEstimate) + 1;
-                
-                if (lowerBid >= minBid && lowerBid >= trickEstimate * 0.7) {
-                    strategicAdjustment = -1;
-                } else if (higherBid <= maxBid && higherBid <= trickEstimate * 1.3) {
-                    strategicAdjustment = 1;
-                }
-            }
-        } else if (playersRemaining > 1) {
-            // Early/middle bidding - make small strategic adjustments
-            const expectedRemainingBids = (13 - currentTotal) / playersRemaining;
-            const difference = expectedRemainingBids - trickEstimate;
-            
-            // Only make small adjustments and only if hand can support it
-            if (Math.abs(difference) <= 1.5) {
-                strategicAdjustment = difference * 0.3; // Small strategic nudge
-            }
+        // Last safety check - don't bid impossibly high compared to hand
+        const maxReasonableBid = Math.ceil(trickEstimate * 1.6);
+        if (finalBid > maxReasonableBid && !isStrongHand) {
+            finalBid = Math.max(minBid, maxReasonableBid);
         }
         
-        // Combine trick estimate with strategic adjustment
-        let bid = trickEstimate + strategicAdjustment;
-        
-        // Bot personality adjustments (smaller than before)
-        const riskTolerance = playerPattern.riskTolerance;
-        
-        if (riskTolerance < 0.3) {
-            bid *= 0.95; // Slightly conservative
-        } else if (riskTolerance > 0.7) {
-            bid *= 1.05; // Only slightly aggressive
-        }
-        
-        // Trump winner must bid at least minimum
-        if (player === this.trumpWinner) {
-            bid = Math.max(bid, this.minimumTakes);
-        }
-        
-        // Round and constrain to valid range
-        bid = Math.round(bid);
-        bid = Math.max(minBid, Math.min(maxBid, bid));
-        
-        // Safety check: prevent ridiculous overbidding
-        const maxReasonableBid = Math.ceil(trickEstimate * 1.4); // Never bid more than 40% over estimate
-        if (bid > maxReasonableBid && !isStrongHand) {
-            bid = Math.max(minBid, maxReasonableBid);
-        }
-        
-        // Special check for weak hands - never bid more than 4 with weak hands
-        if (isWeakHand && bid > 4) {
-            bid = Math.min(4, Math.max(minBid, bid));
-        }
-        
-        return bid;
+        return finalBid;
     }
     
     calculateRealisticTricks(hand, trumpSuit, handStrength) {
@@ -1902,22 +1956,34 @@ class IsraeliWhist {
         if (playerCards && gameBoardRect) {
             const cardsRect = playerCards.getBoundingClientRect();
             
-            // Position above the center of the cards for all players
-            animationTop = `${cardsRect.top - gameBoardRect.top - 60}px`;
-            animationLeft = `${cardsRect.left - gameBoardRect.left + cardsRect.width / 2}px`;
+            if (player === 'north') {
+                // Special positioning for North player - place below their cards instead of above
+                animationTop = `${cardsRect.bottom - gameBoardRect.top + 20}px`;
+                animationLeft = `${cardsRect.left - gameBoardRect.left + cardsRect.width / 2}px`;
+            } else {
+                // Position above the center of the cards for other players
+                animationTop = `${cardsRect.top - gameBoardRect.top - 60}px`;
+                animationLeft = `${cardsRect.left - gameBoardRect.left + cardsRect.width / 2}px`;
+            }
             
-            console.log(`Positioning ${player} bid animation above cards: top=${animationTop}, left=${animationLeft}`);
+            console.log(`Positioning ${player} bid animation: top=${animationTop}, left=${animationLeft}`);
              } else {
             // Fallback: position above the player info panel
             const playerInfo = document.querySelector(`.${player}-player`);
             if (playerInfo && gameBoardRect) {
                 const rect = playerInfo.getBoundingClientRect();
                 
-                // Position above the player info panel
-                 animationTop = `${rect.top - gameBoardRect.top - 60}px`;
-            animationLeft = `${rect.left - gameBoardRect.left + rect.width / 2}px`;
+                if (player === 'north') {
+                    // Special positioning for North player fallback - place below their info panel
+                    animationTop = `${rect.bottom - gameBoardRect.top + 20}px`;
+                    animationLeft = `${rect.left - gameBoardRect.left + rect.width / 2}px`;
+                } else {
+                    // Position above the player info panel for other players
+                    animationTop = `${rect.top - gameBoardRect.top - 60}px`;
+                    animationLeft = `${rect.left - gameBoardRect.left + rect.width / 2}px`;
+                }
                 
-                console.log(`Fallback positioning ${player} bid animation above info panel: top=${animationTop}, left=${animationLeft}`);
+                console.log(`Fallback positioning ${player} bid animation: top=${animationTop}, left=${animationLeft}`);
              }
         }
         
@@ -2627,7 +2693,7 @@ class IsraeliWhist {
             }
         } else {
             // No current bid, evaluate whether we should make an opening bid
-            if (handStrength.score >= 18) { // Raised back to 18 for more conservative opening bids
+            if (handStrength.score >= 20) { // More conservative - only strong hands open
                 const openingBid = this.calculateSmartOpeningBid(player, handStrength);
                 
                 // Check if this opening bid would duplicate an existing bid
@@ -3830,40 +3896,49 @@ class IsraeliWhist {
          }
      }
 
-     showNameModal() {
-         const nameModal = document.getElementById('name-modal');
-         if (nameModal) {
-             nameModal.style.display = 'flex';
-         }
-     }
+         showNameModal() {
+        const nameModal = document.getElementById('name-modal');
+        const playerNameInput = document.getElementById('player-name-input');
+        
+        if (nameModal) {
+            nameModal.style.display = 'flex';
+            
+            // Try to load cached name from localStorage
+            const cachedName = localStorage.getItem('israeliWhist_playerName');
+            if (cachedName && playerNameInput) {
+                playerNameInput.value = cachedName;
+                playerNameInput.focus();
+                playerNameInput.select(); // Select the text so user can easily change it
+            }
+        }
+    }
 
      getPlayerDisplayName(player) {
          return this.botNames[player] || player;
      }
 
-     updatePlayerNameDisplay() {
-         // Update the botNames mapping for south player
-         this.botNames.south = this.playerName;
+         updatePlayerNameDisplay() {
+        // Update the botNames mapping for south player with position
+        this.botNames.south = `${this.playerName} (S)`;
 
-         // Update player name in the game board
-         const southPlayerName = document.getElementById('south-player-name');
-         if (southPlayerName) {
-             southPlayerName.textContent = this.playerName;
-         }
+        // Update player name in the game board
+        const southPlayerName = document.getElementById('south-player-name');
+        if (southPlayerName) {
+            southPlayerName.textContent = `${this.playerName} (S)`;
+        }
 
-         // Update player name in score display
-         const southScoreLabel = document.getElementById('south-score-label');
-         if (southScoreLabel) {
-             southScoreLabel.textContent = `${this.playerName}:`;
-         }
+        // Update player name in score display
+        const southScoreLabel = document.getElementById('south-score-label');
+        if (southScoreLabel) {
+            southScoreLabel.textContent = `${this.playerName}:`;
+        }
 
-         // Update player name in phase 2 predictions
-         const southPredictionLabel = document.getElementById('south-prediction-label');
-         if (southPredictionLabel) {
-             const firstLetter = this.playerName.charAt(0).toUpperCase();
-             southPredictionLabel.textContent = `${firstLetter}:`;
-         }
-     }
+        // Update player name in phase 2 predictions
+        const southPredictionLabel = document.getElementById('south-prediction-label');
+        if (southPredictionLabel) {
+            southPredictionLabel.textContent = 'S:';
+        }
+    }
 
      hideRules() {
          const rulesModal = document.getElementById('rules-modal');

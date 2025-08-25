@@ -154,6 +154,11 @@ h1 {
     letter-spacing: 0.5px;
 }
 
+/* Make trump suit symbols bigger in the game status */
+.trump-suit span {
+    font-size: 1.8em;
+}
+
 /* Game Board */
 .game-board {
     position: relative;
@@ -359,14 +364,14 @@ h1 {
 }
 
 .card-suit {
-    font-size: 26px;
+    font-size: 32px;
     text-align: right;
     line-height: 1;
     margin-top: 0;
 }
 
 .card-center-suit {
-    font-size: 42px;
+    font-size: 52px;
     text-align: center;
     flex: 1;
     display: flex;
@@ -1324,7 +1329,7 @@ h1 {
 }
 
 #trump-suit-large {
-    font-size: 5em;
+    font-size: 6em;
     font-weight: bold;
     text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
     animation: trumpGlow 2s ease-in-out infinite alternate;
@@ -1626,14 +1631,14 @@ h1 {
 }
 
 .suit-button {
-    font-size: 28px;
-    min-height: 40px;
+    font-size: 36px;
+    min-height: 50px;
     padding: 10px 6px;
 }
 
 /* Make NT button smaller */
 .suit-button[data-value="notrump"] {
-    font-size: 20px;
+    font-size: 24px;
     padding: 8px 4px;
 }
 
@@ -2025,6 +2030,30 @@ h1 {
     outline: none;
     border-color: #FFD700;
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* Start Game Button - Make it bigger and more prominent */
+#start-game-btn.action-btn {
+    padding: 16px 40px;
+    font-size: 18px;
+    border-radius: 25px;
+    letter-spacing: 1.5px;
+    margin-top: 10px;
+    background: linear-gradient(135deg, #4CAF50, #45a049, #3d8b40);
+    box-shadow: 
+        0 8px 16px rgba(0, 0, 0, 0.4),
+        0 4px 8px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(76, 175, 80, 0.3);
+    transform: scale(1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#start-game-btn.action-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 
+        0 12px 24px rgba(0, 0, 0, 0.5),
+        0 6px 12px rgba(0, 0, 0, 0.4),
+        0 0 30px rgba(76, 175, 80, 0.5);
 }
 
 /* Rules Modal Styling */
