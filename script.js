@@ -105,6 +105,13 @@ class IsraeliWhist {
                 south: { biddingStyle: 'human', accuracy: 0.6, riskTolerance: 0.5, learningData: [] },
                 west: { biddingStyle: 'conservative', accuracy: 0.75, riskTolerance: 0.25, learningData: [] } // Chati is conservative too
             },
+            // ADVANCED: Player behavior profiling
+            behaviorProfiles: {
+                north: { phase1History: [], phase2History: [], playingStyle: 'unknown', confidence: 0 },
+                east: { phase1History: [], phase2History: [], playingStyle: 'unknown', confidence: 0 },
+                south: { phase1History: [], phase2History: [], playingStyle: 'unknown', confidence: 0 },
+                west: { phase1History: [], phase2History: [], playingStyle: 'unknown', confidence: 0 }
+            },
             gameHistory: [], // Historical data for learning
             cardsPlayed: { north: [], east: [], south: [], west: [] },
             suitDistribution: { clubs: 13, diamonds: 13, hearts: 13, spades: 13 },
@@ -1086,14 +1093,20 @@ class IsraeliWhist {
     }
 
     calculateSmartPhase2Bid(player, handStrength, currentTotal, minBid, maxBid) {
-        // Expert-level Phase 2 bidding - aim for optimal totals of 12 or 14
+        // ADVANCED: Expert-level Phase 2 bidding with bid sum awareness
         const playerPattern = this.botMemory.playerPatterns[player];
         const trumpSuit = this.trumpSuit;
         const hand = this.hands[player];
         const playersRemaining = 4 - this.currentBidder;
         
+        // STRATEGY: Calculate bid sum awareness - predict desperation plays
+        const bidSumAnalysis = this.analyzeBidSumSituation(currentTotal, playersRemaining);
+        
         // Base trick estimation
         let trickEstimate = this.calculateRealisticTricks(hand, trumpSuit, handStrength);
+        
+        // ADVANCED: Adjust bidding based on bid sum analysis
+        trickEstimate = this.adjustBidForSumAwareness(trickEstimate, bidSumAnalysis, playersRemaining);
         
         // Expert strategic bidding - prioritize achieving optimal totals
         let optimalBid = trickEstimate;
@@ -1962,55 +1975,152 @@ class IsraeliWhist {
         );
     }
     
+    // SMARTER: Assess trump potential based on Israeli Whist guidance
     getBestTrumpSuit(player, handStrength) {
-        // Determine the best trump suit for this player based on their hand
         const hand = this.hands[player];
-        const suitAnalysis = {};
+        const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
         
-        // Analyze each suit
-        ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
-            const suitCards = hand.filter(card => card.suit === suit);
-            const suitLength = suitCards.length;
-            const suitHonors = suitCards.filter(card => ['A', 'K', 'Q', 'J'].includes(card.rank)).length;
-            
-            // Calculate suit strength score
-            let suitScore = 0;
-            suitScore += suitLength * 2; // Length is important
-            suitScore += suitHonors * 3; // Honors are valuable
-            
-            // Bonus for very long suits (6+ cards)
-            if (suitLength >= 6) {
-                suitScore += (suitLength - 5) * 2;
-            }
-            
-            suitAnalysis[suit] = {
-                length: suitLength,
-                honors: suitHonors,
-                score: suitScore
-            };
-        });
-        
-        // Check if no-trump might be better (balanced hand with high cards)
-        const isBalanced = handStrength.maxLength <= 5 && handStrength.minLength >= 2;
-        const hasHighCards = handStrength.score >= 25;
-        
-        if (isBalanced && hasHighCards) {
-            // Consider no-trump as best option for balanced strong hands
-            return 'notrump';
-        }
-        
-        // Find the suit with the highest score
         let bestSuit = 'clubs';
-        let bestScore = suitAnalysis['clubs'].score;
+        let bestScore = 0;
         
-        Object.entries(suitAnalysis).forEach(([suit, analysis]) => {
-            if (analysis.score > bestScore) {
+        suits.forEach(suit => {
+            const assessment = this.assessTrumpPotential(hand, suit);
+            if (assessment.totalScore > bestScore) {
+                bestScore = assessment.totalScore;
                 bestSuit = suit;
-                bestScore = analysis.score;
             }
         });
         
         return bestSuit;
+    }
+    
+    // ADVANCED: Assess trump potential for each suit with shape-based bidding
+    assessTrumpPotential(hand, suit) {
+        if (suit === 'notrump') {
+            return this.assessNoTrumpPotential(hand);
+        }
+        
+        const suitCards = hand.filter(card => card.suit === suit);
+        const suitLength = suitCards.length;
+        const highCards = suitCards.filter(card => ['A', 'K', 'Q', 'J'].includes(card.rank));
+        
+        // ADVANCED: Shape-based evaluation - don't just count high cards
+        const handShape = this.evaluateHandShape(hand);
+        const shapeBonus = this.calculateShapeBonus(suit, handShape);
+        
+        // Count short suits elsewhere (for trumping potential)
+        const shortSuits = ['clubs', 'diamonds', 'hearts', 'spades']
+            .filter(s => s !== suit)
+            .filter(s => hand.filter(card => card.suit === s).length <= 2).length;
+        
+        let score = shapeBonus;
+        
+        // GUIDANCE: Look for long suit (5+ cards) - primary factor
+        if (suitLength >= 6) {
+            score += 4.0; // Very long suit is excellent for trump
+        } else if (suitLength >= 5) {
+            score += 3.0; // Long suit is good for trump
+        } else if (suitLength >= 4) {
+            score += 1.5; // Decent length
+        } else if (suitLength <= 2) {
+            score -= 2.0; // Too short for effective trump
+        }
+        
+        // GUIDANCE: High cards (A, K, Q, J) in trump suit
+        const aces = highCards.filter(card => card.rank === 'A').length;
+        const kings = highCards.filter(card => card.rank === 'K').length;
+        const queens = highCards.filter(card => card.rank === 'Q').length;
+        const jacks = highCards.filter(card => card.rank === 'J').length;
+        
+        score += aces * 1.5;    // Ace is very powerful
+        score += kings * 1.0;   // King is strong
+        score += queens * 0.7;  // Queen is decent
+        score += jacks * 0.4;   // Jack has some value
+        
+        // GUIDANCE: Short suits elsewhere (to allow trumping)
+        score += shortSuits * 0.8; // Each short suit allows ruffing
+        
+        // Bonus for having both length and high cards
+        if (suitLength >= 5 && highCards.length >= 2) {
+            score += 1.5; // Excellent trump combination
+        }
+        
+        return {
+            length: suitLength,
+            honors: highCards.length,
+            shortSuits: shortSuits,
+            totalScore: Math.max(0, score)
+        };
+    }
+    
+    // ADVANCED: NT Precision - control in at least 3 suits required
+    assessNoTrumpPotential(hand) {
+        const suitCounts = { clubs: 0, diamonds: 0, hearts: 0, spades: 0 };
+        const suitHighCards = { clubs: 0, diamonds: 0, hearts: 0, spades: 0 };
+        const suitControl = { clubs: false, diamonds: false, hearts: false, spades: false };
+        
+        hand.forEach(card => {
+            suitCounts[card.suit]++;
+            if (['A', 'K', 'Q', 'J'].includes(card.rank)) {
+                suitHighCards[card.suit]++;
+            }
+            // ADVANCED: Define "control" as A, K, or protected Q/J
+            if (card.rank === 'A' || card.rank === 'K') {
+                suitControl[card.suit] = true;
+            }
+        });
+        
+        // Check for protected Queens/Jacks (with 3+ cards in suit)
+        Object.keys(suitCounts).forEach(suit => {
+            if (suitCounts[suit] >= 3) {
+                const hasQueen = hand.some(card => card.suit === suit && card.rank === 'Q');
+                const hasJack = hand.some(card => card.suit === suit && card.rank === 'J');
+                if (hasQueen || hasJack) {
+                    suitControl[suit] = true;
+                }
+            }
+        });
+        
+        const totalHighCards = Object.values(suitHighCards).reduce((sum, count) => sum + count, 0);
+        const suitsWithControl = Object.values(suitControl).filter(control => control).length;
+        const handShape = this.evaluateHandShape(hand);
+        
+        let score = 0;
+        
+        // STRATEGY: Only bid NT if you have control in at least 3 suits
+        if (suitsWithControl >= 3 && handShape.isBalanced) {
+            if (totalHighCards >= 7) {
+                score = 5.0; // Excellent NT hand with control
+            } else if (totalHighCards >= 6) {
+                score = 4.0; // Good NT hand with control
+            } else if (totalHighCards >= 5) {
+                score = 3.0; // Decent NT hand with control
+            }
+        } else if (suitsWithControl >= 2) {
+            // Insufficient control for NT
+            score = 1.0; // Poor NT candidate
+        } else {
+            score = 0.2; // Very poor NT candidate
+        }
+        
+        // STRATEGY: NT demands finesse and card-counting, not brute force
+        // Penalty for unbalanced hands or minimal reliance on trumping
+        if (!handShape.isBalanced) {
+            score *= 0.4; // Severe penalty for unbalanced
+        }
+        
+        // Bonus for very balanced distribution (4-3-3-3, 4-4-3-2)
+        if (handShape.pattern === '4-3-3-3' || handShape.pattern === '4-4-3-2') {
+            score *= 1.2;
+        }
+        
+        return {
+            length: 13,
+            honors: totalHighCards,
+            shortSuits: 0,
+            totalScore: score,
+            suitControl: suitsWithControl
+        };
     }
     
     getSuitStrength(player, suit) {
@@ -2214,6 +2324,20 @@ class IsraeliWhist {
         const hand = this.hands[player];
         const suitLength = hand.filter(c => c.suit === card.suit).length;
         
+        // ADVANCED: Predictive defense based on bidding patterns
+        const isTrumpDeclarer = (player === this.trumpWinner);
+        if (isTrumpDeclarer) {
+            score += this.evaluateTrumpDeclarerLeadStrategy(card, player, context);
+        } else {
+            // ADVANCED: Predictive defense - watch bidding patterns and respond
+            score += this.evaluatePredictiveDefense(card, player, context);
+            
+            // ADVANCED: Declarer behavior profiling - use learned patterns to predict moves
+            score += this.evaluatePlayerBehaviorProfiling(card, player, context);
+            
+            score += this.evaluateDefensiveLeadStrategy(card, player, context);
+        }
+        
         // Basic card strength baseline
         score += cardStrength * 0.1;
         
@@ -2246,6 +2370,1077 @@ class IsraeliWhist {
         score *= (1 + context.urgencyLevel * 0.5);
         
         return score;
+    }
+    
+    // GUIDANCE: Lead with strength when declaring trump
+    evaluateTrumpDeclarerLeadStrategy(card, player, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        const isTrump = card.suit === this.trumpSuit;
+        const hand = this.hands[player];
+        const suitLength = hand.filter(c => c.suit === card.suit).length;
+        const suitHighCards = hand.filter(c => c.suit === card.suit && ['A', 'K', 'Q', 'J'].includes(c.rank)).length;
+        
+        // GUIDANCE: Lead with your strongest suit to establish dominance
+        if (isTrump && this.trumpSuit !== 'notrump') {
+            // Lead trump to establish control and draw out opponent trumps
+            if (cardStrength >= 12) { // A, K
+                score += 30; // High trump lead is excellent for declarer
+            } else if (cardStrength >= 10) { // Q, J
+                score += 20; // Medium trump lead is good
+            } else {
+                score += 10; // Even low trump can be effective
+            }
+            
+            // Bonus for long trump suits - establish dominance
+            if (suitLength >= 5) {
+                score += 15; // Long trump suit should be led
+            }
+        } else if (!isTrump) {
+            // Lead strong side suits to establish tricks before opponents can ruff
+            if (suitHighCards >= 2 && suitLength >= 4) {
+                score += 25; // Excellent side suit - establish it
+            } else if (cardStrength >= 12) { // Aces
+                score += 20; // High cards establish tricks
+                
+                // GUIDANCE: Use high card tracking to make better decisions
+                const highCardInfo = this.getHighCardInformation(card.suit);
+                if (highCardInfo && !highCardInfo.aceRemaining && card.rank === 'A') {
+                    // This shouldn't happen, but defensive check
+                    score += 5;
+                } else if (highCardInfo && card.rank === 'K' && highCardInfo.aceRemaining) {
+                    score -= 5; // King might lose to ace
+                }
+            } else if (cardStrength >= 11 && suitLength >= 3) { // Protected Kings
+                // GUIDANCE: Check if ace is still out there
+                const highCardInfo = this.getHighCardInformation(card.suit);
+                if (highCardInfo && !highCardInfo.aceRemaining) {
+                    score += 20; // King is now top card in suit
+                } else {
+                    score += 15; // Good protected high cards
+                }
+            }
+            
+            // Bonus for suits where we have sequence strength
+            const hasSequence = this.hasSequenceInSuit(hand, card.suit);
+            if (hasSequence) {
+                score += 10; // Sequences are powerful for establishing suit
+            }
+        }
+        
+        return score;
+    }
+    
+    // GUIDANCE: Play disruptively when defending against declarer
+    evaluateDefensiveLeadStrategy(card, player, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        const isTrump = card.suit === this.trumpSuit;
+        const hand = this.hands[player];
+        const suitLength = hand.filter(c => c.suit === card.suit).length;
+        
+        // ADVANCED: Trump control play - force short trump declarers to use trump early
+        if (!isTrump) {
+            const declarerTrumpLength = this.estimateDeclarerTrumpLength();
+            
+            // Lead suits where declarer might be weak
+            const declarerHand = this.hands[this.trumpWinner];
+            if (declarerHand) {
+                const declarerSuitLength = declarerHand.filter(c => c.suit === card.suit).length;
+                
+                // If we suspect declarer is short in this suit, lead it to force trump usage
+                if (declarerSuitLength <= 2) {
+                    let forceScore = 20; // Base score for forcing declarer
+                    
+                    // STRATEGY: If declarer has short trump, be more aggressive
+                    if (declarerTrumpLength <= 4) {
+                        forceScore += 15; // Extra aggressive against short trump
+                    }
+                    
+                    score += forceScore;
+                }
+            } else {
+                // Use bidding patterns to guess declarer's weak suits
+                const weakSuits = this.identifyDeclarerWeakSuits();
+                if (weakSuits.includes(card.suit)) {
+                    score += 15; // Lead their suspected weak suits
+                }
+            }
+            
+            // Lead through strength - if we have high cards in sequence
+            if (cardStrength >= 11 && suitLength >= 3) {
+                score += 15; // Lead through with protected honors
+            }
+            
+            // Attack declarer's weak suits early
+            if (cardStrength >= 10 && suitLength >= 4) {
+                score += 12; // Establish our long suit before declarer takes control
+            }
+        } else {
+            // Leading trump as defender
+            if (cardStrength >= 12) {
+                score += 10; // High trump leads can draw out declarer's trumps
+            } else {
+                score -= 10; // Don't waste low trumps when defending
+            }
+        }
+        
+        // GUIDANCE: Disruptive play - force declarer to lose control
+        const tricksLeft = 13 - this.tricksPlayed;
+        if (tricksLeft > 8) {
+            // Early in the hand - be more aggressive in disruption
+            score += 5;
+        }
+        
+        // If declarer is under-bid, help make their job harder
+        const declarerBid = this.phase2Bids[this.trumpWinner] || 0;
+        const declarerTricks = this.tricksWon[this.trumpWinner] || 0;
+        const declarerNeeds = declarerBid - declarerTricks;
+        
+        if (declarerNeeds > 0) {
+            // Declarer needs tricks - be defensive
+            if (!isTrump && cardStrength <= 9) {
+                score += 8; // Lead low cards to avoid giving declarer easy tricks
+            }
+        } else {
+            // Declarer doesn't need tricks - force them to take unwanted ones
+            if (cardStrength >= 11) {
+                score += 10; // Force declarer to win with high cards
+            }
+        }
+        
+        return score;
+    }
+    
+    // Helper function to detect sequences in a suit
+    hasSequenceInSuit(hand, suit) {
+        const suitCards = hand.filter(c => c.suit === suit);
+        const ranks = suitCards.map(c => this.getCardValue(c)).sort((a, b) => b - a);
+        
+        // Check for sequences of 2+ high cards
+        for (let i = 0; i < ranks.length - 1; i++) {
+            if (ranks[i] - ranks[i + 1] === 1 && ranks[i] >= 10) {
+                return true; // Found a sequence with high cards
+            }
+        }
+        return false;
+    }
+    
+    // ADVANCED: Shape-based bidding - evaluate hand distribution
+    evaluateHandShape(hand) {
+        const suitCounts = { clubs: 0, diamonds: 0, hearts: 0, spades: 0 };
+        
+        hand.forEach(card => {
+            suitCounts[card.suit]++;
+        });
+        
+        const lengths = Object.values(suitCounts).sort((a, b) => b - a);
+        const pattern = lengths.join('-');
+        
+        return {
+            suitCounts: suitCounts,
+            distribution: lengths,
+            pattern: pattern,
+            longest: lengths[0],
+            shortest: lengths[3],
+            isBalanced: lengths[0] - lengths[3] <= 2,
+            isUnbalanced: lengths[0] >= 6 || lengths[3] === 0,
+            voids: lengths.filter(len => len === 0).length,
+            singletons: lengths.filter(len => len === 1).length,
+            doubletons: lengths.filter(len => len === 2).length
+        };
+    }
+    
+    // ADVANCED: Calculate shape bonus for trump potential
+    calculateShapeBonus(suit, handShape) {
+        const suitLength = handShape.suitCounts[suit];
+        let bonus = 0;
+        
+        // STRATEGY: 6-3-2-2 distribution with strong 6-card suit is powerful
+        if (suitLength >= 6) {
+            if (handShape.pattern.includes('6-3') || handShape.pattern.includes('6-2')) {
+                bonus += 2.5; // Excellent shape for trump
+            } else {
+                bonus += 2.0; // Good long suit
+            }
+        } else if (suitLength >= 5) {
+            if (handShape.singletons >= 1 || handShape.doubletons >= 2) {
+                bonus += 1.8; // Good distribution for trump
+            } else {
+                bonus += 1.2; // Decent length
+            }
+        }
+        
+        // Bonus for unbalanced hands with this as the long suit
+        if (handShape.isUnbalanced && suitLength === handShape.longest) {
+            bonus += 1.0; // Unbalanced favors trump contracts
+        }
+        
+        // Penalty for balanced hands unless NT
+        if (handShape.isBalanced && suitLength < 5) {
+            bonus -= 0.5; // Balanced hands better for NT
+        }
+        
+        return bonus;
+    }
+    
+    // ADVANCED: Trump bluffing - bid lower suit to bait opponents into overbidding
+    considerTrumpBluff(player, currentBidValue, currentSuit, handStrength) {
+        const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
+        const currentSuitRank = suits.indexOf(currentSuit);
+        const hand = this.hands[player];
+        
+        // Only consider bluffing if we have a reasonable but not exceptional hand
+        if (handStrength.score < 15 || handStrength.score > 25) {
+            return null; // Too weak or too strong for bluffing
+        }
+        
+        // Don't bluff if the current bid is already high
+        if (currentBidValue >= 7) {
+            return null;
+        }
+        
+        // STRATEGY: Bid lower suit (e.g., 6♦) to bait opponents into 6♥ or 6♠
+        // Look for a suit lower than current that we have some support in
+        for (let suitRank = 0; suitRank < currentSuitRank; suitRank++) {
+            const bluffSuit = suits[suitRank];
+            const bluffAssessment = this.assessTrumpPotential(hand, bluffSuit);
+            
+            // Need some minimum support to make the bluff credible
+            if (bluffAssessment.totalScore >= 2.0) {
+                // Check if opponents are likely to have higher suits
+                const remainingPlayers = this.players.filter(p => 
+                    p !== player && !this.playersPassed[p] && !this.phase1Bids[p]
+                ).length;
+                
+                // Only bluff if there are players left who might take the bait
+                if (remainingPlayers >= 1) {
+                    const bluffBid = {
+                        minTakes: currentBidValue,
+                        trumpSuit: bluffSuit,
+                        isBluff: true // Mark for strategy tracking
+                    };
+                    
+                    // 30% chance of attempting bluff (don't be too predictable)
+                    if (Math.random() < 0.3) {
+                        return bluffBid;
+                    }
+                }
+            }
+        }
+        
+        return null; // No suitable bluff opportunity
+    }
+
+    // GUIDANCE: Save trump cards for strategic moments
+    evaluateStrategicTrumpUsage(card, player, context) {
+        const hand = this.hands[player];
+        const cardStrength = this.getCardValue(card);
+        const trumpCount = hand.filter(c => c.suit === this.trumpSuit).length;
+        const tricksLeft = 13 - this.tricksPlayed;
+        const canWinTrick = this.canCardWinTrick(card, context.currentTrick);
+        
+        let score = 0;
+        
+        // ADVANCED: Timing your trump - hold back until opponents play off-suit
+        const opponentsOffSuit = this.checkOpponentsPlayedOffSuit(context);
+        if (!opponentsOffSuit && tricksLeft > 6) {
+            score -= 25; // Strong penalty for early trump use
+        } else if (tricksLeft > 8 && cardStrength < 10) {
+            score -= 20; // Save low trumps for later rounds
+        } else if (tricksLeft > 5 && cardStrength < 12) {
+            score -= 10; // Be conservative with medium trumps
+        }
+        
+        // Strategic trump usage - when it's good to trump
+        if (canWinTrick) {
+            // Trump to win is good if:
+            if (context.isUnderBid && context.urgencyLevel > 0.6) {
+                score += 25; // Desperate for tricks
+            } else if (context.isUnderBid && cardStrength <= 9) {
+                score += 15; // Win with low trump when under-bid
+            } else if (context.isExactBid && tricksLeft <= 4) {
+                score -= 15; // Avoid winning when exact bid near end
+            }
+        } else {
+            // Trump when can't win - generally bad unless getting rid of high trump
+            if (cardStrength >= 12) {
+                score += 5; // High trump discard can be good
+            } else {
+                score -= 15; // Don't waste trump unnecessarily
+            }
+        }
+        
+        // GUIDANCE: Trump wisely - don't use unless sure to win or strategic need
+        const highestTrumpInTrick = this.getHighestTrumpInTrick(context.currentTrick);
+        if (highestTrumpInTrick && cardStrength <= this.getCardValue(highestTrumpInTrick)) {
+            score -= 25; // Don't trump if we can't win the trump battle
+        }
+        
+        // Keep trump for later control if we have good trump holding
+        if (trumpCount >= 4 && tricksLeft > 6) {
+            score -= 10; // Preserve trump strength for later
+        }
+        
+        return score;
+    }
+    
+    // Helper to find highest trump card in current trick
+    getHighestTrumpInTrick(currentTrick) {
+        if (!currentTrick || currentTrick.length === 0) return null;
+        
+        let highestTrump = null;
+        currentTrick.forEach(play => {
+            if (play.card.suit === this.trumpSuit) {
+                if (!highestTrump || this.getCardValue(play.card) > this.getCardValue(highestTrump)) {
+                    highestTrump = play.card;
+                }
+            }
+        });
+        
+        return highestTrump;
+    }
+    
+    // ADVANCED: Check if opponents have been forced to play off-suit
+    checkOpponentsPlayedOffSuit(context) {
+        if (!context.currentTrick || context.currentTrick.length === 0) {
+            return false; // No trick in progress
+        }
+        
+        const leadSuit = context.currentTrick[0].card.suit;
+        
+        // Check if any opponent in this trick couldn't follow suit
+        for (let i = 1; i < context.currentTrick.length; i++) {
+            const play = context.currentTrick[i];
+            if (play.card.suit !== leadSuit && play.card.suit !== this.trumpSuit) {
+                return true; // Opponent discarded (couldn't follow suit or trump)
+            }
+        }
+        
+        // Also check historical data - have we seen opponents void in suits recently?
+        const recentVoids = this.countRecentSuitVoids();
+        return recentVoids > 0;
+    }
+    
+    // Helper to count recent void discoveries
+    countRecentSuitVoids() {
+        let voidCount = 0;
+        const recentTricks = Math.max(0, this.tricksPlayed - 3); // Look at last 3 tricks
+        
+        this.players.forEach(player => {
+            Object.keys(this.botMemory.suitVoids[player]).forEach(suit => {
+                if (this.botMemory.suitVoids[player][suit]) {
+                    voidCount++;
+                }
+            });
+        });
+        
+        return voidCount;
+    }
+    
+    // ADVANCED: Estimate declarer's trump length based on bidding
+    estimateDeclarerTrumpLength() {
+        const declarerBid = this.phase1Bids[this.trumpWinner];
+        if (!declarerBid) return 5; // Default estimate
+        
+        const declarerHand = this.hands[this.trumpWinner];
+        if (declarerHand) {
+            // If we can see declarer's hand, count actual trumps
+            return declarerHand.filter(card => card.suit === this.trumpSuit).length;
+        }
+        
+        // Estimate based on bidding aggressiveness
+        const minTakes = declarerBid.minTakes;
+        if (minTakes >= 8) {
+            return 6; // High bid suggests long trump
+        } else if (minTakes >= 6) {
+            return 5; // Medium bid suggests decent trump
+        } else {
+            return 4; // Low bid might be short trump
+        }
+    }
+    
+    // ADVANCED: Identify declarer's likely weak suits based on bidding patterns
+    identifyDeclarerWeakSuits() {
+        const declarerBid = this.phase1Bids[this.trumpWinner];
+        if (!declarerBid) return [];
+        
+        const trumpSuit = declarerBid.trumpSuit;
+        const weakSuits = [];
+        
+        // If declarer bid a specific trump, they're likely weak in other suits
+        // Especially if they bid aggressively (suggesting unbalanced hand)
+        if (declarerBid.minTakes >= 6) {
+            ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
+                if (suit !== trumpSuit) {
+                    // Probability they're weak in this suit
+                    if (Math.random() < 0.4) { // 40% chance per suit
+                        weakSuits.push(suit);
+                    }
+                }
+            });
+        }
+        
+        return weakSuits;
+    }
+    
+    // ADVANCED: Bid sum awareness - predict desperation plays
+    analyzeBidSumSituation(currentTotal, playersRemaining) {
+        const analysis = {
+            isUnderSituation: currentTotal < 10, // Likely to go under 13
+            isOverSituation: currentTotal > 15,  // Likely to go over 13
+            desperationLevel: 0,
+            predictedFinalTotal: currentTotal + (playersRemaining * 2.5), // Rough estimate
+            strategy: 'normal'
+        };
+        
+        // STRATEGY: If sum is under 13, someone will be forced to take extra tricks
+        if (analysis.isUnderSituation) {
+            analysis.desperationLevel = (13 - currentTotal) / playersRemaining;
+            analysis.strategy = 'expect_under_bids'; // Players will bid conservatively
+        }
+        
+        // STRATEGY: If sum is over 13, someone will fail their bid
+        if (analysis.isOverSituation) {
+            analysis.desperationLevel = (currentTotal - 13) / playersRemaining;
+            analysis.strategy = 'expect_over_bids'; // Players will struggle to make bids
+        }
+        
+        // Special case: exactly on track for 13
+        if (currentTotal >= 10 && currentTotal <= 12 && playersRemaining <= 2) {
+            analysis.strategy = 'avoid_thirteen'; // Critical to avoid exactly 13
+        }
+        
+        return analysis;
+    }
+    
+    // ADVANCED: Adjust bidding based on bid sum awareness
+    adjustBidForSumAwareness(originalEstimate, bidSumAnalysis, playersRemaining) {
+        let adjustedBid = originalEstimate;
+        
+        // STRATEGY: React to expected desperation plays
+        switch (bidSumAnalysis.strategy) {
+            case 'expect_under_bids':
+                // Others will bid low, we might need to bid higher
+                adjustedBid += 0.3;
+                break;
+                
+            case 'expect_over_bids':
+                // Others will struggle, we can bid more conservatively
+                adjustedBid -= 0.2;
+                break;
+                
+            case 'avoid_thirteen':
+                // Critical to avoid exactly 13 total - adjust if needed
+                // This will be handled in the final bid selection
+                break;
+                
+            default:
+                // Normal bidding
+                break;
+        }
+        
+        // Additional adjustment based on desperation level
+        if (bidSumAnalysis.desperationLevel > 2) {
+            // High desperation - others will make unusual plays
+            adjustedBid += 0.2; // Bid slightly higher to compensate
+        }
+        
+        return Math.max(0, adjustedBid);
+    }
+    
+    // ADVANCED: Calculate zero bid disruption value
+    calculateZeroBidDisruption(card, player, zeroBidder, analysis, context) {
+        let disruptionScore = 0;
+        const cardStrength = this.getCardValue(card);
+        
+        // STRATEGY: Lead suits they're likely to hold (based on bidding silence)
+        const zeroBidderHand = this.hands[zeroBidder];
+        if (zeroBidderHand) {
+            const zeroBidderSuitLength = zeroBidderHand.filter(c => c.suit === card.suit).length;
+            
+            // If zero bidder has cards in this suit, good for disruption
+            if (zeroBidderSuitLength > 0) {
+                disruptionScore += 10;
+                
+                // If they have many cards in this suit, even better
+                if (zeroBidderSuitLength >= 4) {
+                    disruptionScore += 15; // They likely have to follow suit
+                }
+            }
+        } else {
+            // Estimate based on bidding patterns - zero bidders often have balanced hands
+            // Lead middle-strength cards in non-trump suits
+            if (card.suit !== this.trumpSuit && cardStrength >= 8 && cardStrength <= 11) {
+                disruptionScore += 12; // Good disruption potential
+            }
+        }
+        
+        // STRATEGY: Force them to win tricks by leading cards they can't avoid
+        const tricksLeft = 13 - this.tricksPlayed;
+        if (tricksLeft <= 6) {
+            // Late in hand - more pressure on zero bidder
+            disruptionScore += 8;
+        }
+        
+        // If we're in a trick where zero bidder must play
+        if (context.currentTrick && this.isPlayerInCurrentTrick(zeroBidder)) {
+            // Lead low cards to force them to win
+            if (cardStrength <= 7) {
+                disruptionScore += 20; // Force them to take the trick
+            }
+        }
+        
+        return disruptionScore;
+    }
+    
+    // ADVANCED: Predictive defense - watch bidding patterns and respond accordingly
+    evaluatePredictiveDefense(card, player, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        const isTrump = card.suit === this.trumpSuit;
+        
+        // STRATEGY: If someone bid 7♠ confidently, they likely have long spades
+        const declarerBid = this.phase1Bids[this.trumpWinner];
+        if (declarerBid) {
+            const declarerSuit = declarerBid.trumpSuit;
+            const declarerMinTakes = declarerBid.minTakes;
+            
+            // High bid suggests long trump suit - attack their weak suits
+            if (declarerMinTakes >= 7) {
+                if (card.suit !== declarerSuit && !isTrump) {
+                    score += 15; // Lead non-trump suits to force them to trump
+                }
+            }
+            
+            // Aggressive bid suggests unbalanced hand - exploit weaknesses
+            if (declarerMinTakes >= 6 && card.suit !== declarerSuit) {
+                score += 10; // Attack their likely short suits
+            }
+        }
+        
+        // STRATEGY: Watch other players' Phase 2 bid patterns
+        this.players.forEach(opponent => {
+            if (opponent !== player) {
+                const opponentBid = this.phase2Bids[opponent];
+                const opponentTricks = this.tricksWon[opponent] || 0;
+                
+                if (opponentBid !== null) {
+                    // High bidder under pressure - might make desperate plays
+                    if (opponentBid >= 4 && opponentTricks < opponentBid) {
+                        const desperation = (opponentBid - opponentTricks) / (13 - this.tricksPlayed);
+                        if (desperation > 0.7) {
+                            // Opponent is desperate - adjust our strategy
+                            if (cardStrength >= 10) {
+                                score -= 5; // They might trump our high cards
+                            } else {
+                                score += 8; // Low cards are safer against desperate players
+                            }
+                        }
+                    }
+                    
+                    // Conservative bidders (0-2) - predict their defensive play
+                    if (opponentBid <= 2) {
+                        if (cardStrength >= 11) {
+                            score += 5; // High cards work well against conservative players
+                        }
+                    }
+                }
+            }
+        });
+        
+        // STRATEGY: Based on bidding confidence, predict suit holdings
+        const totalBids = Object.values(this.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0);
+        if (totalBids < 11) {
+            // Under-bid situation - everyone will be conservative
+            if (cardStrength >= 12) {
+                score += 8; // High cards more likely to hold up
+            }
+        } else if (totalBids > 15) {
+            // Over-bid situation - someone will fail
+            if (cardStrength <= 8) {
+                score += 6; // Low cards avoid unwanted tricks
+            }
+        }
+        
+        return score;
+    }
+    
+    // ADVANCED: Endgame planning - think ahead to last 3-4 tricks
+    evaluateEndgamePlanning(card, player, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        const isTrump = card.suit === this.trumpSuit;
+        const tricksLeft = 13 - this.tricksPlayed;
+        const hand = this.hands[player];
+        
+        // STRATEGY: Track suit exhaustion for squeeze plays
+        const suitExhaustion = this.analyzeSuitExhaustion();
+        
+        // STRATEGY: Engineer squeeze - force opponents to discard winning cards
+        if (tricksLeft <= 3 && suitExhaustion.totalVoids >= 2) {
+            // Multiple suits are exhausted - squeeze potential
+            if (this.canCreateSqueeze(card, player, suitExhaustion)) {
+                score += 25; // High value for squeeze opportunity
+            }
+        }
+        
+        // Count remaining high cards by suit
+        const remainingHighCards = this.countRemainingHighCards();
+        
+        // If we have the last high card in a suit, it's very valuable
+        Object.keys(remainingHighCards).forEach(suit => {
+            if (card.suit === suit && remainingHighCards[suit].length === 1 && 
+                remainingHighCards[suit][0] === card.rank) {
+                score += 20; // Last high card in suit is guaranteed winner
+            }
+        });
+        
+        // Endgame trump management
+        if (isTrump && tricksLeft <= 3) {
+            const trumpsRemaining = hand.filter(c => c.suit === this.trumpSuit).length;
+            const otherPlayersHaveTrump = this.estimateOpponentTrumps() > 0;
+            
+            if (!otherPlayersHaveTrump && trumpsRemaining > 0) {
+                score += 30; // We control remaining trumps - very powerful
+            } else if (cardStrength >= 12 && trumpsRemaining === 1) {
+                score += 15; // Last high trump is valuable
+            }
+        }
+        
+        // Exact bid pressure in endgame
+        const playerBid = this.phase2Bids[player] || 0;
+        const tricksTaken = this.tricksWon[player] || 0;
+        const tricksNeeded = playerBid - tricksTaken;
+        
+        if (tricksNeeded === 0 && tricksLeft <= 2) {
+            // Must avoid all remaining tricks
+            if (cardStrength <= 7) {
+                score += 15; // Low cards help avoid tricks
+            } else {
+                score -= 10; // High cards are dangerous
+            }
+        } else if (tricksNeeded === tricksLeft) {
+            // Must win all remaining tricks
+            if (cardStrength >= 11) {
+                score += 20; // High cards essential
+            }
+        }
+        
+        return score;
+    }
+    
+    // Helper: Analyze which suits are exhausted
+    analyzeSuitExhaustion() {
+        const exhaustion = {
+            voidPlayers: { clubs: [], diamonds: [], hearts: [], spades: [] },
+            totalVoids: 0,
+            exhaustedSuits: []
+        };
+        
+        ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
+            this.players.forEach(player => {
+                if (this.botMemory && this.botMemory.suitVoids && 
+                    this.botMemory.suitVoids[player] && this.botMemory.suitVoids[player][suit]) {
+                    exhaustion.voidPlayers[suit].push(player);
+                    exhaustion.totalVoids++;
+                }
+            });
+            
+            // If 3+ players are void, suit is mostly exhausted
+            if (exhaustion.voidPlayers[suit].length >= 3) {
+                exhaustion.exhaustedSuits.push(suit);
+            }
+        });
+        
+        return exhaustion;
+    }
+    
+    // Helper: Check if we can create a squeeze play
+    canCreateSqueeze(card, player, suitExhaustion) {
+        // Safety check
+        if (!suitExhaustion || !suitExhaustion.voidPlayers || !suitExhaustion.exhaustedSuits) {
+            return false;
+        }
+        
+        // Simple squeeze detection - if we can force discards in multiple suits
+        const nonVoidSuits = ['clubs', 'diamonds', 'hearts', 'spades'].filter(suit => 
+            suitExhaustion.voidPlayers[suit] && !suitExhaustion.voidPlayers[suit].includes(player)
+        );
+        
+        // If we have cards in multiple non-void suits and opponents are squeezed
+        return nonVoidSuits.length >= 2 && suitExhaustion.exhaustedSuits.length >= 1;
+    }
+    
+    // Helper: Count remaining high cards by suit
+    countRemainingHighCards() {
+        const remaining = { clubs: [], diamonds: [], hearts: [], spades: [] };
+        
+        if (this.botMemory && this.botMemory.highCardsPlayed) {
+            ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
+                ['A', 'K', 'Q', 'J'].forEach(rank => {
+                    const rankKey = rank.toLowerCase() + 's';
+                    const rankArray = this.botMemory.highCardsPlayed[rankKey];
+                    
+                    let wasPlayed = false;
+                    if (rankArray && Array.isArray(rankArray)) {
+                        wasPlayed = rankArray.some(cardInfo => cardInfo && cardInfo.suit === suit);
+                    }
+                    
+                    if (!wasPlayed) {
+                        remaining[suit].push(rank);
+                    }
+                });
+            });
+        } else {
+            // Default: assume all high cards are still in play
+            ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
+                remaining[suit] = ['A', 'K', 'Q', 'J'];
+            });
+        }
+        
+        return remaining;
+    }
+    
+    // Helper: Estimate how many trumps opponents still have
+    estimateOpponentTrumps() {
+        let estimate = 0;
+        if (!this.botMemory || !this.botMemory.trumpsPlayed || !this.botMemory.cardsPlayed) {
+            return 2; // Default estimate
+        }
+        
+        this.players.forEach(player => {
+            if (player !== this.currentPlayerName) {
+                const trumpsPlayed = this.botMemory.trumpsPlayed
+                    .filter(t => t && t.player === player).length;
+                const cardsPlayedByPlayer = this.botMemory.cardsPlayed[player] || [];
+                const handSize = 13 - cardsPlayedByPlayer.length;
+                
+                // Simple estimation based on remaining hand size
+                estimate += Math.max(0, (handSize / 4) - trumpsPlayed);
+            }
+        });
+        
+        return estimate;
+    }
+    
+    // ADVANCED: Suit exhaustion awareness - strategic use of dead suits
+    evaluateSuitExhaustionStrategy(card, player, context) {
+        let score = 0;
+        const cardSuit = card.suit;
+        const cardStrength = this.getCardValue(card);
+        
+        // STRATEGY: If three players have shown void in a suit, it's dead
+        const voidCount = this.countOpponentVoidsInSuit(cardSuit);
+        
+        if (voidCount >= 3) {
+            // Suit is effectively dead - only one other player can follow
+            if (context.isLeading) {
+                score += 30; // Very safe to lead dead suits
+                
+                // If we have high cards in dead suit, they're guaranteed winners
+                if (cardStrength >= 11) {
+                    score += 20; // High cards in dead suits are gold
+                }
+            } else {
+                // Following in dead suit - can discard safely
+                if (cardStrength <= 8) {
+                    score += 15; // Low cards perfect for dead suit discards
+                }
+            }
+        } else if (voidCount === 2) {
+            // Suit is becoming exhausted - good strategic value
+            if (context.isLeading) {
+                score += 15; // Pretty safe to lead
+                
+                // Force the last player with this suit to play high
+                if (cardStrength >= 9) {
+                    score += 10; // Medium-high cards can force good discards
+                }
+            }
+        }
+        
+        // STRATEGY: Use suit exhaustion to force discards
+        const opponentsWithSuit = 4 - voidCount - 1; // Minus self
+        if (opponentsWithSuit <= 1 && context.isLeading) {
+            // Only one opponent left with this suit - force them to play it
+            score += this.evaluateForceDiscardOpportunity(card, player, cardSuit);
+        }
+        
+        // Check if we're void in the lead suit but others aren't
+        if (!context.isLeading && context.leadSuit !== cardSuit) {
+            const leadSuitVoids = this.countOpponentVoidsInSuit(context.leadSuit);
+            if (leadSuitVoids <= 1) {
+                // We're void but others must follow - good discard opportunity
+                if (this.isPlayerVoidInSuit(player, context.leadSuit)) {
+                    score += this.evaluateDiscardOpportunity(card, player, context);
+                }
+            }
+        }
+        
+        return score;
+    }
+    
+    // Helper: Evaluate opportunity to force specific discard
+    evaluateForceDiscardOpportunity(card, player, suit) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        
+        // Find who still has cards in this suit
+        let targetPlayer = null;
+        this.players.forEach(p => {
+            if (p !== player && !this.isPlayerVoidInSuit(p, suit)) {
+                targetPlayer = p;
+            }
+        });
+        
+        if (targetPlayer) {
+            const targetBid = this.phase2Bids[targetPlayer] || 0;
+            const targetTricks = this.tricksWon[targetPlayer] || 0;
+            
+            // If target is over/under their bid, force them to make tough choices
+            if (targetTricks > targetBid) {
+                // They're over - force them to play low
+                if (cardStrength >= 10) {
+                    score += 15; // High card forces them to waste a high card or lose
+                }
+            } else if (targetTricks < targetBid) {
+                // They're under - they need tricks
+                if (cardStrength <= 9) {
+                    score += 12; // Low card might give them an unwanted trick
+                }
+            }
+        }
+        
+        return score;
+    }
+    
+    // Helper: Evaluate discard opportunity when void in lead suit
+    evaluateDiscardOpportunity(card, player, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        const isTrump = card.suit === this.trumpSuit;
+        
+        if (isTrump) {
+            // Discarding trump when void - be strategic
+            const trumpCount = this.hands[player].filter(c => c.suit === this.trumpSuit).length;
+            if (trumpCount > 2 && cardStrength <= 8) {
+                score += 10; // Safe to discard low trump when we have many
+            } else if (cardStrength >= 12) {
+                score -= 15; // Don't waste high trump on discards
+            }
+        } else {
+            // Discarding non-trump when void
+            if (cardStrength <= 7) {
+                score += 20; // Perfect discard opportunity
+            } else if (cardStrength >= 11) {
+                // Check if this might be the last high card in suit
+                const remainingHigh = this.countRemainingHighCardsInSuit(card.suit);
+                if (remainingHigh <= 2) {
+                    score -= 10; // Don't waste potentially winning high cards
+                } else {
+                    score += 5; // OK to discard if plenty of high cards remain
+                }
+            }
+        }
+        
+        return score;
+    }
+    
+    // Helper: Check if specific player is void in suit
+    isPlayerVoidInSuit(player, suit) {
+        return this.botMemory && this.botMemory.suitVoids && 
+               this.botMemory.suitVoids[player] && this.botMemory.suitVoids[player][suit];
+    }
+    
+    // Helper: Count remaining high cards in specific suit
+    countRemainingHighCardsInSuit(suit) {
+        let count = 0;
+        if (this.botMemory && this.botMemory.highCardsPlayed) {
+            ['A', 'K', 'Q', 'J'].forEach(rank => {
+                const rankKey = rank.toLowerCase() + 's';
+                const rankArray = this.botMemory.highCardsPlayed[rankKey];
+                
+                let wasPlayed = false;
+                if (rankArray && Array.isArray(rankArray)) {
+                    wasPlayed = rankArray.some(cardInfo => cardInfo && cardInfo.suit === suit);
+                }
+                
+                if (!wasPlayed) {
+                    count++;
+                }
+            });
+        } else {
+            count = 4; // Default if tracking not available
+        }
+        return count;
+    }
+    
+    // ADVANCED: Player behavior profiling - use learned patterns to predict moves
+    evaluatePlayerBehaviorProfiling(card, player, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        
+        // Profile opponents and adjust strategy accordingly
+        this.players.forEach(opponent => {
+            if (opponent !== player) {
+                const profile = this.botMemory.behaviorProfiles[opponent];
+                const pattern = this.analyzePlayerPattern(opponent, profile);
+                
+                score += this.adjustStrategyForOpponent(card, player, opponent, pattern, context);
+            }
+        });
+        
+        return score;
+    }
+    
+    // ADVANCED: Analyze player patterns based on historical data
+    analyzePlayerPattern(player, profile) {
+        const analysis = {
+            biddingTendency: 'unknown', // 'overbid', 'underbid', 'accurate'
+            suitPreference: 'unknown',  // 'long_suits', 'balanced', 'trump_heavy'
+            riskProfile: 'unknown',     // 'aggressive', 'conservative', 'adaptive'
+            confidence: profile.confidence || 0
+        };
+        
+        // Analyze Phase 1 bidding patterns
+        if (profile.phase1History.length >= 3) {
+            const phase1Patterns = this.analyzePhase1Patterns(profile.phase1History);
+            analysis.biddingTendency = phase1Patterns.tendency;
+            analysis.suitPreference = phase1Patterns.suitPreference;
+            analysis.confidence = Math.min(1.0, profile.phase1History.length / 10);
+        }
+        
+        // Analyze Phase 2 bidding accuracy
+        if (profile.phase2History.length >= 3) {
+            const phase2Patterns = this.analyzePhase2Patterns(profile.phase2History);
+            analysis.riskProfile = phase2Patterns.riskProfile;
+        }
+        
+        return analysis;
+    }
+    
+    // Helper: Analyze Phase 1 bidding patterns
+    analyzePhase1Patterns(history) {
+        let longSuitBids = 0;
+        let aggressiveBids = 0;
+        const suitCounts = { clubs: 0, diamonds: 0, hearts: 0, spades: 0, notrump: 0 };
+        
+        history.forEach(bid => {
+            if (bid.minTakes >= 7) aggressiveBids++;
+            if (bid.handLength >= 6) longSuitBids++;
+            suitCounts[bid.trumpSuit]++;
+        });
+        
+        const tendency = aggressiveBids / history.length > 0.6 ? 'overbid' : 
+                        aggressiveBids / history.length < 0.3 ? 'underbid' : 'accurate';
+        
+        const suitPreference = longSuitBids / history.length > 0.7 ? 'long_suits' : 'balanced';
+        
+        return { tendency, suitPreference };
+    }
+    
+    // Helper: Analyze Phase 2 bidding accuracy
+    analyzePhase2Patterns(history) {
+        let accurateCount = 0;
+        let conservativeCount = 0;
+        
+        history.forEach(result => {
+            const accuracy = Math.abs(result.bid - result.actualTricks);
+            if (accuracy <= 1) accurateCount++;
+            if (result.bid < result.actualTricks) conservativeCount++;
+        });
+        
+        const riskProfile = conservativeCount / history.length > 0.6 ? 'conservative' :
+                           accurateCount / history.length > 0.7 ? 'adaptive' : 'aggressive';
+        
+        return { riskProfile };
+    }
+    
+    // ADVANCED: Adjust strategy based on opponent patterns
+    adjustStrategyForOpponent(card, player, opponent, pattern, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        
+        if (pattern.confidence < 0.3) return 0; // Not enough data
+        
+        // STRATEGY: Some overbid with long suits, others underbid with balanced hands
+        if (pattern.biddingTendency === 'overbid' && pattern.suitPreference === 'long_suits') {
+            // Opponent likely overbids with long suits - they may be trump heavy
+            if (card.suit !== this.trumpSuit && cardStrength >= 9) {
+                score += 8; // Force them to trump with side suits
+            }
+        } else if (pattern.biddingTendency === 'underbid' && pattern.suitPreference === 'balanced') {
+            // Opponent underbids balanced hands - they may have hidden strength
+            if (cardStrength <= 8) {
+                score += 6; // Low cards might be safer against hidden strength
+            }
+        }
+        
+        // Risk profile adjustments
+        if (pattern.riskProfile === 'aggressive') {
+            // Aggressive players take risks - be more defensive
+            if (cardStrength >= 11) {
+                score -= 3; // High cards might be trumped aggressively
+            }
+        } else if (pattern.riskProfile === 'conservative') {
+            // Conservative players avoid risks - high cards more likely to hold
+            if (cardStrength >= 11) {
+                score += 5; // High cards safer against conservative players
+            }
+        }
+        
+        // Current bid situation awareness
+        const opponentBid = this.phase2Bids[opponent] || 0;
+        const opponentTricks = this.tricksWon[opponent] || 0;
+        
+        if (pattern.biddingTendency === 'overbid' && opponentTricks < opponentBid) {
+            // Overbidding player is under - they'll be desperate
+            if (cardStrength <= 7) {
+                score += 10; // Low cards might give them unwanted tricks
+            }
+        }
+        
+        return score * pattern.confidence; // Scale by confidence in pattern
+    }
+    
+    // ADVANCED: Update behavior profiles when bids are made
+    updateBehaviorProfile(player, phase, bidData) {
+        if (!this.botMemory || !this.botMemory.behaviorProfiles || !this.botMemory.behaviorProfiles[player]) {
+            return; // Safety check
+        }
+        
+        const profile = this.botMemory.behaviorProfiles[player];
+        
+        if (phase === 'phase1') {
+            profile.phase1History.push({
+                minTakes: bidData.minTakes,
+                trumpSuit: bidData.trumpSuit,
+                handLength: bidData.handLength || 0,
+                confidence: bidData.confidence || 0.5
+            });
+            
+            // Keep only last 20 entries
+            if (profile.phase1History.length > 20) {
+                profile.phase1History.shift();
+            }
+        } else if (phase === 'phase2') {
+            profile.phase2History.push({
+                bid: bidData.bid,
+                actualTricks: bidData.actualTricks || 0,
+                handStrength: bidData.handStrength || 0
+            });
+            
+            // Keep only last 20 entries
+            if (profile.phase2History.length > 20) {
+                profile.phase2History.shift();
+            }
+        }
+        
+        // Update confidence based on amount of data
+        profile.confidence = Math.min(1.0, 
+            (profile.phase1History.length + profile.phase2History.length) / 20
+        );
     }
 
     // Helper function to count how many opponents are void in a suit
@@ -2504,6 +3699,20 @@ class IsraeliWhist {
         const cardStrength = this.getCardValue(card);
         const isTrump = card.suit === this.trumpSuit;
         const isLeadSuit = card.suit === context.leadSuit;
+        
+        // GUIDANCE: Save trump cards for strategic moments
+        if (isTrump) {
+            score += this.evaluateStrategicTrumpUsage(card, player, context);
+        }
+        
+        // ADVANCED: Suit exhaustion awareness - use dead suits strategically
+        score += this.evaluateSuitExhaustionStrategy(card, player, context);
+        
+        // ADVANCED: Endgame planning - think ahead to last 3-4 tricks
+        const tricksLeft = 13 - this.tricksPlayed;
+        if (tricksLeft <= 4) {
+            score += this.evaluateEndgamePlanning(card, player, context);
+        }
         
         // Analyze current trick situation
         const canWinTrick = this.canCardWinTrick(card, context.currentTrick);
@@ -2780,13 +3989,19 @@ class IsraeliWhist {
             return 0;
         }
         
-        // Enhanced zero-bidder analysis
+        // ADVANCED: Enhanced zero-bidder disruption analysis
         for (const zeroBidder of opponentSituations.zeroBidders) {
             const zeroBidderAnalysis = this.analyzeZeroBidder(zeroBidder);
             
+            // STRATEGY: Force zero bidders to win tricks they don't want
+            const disruptionValue = this.calculateZeroBidDisruption(card, player, zeroBidder, zeroBidderAnalysis, context);
+            
             if (this.isPlayerInCurrentTrick(zeroBidder)) {
                 const strategicValue = this.calculateZeroBidderStrategy(card, player, zeroBidder, zeroBidderAnalysis, context);
-                targetingScore += strategicValue;
+                targetingScore += strategicValue + disruptionValue;
+            } else {
+                // Even if not in current trick, plan for future disruption
+                targetingScore += disruptionValue * 0.3;
             }
         }
         
@@ -4108,6 +5323,12 @@ class IsraeliWhist {
         const ourBestSuit = this.getBestTrumpSuit(player, handStrength);
         const ourBestSuitRank = suits.indexOf(ourBestSuit);
         
+        // ADVANCED: Trump bluffing strategy - bid lower suit to bait opponents
+        const bluffBid = this.considerTrumpBluff(player, currentBidValue, currentSuit, handStrength);
+        if (bluffBid) {
+            return bluffBid;
+        }
+        
         // Prioritize bidding our best suit over just raising the current suit
         // Option 1: Same number in our best suit (if it's higher ranking than current)
         if (ourBestSuitRank > currentSuitRank && currentBidValue < 13) {
@@ -4400,11 +5621,80 @@ class IsraeliWhist {
         this.botMemory.cardsSeen.push({card, player, round: this.currentRound});
         this.botMemory.cardsPlayed[player].push(card);
         
+        // GUIDANCE: Track high cards - note which high cards have been played
+        this.trackHighCardPlayed(card, player);
+        
         // Update suit distribution tracking
         this.botMemory.suitDistribution[card.suit]--;
         
         // Update probability model
         this.updateProbabilityModel(card, player);
+    }
+    
+    // GUIDANCE: Track high cards for better prediction
+    trackHighCardPlayed(card, player) {
+        // Initialize high card tracking if not exists
+        if (!this.botMemory.highCardsPlayed) {
+            this.botMemory.highCardsPlayed = {
+                aces: [],
+                kings: [],
+                queens: [],
+                jacks: [],
+                byPlayer: { north: [], east: [], south: [], west: [] },
+                remaining: {
+                    aces: ['clubs', 'diamonds', 'hearts', 'spades'],
+                    kings: ['clubs', 'diamonds', 'hearts', 'spades'],
+                    queens: ['clubs', 'diamonds', 'hearts', 'spades'],
+                    jacks: ['clubs', 'diamonds', 'hearts', 'spades']
+                }
+            };
+        }
+        
+        // Track if this is a high card
+        if (['A', 'K', 'Q', 'J'].includes(card.rank)) {
+            const cardInfo = { suit: card.suit, rank: card.rank, player: player, trick: this.tricksPlayed + 1 };
+            
+            // Add to appropriate rank list
+            if (card.rank === 'A') {
+                this.botMemory.highCardsPlayed.aces.push(cardInfo);
+                this.botMemory.highCardsPlayed.remaining.aces = 
+                    this.botMemory.highCardsPlayed.remaining.aces.filter(suit => suit !== card.suit);
+            } else if (card.rank === 'K') {
+                this.botMemory.highCardsPlayed.kings.push(cardInfo);
+                this.botMemory.highCardsPlayed.remaining.kings = 
+                    this.botMemory.highCardsPlayed.remaining.kings.filter(suit => suit !== card.suit);
+            } else if (card.rank === 'Q') {
+                this.botMemory.highCardsPlayed.queens.push(cardInfo);
+                this.botMemory.highCardsPlayed.remaining.queens = 
+                    this.botMemory.highCardsPlayed.remaining.queens.filter(suit => suit !== card.suit);
+            } else if (card.rank === 'J') {
+                this.botMemory.highCardsPlayed.jacks.push(cardInfo);
+                this.botMemory.highCardsPlayed.remaining.jacks = 
+                    this.botMemory.highCardsPlayed.remaining.jacks.filter(suit => suit !== card.suit);
+            }
+            
+            // Add to player-specific list
+            this.botMemory.highCardsPlayed.byPlayer[player].push(cardInfo);
+        }
+    }
+    
+    // GUIDANCE: Use high card tracking for better decision making
+    getHighCardInformation(suit) {
+        if (!this.botMemory.highCardsPlayed) return null;
+        
+        const remaining = this.botMemory.highCardsPlayed.remaining;
+        return {
+            aceRemaining: remaining.aces.includes(suit),
+            kingRemaining: remaining.kings.includes(suit),
+            queenRemaining: remaining.queens.includes(suit),
+            jackRemaining: remaining.jacks.includes(suit),
+            highCardsRemaining: [
+                remaining.aces.includes(suit) ? 'A' : null,
+                remaining.kings.includes(suit) ? 'K' : null,
+                remaining.queens.includes(suit) ? 'Q' : null,
+                remaining.jacks.includes(suit) ? 'J' : null
+            ].filter(rank => rank !== null)
+        };
     }
     
     updateProbabilityModel(card, player) {
@@ -5192,13 +6482,28 @@ class IsraeliWhist {
              south: { clubs: false, diamonds: false, hearts: false, spades: false },
              west: { clubs: false, diamonds: false, hearts: false, spades: false }
          };
-         this.botMemory.probabilityModel.trumpEstimates = { north: 0, east: 0, south: 0, west: 0 };
-         this.botMemory.probabilityModel.suitLengthEstimates = {
-             north: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 },
-             east: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 },
-             south: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 },
-             west: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 }
-         };
+                   this.botMemory.probabilityModel.trumpEstimates = { north: 0, east: 0, south: 0, west: 0 };
+          this.botMemory.probabilityModel.suitLengthEstimates = {
+              north: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 },
+              east: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 },
+              south: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 },
+              west: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 }
+          };
+          
+          // GUIDANCE: Initialize high card tracking for new round
+          this.botMemory.highCardsPlayed = {
+              aces: [],
+              kings: [],
+              queens: [],
+              jacks: [],
+              byPlayer: { north: [], east: [], south: [], west: [] },
+              remaining: {
+                  aces: ['clubs', 'diamonds', 'hearts', 'spades'],
+                  kings: ['clubs', 'diamonds', 'hearts', 'spades'],
+                  queens: ['clubs', 'diamonds', 'hearts', 'spades'],
+                  jacks: ['clubs', 'diamonds', 'hearts', 'spades']
+              }
+          };
          
          console.log('🧠 Bot memory reset for new hand');
      }
