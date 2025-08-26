@@ -267,6 +267,17 @@ h1 {
     font-size: 1.8em;
 }
 
+/* Make trump symbols much bigger in player bid areas during Phase 1 */
+.player-bid span {
+    font-size: 2.5em !important;
+    font-weight: bold !important;
+    text-shadow: 0 0 15px currentColor !important;
+    vertical-align: middle !important;
+    margin-left: 8px !important;
+    display: inline-block !important;
+    line-height: 1 !important;
+}
+
 /* Game Board */
 .game-board {
     position: relative;
@@ -379,9 +390,9 @@ h1 {
 /* Current Player Highlight - REMOVED - turn indicator is now only in top panel */
 
 .player.current-turn .player-name {
-    color: #FFD700;
     font-weight: bold;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    /* Don't override player-specific colors - let them show through */
+    filter: brightness(1.2) saturate(1.3);
 }
 
 /* Player name styling - no current turn highlighting */
@@ -389,7 +400,36 @@ h1 {
     font-weight: bold;
     display: block;
     margin-bottom: 5px;
-    color: #FFD700;
+    color: #FFD700; /* Default fallback color */
+}
+
+/* Player-specific colors for names (matching Total Score UI) */
+.north-player .player-name,
+#north-player .player-name,
+.player-name[data-player="north"] {
+    color: #4FC3F7 !important;
+    text-shadow: 0 0 8px rgba(79, 195, 247, 0.8) !important;
+}
+
+.east-player .player-name,
+#east-player .player-name,
+.player-name[data-player="east"] {
+    color: #FFB74D !important;
+    text-shadow: 0 0 8px rgba(255, 183, 77, 0.8) !important;
+}
+
+.south-player .player-name,
+#south-player .player-name,
+.player-name[data-player="south"] {
+    color: #81C784 !important;
+    text-shadow: 0 0 8px rgba(129, 199, 132, 0.8) !important;
+}
+
+.west-player .player-name,
+#west-player .player-name,
+.player-name[data-player="west"] {
+    color: #F06292 !important;
+    text-shadow: 0 0 8px rgba(240, 98, 146, 0.8) !important;
 }
 
 .player-bid, .player-tricks {
@@ -1925,52 +1965,71 @@ h1 {
     color: #000000 !important; /* Black for No Trump */
 }
 
-/* INVERTED colors when selected - makes them stand out dramatically */
-.suit-button.selected[data-value="clubs"],
-.suit-button.selected[data-value="spades"] {
-    color: #ffffff !important;
-    background: #000000 !important;
-    border-color: #ffffff !important;
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.6) !important;
+/* Green background when trump suit is selected - matches number button style */
+.suit-button.selected[data-value="clubs"] {
+    background: #4CAF50 !important;
+    color: #000000 !important;
+    border-color: #45a049 !important;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5) !important;
     font-weight: bold !important;
-    transform: scale(1.1) !important;
 }
 
-.suit-button.selected[data-value="diamonds"],
-.suit-button.selected[data-value="hearts"] {
-    color: #ffffff !important;
-    background: #dc143c !important;
-    border-color: #ffffff !important;
-    box-shadow: 0 0 20px rgba(220, 20, 60, 0.6) !important;
+.suit-button.selected[data-value="spades"] {
+    background: #4CAF50 !important;
+    color: #000000 !important;
+    border-color: #45a049 !important;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5) !important;
     font-weight: bold !important;
-    transform: scale(1.1) !important;
+}
+
+.suit-button.selected[data-value="diamonds"] {
+    background: #4CAF50 !important;
+    color: #dc143c !important;
+    border-color: #45a049 !important;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5) !important;
+    font-weight: bold !important;
+}
+
+.suit-button.selected[data-value="hearts"] {
+    background: #4CAF50 !important;
+    color: #dc143c !important;
+    border-color: #45a049 !important;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5) !important;
+    font-weight: bold !important;
 }
 
 .suit-button.selected[data-value="notrump"] {
-    color: #ffffff !important;
-    background: #000000 !important;
-    border-color: #ffffff !important;
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.6) !important;
+    background: #4CAF50 !important;
+    color: #000000 !important;
+    border-color: #45a049 !important;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5) !important;
     font-weight: bold !important;
-    transform: scale(1.1) !important;
 }
 
-/* Maintain colors when hovering */
-.suit-button[data-value="clubs"]:hover,
+/* Green hover state for all trump suit buttons */
+.suit-button[data-value="clubs"]:hover {
+    background: #4CAF50 !important;
+    color: #000000 !important;
+}
+
 .suit-button[data-value="spades"]:hover {
-    color: #ffffff !important;
-    background: #000000 !important;
+    background: #4CAF50 !important;
+    color: #000000 !important;
 }
 
-.suit-button[data-value="diamonds"]:hover,
+.suit-button[data-value="diamonds"]:hover {
+    background: #4CAF50 !important;
+    color: #dc143c !important;
+}
+
 .suit-button[data-value="hearts"]:hover {
-    color: #ffffff !important;
-    background: #dc143c !important;
+    background: #4CAF50 !important;
+    color: #dc143c !important;
 }
 
 .suit-button[data-value="notrump"]:hover {
-    color: #ffffff !important;
-    background: #000000 !important;
+    background: #4CAF50 !important;
+    color: #000000 !important;
 }
 
 /* Responsive Design */
