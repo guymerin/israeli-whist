@@ -2259,6 +2259,41 @@ class IsraeliWhist {
         return voidCount;
     }
 
+    // Helper function to compare two cards
+    // Returns > 0 if card1 beats card2, < 0 if card2 beats card1, 0 if equal
+    compareCards(card1, card2, leadSuit) {
+        // Trump beats everything except higher trump
+        if (this.trumpSuit !== 'notrump') {
+            // If card1 is trump and card2 is not trump
+            if (card1.suit === this.trumpSuit && card2.suit !== this.trumpSuit) {
+                return 1;
+            }
+            // If card2 is trump and card1 is not trump
+            if (card2.suit === this.trumpSuit && card1.suit !== this.trumpSuit) {
+                return -1;
+            }
+            // If both are trump, higher trump wins
+            if (card1.suit === this.trumpSuit && card2.suit === this.trumpSuit) {
+                return this.getCardValue(card1) - this.getCardValue(card2);
+            }
+        }
+        
+        // Neither is trump or no trump game
+        // Only cards of the lead suit can win
+        if (card1.suit === leadSuit && card2.suit !== leadSuit) {
+            return 1;
+        }
+        if (card2.suit === leadSuit && card1.suit !== leadSuit) {
+            return -1;
+        }
+        if (card1.suit === leadSuit && card2.suit === leadSuit) {
+            return this.getCardValue(card1) - this.getCardValue(card2);
+        }
+        
+        // Neither follows suit, they're equal
+        return 0;
+    }
+
     // Helper function to get current trick winner
     getCurrentTrickWinner(trick) {
         if (!trick || trick.length === 0) return null;

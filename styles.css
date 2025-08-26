@@ -283,7 +283,7 @@ h1 {
     position: relative;
     width: 1000px;
     height: 650px;
-    margin: 0 auto;
+    margin: -15px auto 0 auto;
     background: 
         radial-gradient(ellipse at center, #0d4a0d 0%, #0a3a0a 70%, #052005 100%),
         repeating-linear-gradient(
@@ -339,7 +339,7 @@ h1 {
 }
 
 .north-player {
-    top: 15px;
+    top: 0px;
     left: calc(50% + 50px);
     transform: translateX(-50%);
     z-index: 10;
@@ -351,7 +351,7 @@ h1 {
 }
 
 .south-player {
-    bottom: -50px;
+    bottom: -10px;
     left: 50%;
     transform: translateX(-50%);
 }
@@ -713,7 +713,7 @@ h1 {
 /* Center Area */
 .center-area {
     position: absolute;
-    top: 50%;
+    top: calc(50% - 70px);
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
@@ -1166,7 +1166,7 @@ h1 {
 /* Game Controls */
 .game-controls {
     position: absolute;
-    top: 50%;
+    top: calc(50% - 5px);
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 10;
@@ -1481,7 +1481,7 @@ h1 {
 /* Bidding Interface */
 .bidding-interface {
     position: absolute;
-    top: calc(50% + 30px);
+    top: calc(50% - 15px);
     left: 50%;
     transform: translate(-50%, -50%);
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 60, 0.95) 100%);
