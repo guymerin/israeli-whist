@@ -41,8 +41,7 @@ class IsraeliWhist {
         this.gamletNumber = 1;
         this.fullGameNumber = 1; // Track full games (200 points or 10 gamlets)
         
-        // Last hand data for review
-        this.lastHandData = null;
+
         
         // Fast mode setting
         this.fastMode = false;
@@ -1504,8 +1503,6 @@ class IsraeliWhist {
         // For human player, immediately update their card display
         if (player === 'south') {
             this.updateHumanPlayerCards();
-            // Hide the "Show Last Hand" button when human player plays a new card
-            this.hideLastHandButton();
         }
         
         // Display the played card on the table
@@ -1516,8 +1513,6 @@ class IsraeliWhist {
         
         // Check if this completes a trick
         if (this.currentTrick.length === 4) {
-            // Show the "Show Last Hand" button after all 4 cards are played
-            this.showLastHandButton();
             // Wait a moment to show all cards before completing trick
             setTimeout(() => this.completeTrick(), this.getDelay(1000));
         } else {
@@ -1578,9 +1573,6 @@ class IsraeliWhist {
     }
      
     completeTrick() {
-        // Store the current trick data for potential "Show Last Hand" animation
-        this.lastTrickData = [...this.currentTrick];
-        
         // Determine trick winner according to Israeli Whist rules
         const winner = this.determineTrickWinner();
         this.tricksWon[winner]++;
@@ -3332,30 +3324,7 @@ class IsraeliWhist {
             });
         }
         
-        // Last Hand button - shows last completed hand details
-        const lastHandBtn = document.getElementById('last-hand-btn');
-        if (lastHandBtn) {
-            lastHandBtn.disabled = true; // Start disabled until first hand is played
-            lastHandBtn.addEventListener('click', () => {
-                this.animateLastHandCards();
-            });
-        }
-        
-        // Last Hand modal close buttons
-        const lastHandClose = document.getElementById('last-hand-close');
-        const lastHandBtnClose = document.getElementById('last-hand-btn-close');
-        
-        if (lastHandClose) {
-            lastHandClose.addEventListener('click', () => {
-                this.hideLastHand();
-            });
-        }
-        
-        if (lastHandBtnClose) {
-            lastHandBtnClose.addEventListener('click', () => {
-                this.hideLastHand();
-            });
-        }
+
     }
 
     passPhase1() {
@@ -4400,8 +4369,7 @@ class IsraeliWhist {
          // Update the score table display after animations
          setTimeout(() => this.updateScoresDisplay(), this.getDelay(2000));
          
-         // Store last hand data for review
-         this.storeLastHandData(scoreChanges);
+
          
          // Always save gamlet to history after completion
          this.saveGamletToHistory(this.scores);
@@ -4916,175 +4884,9 @@ class IsraeliWhist {
          }
      }
      
-     showLastHand() {
-         if (!this.lastHandData) {
-             this.showGameNotification('No previous hand data available!', 'warning');
-             return;
-         }
-         
-         const lastHandBody = document.getElementById('last-hand-body');
-         const lastHandModal = document.getElementById('last-hand-modal');
-         
-         if (!lastHandBody || !lastHandModal) return;
-         
-         // Generate the last hand summary
-         const content = this.generateLastHandContent();
-         lastHandBody.innerHTML = content;
-         
-         // Show the modal
-         lastHandModal.style.display = 'flex';
-     }
+
      
-     hideLastHand() {
-         const lastHandModal = document.getElementById('last-hand-modal');
-         if (lastHandModal) {
-             lastHandModal.style.display = 'none';
-         }
-     }
-     
-     showLastHandButton() {
-         const lastHandBtn = document.getElementById('last-hand-btn');
-         // Show button if we have either last trick data or full last hand data
-         if (lastHandBtn && (this.lastTrickData || this.lastHandData)) {
-             lastHandBtn.style.display = 'block';
-         }
-     }
-     
-     hideLastHandButton() {
-         const lastHandBtn = document.getElementById('last-hand-btn');
-         if (lastHandBtn) {
-             lastHandBtn.style.display = 'none';
-         }
-     }
-     
-     animateLastHandCards() {
-         // Use last trick data if available, otherwise use last hand data
-         let cards;
-         if (this.lastTrickData && this.lastTrickData.length > 0) {
-             cards = this.lastTrickData;
-         } else if (this.lastHandData && this.lastHandData.lastTrickCards) {
-             cards = this.lastHandData.lastTrickCards;
-         } else {
-             this.showGameNotification('No last trick cards available!', 'warning');
-             return;
-         }
-         
-         // Hide the button during animation
-         this.hideLastHandButton();
-         
-         // Create animation container
-         const animationContainer = document.createElement('div');
-         animationContainer.className = 'last-hand-animation';
-         animationContainer.style.cssText = `
-             position: absolute;
-             top: 50%;
-             left: 50%;
-             transform: translate(-50%, -50%);
-             z-index: 2000;
-             width: 300px;
-             height: 200px;
-             pointer-events: none;
-         `;
-         
-         document.body.appendChild(animationContainer);
-         
-         // Animate each card in sequence
-         cards.forEach((cardData, index) => {
-             setTimeout(() => {
-                 const cardElement = document.createElement('div');
-                 cardElement.className = 'animated-card';
-                 cardElement.innerHTML = `
-                     <div class="card-mini">
-                         <div class="card-rank">${cardData.card.rank}</div>
-                         <div class="card-suit" style="color: ${cardData.card.suit === 'hearts' || cardData.card.suit === 'diamonds' ? '#dc143c' : '#000'}">${this.getSuitSymbol(cardData.card.suit)}</div>
-                     </div>
-                     <div class="card-player">${this.getPlayerDisplayName(cardData.player)}</div>
-                 `;
-                 
-                 // Position cards in a circle
-                 const angle = (index * 90) * Math.PI / 180;
-                 const radius = 80;
-                 const x = Math.cos(angle) * radius;
-                 const y = Math.sin(angle) * radius;
-                 
-                 cardElement.style.cssText = `
-                     position: absolute;
-                     left: 50%;
-                     top: 50%;
-                     transform: translate(-50%, -50%) translate(${x}px, ${y}px) scale(0);
-                     animation: cardAppear 0.5s ease-out forwards;
-                     text-align: center;
-                 `;
-                 
-                 animationContainer.appendChild(cardElement);
-             }, index * 200);
-         });
-         
-         // Clean up animation after 2 seconds
-         setTimeout(() => {
-             if (animationContainer.parentNode) {
-                 animationContainer.remove();
-             }
-             // Show button again if we have last trick or hand data
-             if (this.lastTrickData || this.lastHandData) {
-                 this.showLastHandButton();
-             }
-         }, 2000);
-     }
-     
-     generateLastHandContent() {
-         const data = this.lastHandData;
-         
-         let content = `
-             <h4>Full Game ${data.fullGameNumber}, Gamlet ${data.gamletNumber}</h4>
-             <div class="hand-section">
-                 <strong>Trump:</strong> ${this.getSuitSymbol(data.trumpSuit)} (${data.trumpWinnerName})<br>
-                 <strong>Completed:</strong> ${data.endTime}
-             </div>
-             
-             <h4>Results Summary</h4>
-             <div class="hand-section">
-         `;
-         
-         // Generate player results
-         this.players.forEach(player => {
-             const playerName = player === 'south' ? data.playerName : this.getPlayerDisplayName(player);
-             const bid = data.phase2Bids[player] || 0;
-             const actual = data.tricksWon[player] || 0;
-             const scoreChange = data.scoreChanges[player] || 0;
-             const finalScore = data.finalScores[player] || 0;
-             
-             const status = actual === bid ? '✅ EXACT' : actual > bid ? '📈 OVER' : '📉 UNDER';
-             const scoreClass = scoreChange >= 0 ? 'score-positive' : 'score-negative';
-             const scoreSign = scoreChange >= 0 ? '+' : '';
-             
-             content += `
-                 <div class="player-result">
-                     <div>
-                         <span class="player-name">${playerName}</span><br>
-                         <span class="bid-vs-actual">${status} Bid: ${bid}, Took: ${actual}</span>
-                     </div>
-                     <div>
-                         <span class="score-change ${scoreClass}">${scoreSign}${scoreChange}</span><br>
-                         <span style="font-size: 11px; color: #ccc;">Total: ${finalScore}</span>
-                     </div>
-                 </div>
-             `;
-         });
-         
-         content += `
-             </div>
-             
-             <h4>Hand Details</h4>
-             <div class="hand-section">
-                 <strong>Total Bids:</strong> ${Object.values(data.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0)}<br>
-                 <strong>Hand Type:</strong> ${Object.values(data.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0) > 13 ? 'OVER' : 'UNDER'}<br>
-                 <strong>Total Tricks:</strong> ${Object.values(data.tricksWon).reduce((sum, tricks) => sum + (tricks || 0), 0)}/13
-             </div>
-         `;
-         
-         return content;
-     }
+
      
      generateHint() {
          // Generate strategic hints based on current game phase and state
@@ -5328,29 +5130,7 @@ class IsraeliWhist {
          return highest;
     }
     
-    storeLastHandData(scoreChanges) {
-        this.lastHandData = {
-            gamletNumber: this.gamletNumber,
-            fullGameNumber: this.fullGameNumber,
-            trumpSuit: this.trumpSuit,
-            trumpWinner: this.trumpWinner,
-            trumpWinnerName: this.getPlayerDisplayName(this.trumpWinner),
-            phase2Bids: { ...this.phase2Bids },
-            tricksWon: { ...this.tricksWon },
-            scoreChanges: { ...scoreChanges },
-            finalScores: { ...this.scores },
-            endTime: new Date().toLocaleString(),
-            playerName: this.playerName,
-            // Store the last trick cards for animation
-            lastTrickCards: this.lastTrickData ? [...this.lastTrickData] : []
-        };
-        
-        // Enable the Last Hand button now that we have data
-        const lastHandBtn = document.getElementById('last-hand-btn');
-        if (lastHandBtn) {
-            lastHandBtn.disabled = false;
-        }
-    }
+
 
     saveGamletToHistory(finalScores) {
         const gamletRecord = {
