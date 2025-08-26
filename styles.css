@@ -1482,6 +1482,35 @@ h1 {
     background: linear-gradient(135deg, #F57C00, #E65100);
 }
 
+/* ChatGPT button styling */
+.chatgpt-btn {
+    background: linear-gradient(135deg, #10a37f, #087f5b) !important;
+    border: 2px solid #10a37f;
+    position: relative;
+    overflow: hidden;
+}
+
+.chatgpt-btn:hover {
+    background: linear-gradient(135deg, #0f8e6f, #076d54) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+
+.chatgpt-btn:active {
+    transform: translateY(0);
+}
+
+.chatgpt-btn.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.gpt-logo {
+    font-size: 18px;
+    margin-right: 8px;
+    display: inline-block;
+}
+
 /* Bidding Interface */
 .bidding-interface {
     position: absolute;

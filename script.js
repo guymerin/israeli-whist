@@ -630,16 +630,11 @@ class IsraeliWhist {
     }
 
     updatePassButtonState() {
-        // Disable pass button if both tricks and suit are selected
+        // Always keep pass button enabled
         const passBtn = document.getElementById('pass-btn');
         if (passBtn) {
-            if (this.selectedTricks && this.selectedSuit) {
-                passBtn.disabled = true;
-                passBtn.title = 'Cannot pass after selecting a bid';
-            } else {
-                passBtn.disabled = false;
-                passBtn.title = '';
-            }
+            passBtn.disabled = false;
+            passBtn.title = '';
         }
     }
 
@@ -3404,6 +3399,295 @@ class IsraeliWhist {
         return score * pattern.confidence; // Scale by confidence in pattern
     }
     
+    // ADVANCED: Ask ChatGPT for bidding advice
+    async askChatGPTForBiddingAdvice() {
+        const chatGPTBtn = document.getElementById('ask-chatgpt-btn');
+        if (!chatGPTBtn) return;
+        
+        // Show loading state
+        chatGPTBtn.classList.add('loading');
+        chatGPTBtn.innerHTML = '<span class="gpt-logo">🤖</span> Thinking...';
+        chatGPTBtn.disabled = true;
+        
+        try {
+            // Get current player's hand
+            const playerHand = this.hands.south;
+            if (!playerHand || playerHand.length === 0) {
+                this.showGameNotification('No cards to analyze!', 'warning');
+                return;
+            }
+            
+            // Get current bidding context
+            const currentBids = this.getCurrentBiddingContext();
+            
+            // Prepare hand analysis for ChatGPT
+            const handAnalysis = this.analyzeHandForGPT(playerHand);
+            
+            // Create prompt for ChatGPT
+            const prompt = this.createBiddingPrompt(handAnalysis, currentBids);
+            
+            // Make API call to ChatGPT
+            const advice = await this.callChatGPTAPI(prompt);
+            
+            // Display the advice
+            this.displayChatGPTAdvice(advice);
+            
+        } catch (error) {
+            console.error('Error getting ChatGPT advice:', error);
+            this.showGameNotification('Sorry, ChatGPT is temporarily unavailable. Try again later!', 'error');
+        } finally {
+            // Reset button state
+            chatGPTBtn.classList.remove('loading');
+            chatGPTBtn.innerHTML = '<span class="gpt-logo">🤖</span> Ask ChatGPT';
+            chatGPTBtn.disabled = false;
+        }
+    }
+    
+    // Helper: Get current bidding context
+    getCurrentBiddingContext() {
+        const context = {
+            currentHighestBid: null,
+            totalBidders: 0,
+            remainingPlayers: 0
+        };
+        
+        // Find highest bid so far
+        this.players.forEach(player => {
+            if (this.phase1Bids[player]) {
+                context.totalBidders++;
+                if (!context.currentHighestBid || 
+                    this.isBidHigher(this.phase1Bids[player], context.currentHighestBid)) {
+                    context.currentHighestBid = this.phase1Bids[player];
+                }
+            }
+        });
+        
+        context.remainingPlayers = this.players.filter(p => 
+            !this.phase1Bids[p] && !this.playersPassed[p]
+        ).length;
+        
+        return context;
+    }
+    
+    // Helper: Analyze hand for GPT
+    analyzeHandForGPT(hand) {
+        const analysis = {
+            totalCards: hand.length,
+            suitDistribution: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 },
+            highCards: { clubs: [], diamonds: [], hearts: [], spades: [] },
+            longestSuit: '',
+            shortestSuit: '',
+            balancedHand: false,
+            trumpPotential: {}
+        };
+        
+        // Count cards by suit and identify high cards
+        hand.forEach(card => {
+            analysis.suitDistribution[card.suit]++;
+            if (['A', 'K', 'Q', 'J'].includes(card.rank)) {
+                analysis.highCards[card.suit].push(card.rank);
+            }
+        });
+        
+        // Find longest and shortest suits
+        const suitLengths = Object.entries(analysis.suitDistribution);
+        suitLengths.sort((a, b) => b[1] - a[1]);
+        analysis.longestSuit = suitLengths[0][0];
+        analysis.shortestSuit = suitLengths[3][0];
+        
+        // Check if hand is balanced (no suit longer than 4, no suit shorter than 2)
+        const lengths = Object.values(analysis.suitDistribution);
+        analysis.balancedHand = Math.max(...lengths) <= 4 && Math.min(...lengths) >= 2;
+        
+        // Assess trump potential for each suit
+        ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
+            const assessment = this.assessTrumpPotential(hand, suit);
+            analysis.trumpPotential[suit] = {
+                score: assessment.totalScore,
+                length: assessment.length,
+                honors: assessment.honors
+            };
+        });
+        
+        // Assess No Trump potential
+        const ntAssessment = this.assessNoTrumpPotential(hand);
+        analysis.trumpPotential.notrump = {
+            score: ntAssessment.totalScore,
+            suitControl: ntAssessment.suitControl || 0
+        };
+        
+        return analysis;
+    }
+    
+    // Helper: Create prompt for ChatGPT
+    createBiddingPrompt(handAnalysis, biddingContext) {
+        let prompt = `You are an expert Israeli Whist player. Analyze this hand and recommend a bidding strategy.
+
+HAND ANALYSIS:
+- Total cards: ${handAnalysis.totalCards}
+- Suit distribution: 
+  • Clubs: ${handAnalysis.suitDistribution.clubs} cards (high cards: ${handAnalysis.highCards.clubs.join(', ') || 'none'})
+  • Diamonds: ${handAnalysis.suitDistribution.diamonds} cards (high cards: ${handAnalysis.highCards.diamonds.join(', ') || 'none'})
+  • Hearts: ${handAnalysis.suitDistribution.hearts} cards (high cards: ${handAnalysis.highCards.hearts.join(', ') || 'none'})
+  • Spades: ${handAnalysis.suitDistribution.spades} cards (high cards: ${handAnalysis.highCards.spades.join(', ') || 'none'})
+- Longest suit: ${handAnalysis.longestSuit} (${handAnalysis.suitDistribution[handAnalysis.longestSuit]} cards)
+- Hand type: ${handAnalysis.balancedHand ? 'Balanced' : 'Unbalanced'}
+
+TRUMP POTENTIAL SCORES:
+- Clubs: ${handAnalysis.trumpPotential.clubs.score.toFixed(1)}
+- Diamonds: ${handAnalysis.trumpPotential.diamonds.score.toFixed(1)}
+- Hearts: ${handAnalysis.trumpPotential.hearts.score.toFixed(1)}
+- Spades: ${handAnalysis.trumpPotential.spades.score.toFixed(1)}
+- No Trump: ${handAnalysis.trumpPotential.notrump.score.toFixed(1)}
+
+BIDDING CONTEXT:`;
+
+        if (biddingContext.currentHighestBid) {
+            prompt += `
+- Current highest bid: ${biddingContext.currentHighestBid.minTakes} ${biddingContext.currentHighestBid.trumpSuit}
+- Players who have bid: ${biddingContext.totalBidders}
+- Remaining players: ${biddingContext.remainingPlayers}`;
+        } else {
+            prompt += `
+- No bids yet (you're first to bid)
+- All 4 players still to bid`;
+        }
+
+        prompt += `
+
+ISRAELI WHIST RULES REMINDER:
+- Phase 1: Bid trump suit and minimum tricks (4-13)
+- Each bid must be higher: more tricks OR same tricks with higher suit
+- Suit ranking: Clubs < Diamonds < Hearts < Spades < No Trump
+- You need to be realistic - overbidding leads to penalties
+
+Please provide:
+1. Your recommended bid (number of tricks and trump suit) OR recommendation to PASS
+2. Brief reasoning (2-3 sentences explaining the strategy)
+3. Alternative consideration if applicable
+
+Keep your response concise and actionable.`;
+
+        return prompt;
+    }
+    
+    // Helper: Call ChatGPT API
+    async callChatGPTAPI(prompt) {
+        // For demonstration, I'll create a mock response
+        // In a real implementation, you would need to set up a backend API endpoint
+        // that calls OpenAI's API with your API key for security reasons
+        
+        // This is a placeholder - you would replace this with actual API call
+        return this.generateMockChatGPTResponse(prompt);
+    }
+    
+    // Helper: Generate mock ChatGPT response (replace with real API call)
+    generateMockChatGPTResponse(prompt) {
+        // Simulate API delay
+        return new Promise(resolve => {
+            setTimeout(() => {
+                resolve({
+                    recommendation: "7 Hearts",
+                    reasoning: "Your hand shows good heart length with high cards. The unbalanced distribution favors a trump contract over No Trump. Hearts ranks high enough to compete effectively.",
+                    alternative: "Consider passing if opponents bid aggressively, as your hand may play better defensively."
+                });
+            }, 1500);
+        });
+    }
+    
+    // Helper: Display ChatGPT advice
+    displayChatGPTAdvice(advice) {
+        const notification = document.createElement('div');
+        notification.className = 'chatgpt-advice';
+        notification.innerHTML = `
+            <div class="advice-header">
+                <span class="gpt-logo">🤖</span> ChatGPT Recommendation
+                <button class="advice-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+            <div class="advice-content">
+                <div class="advice-recommendation">
+                    <strong>Recommended Bid:</strong> ${advice.recommendation}
+                </div>
+                <div class="advice-reasoning">
+                    <strong>Reasoning:</strong> ${advice.reasoning}
+                </div>
+                ${advice.alternative ? `<div class="advice-alternative">
+                    <strong>Alternative:</strong> ${advice.alternative}
+                </div>` : ''}
+            </div>
+        `;
+        
+        // Add CSS if not already added
+        if (!document.querySelector('.chatgpt-advice-styles')) {
+            const style = document.createElement('style');
+            style.className = 'chatgpt-advice-styles';
+            style.textContent = `
+                .chatgpt-advice {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #10a37f, #087f5b);
+                    color: white;
+                    border-radius: 12px;
+                    padding: 0;
+                    max-width: 350px;
+                    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+                    z-index: 1000;
+                    animation: slideInRight 0.3s ease-out;
+                }
+                .advice-header {
+                    background: rgba(0,0,0,0.2);
+                    padding: 12px 15px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-radius: 12px 12px 0 0;
+                    font-weight: bold;
+                }
+                .advice-close {
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 20px;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 24px;
+                    height: 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .advice-content {
+                    padding: 15px;
+                    line-height: 1.4;
+                }
+                .advice-recommendation {
+                    margin-bottom: 10px;
+                    font-size: 16px;
+                }
+                .advice-reasoning, .advice-alternative {
+                    margin-bottom: 8px;
+                    font-size: 14px;
+                    opacity: 0.9;
+                }
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 10 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 10000);
+    }
+    
     // ADVANCED: Update behavior profiles when bids are made
     updateBehaviorProfile(player, phase, bidData) {
         if (!this.botMemory || !this.botMemory.behaviorProfiles || !this.botMemory.behaviorProfiles[player]) {
@@ -4977,6 +5261,14 @@ class IsraeliWhist {
         if (clearBtn) {
             clearBtn.addEventListener('click', () => {
                 this.clearBidSelections();
+            });
+        }
+        
+        // ChatGPT button
+        const chatGPTBtn = document.getElementById('ask-chatgpt-btn');
+        if (chatGPTBtn) {
+            chatGPTBtn.addEventListener('click', () => {
+                this.askChatGPTForBiddingAdvice();
             });
         }
         
