@@ -27,6 +27,13 @@ class IsraeliWhist {
             west: 0
         };
         
+        // Game history tracking
+        this.gameHistory = [];
+        this.gameNumber = 1;
+        
+        // Initialize game history display when DOM is ready
+        setTimeout(() => this.updateGameHistoryDisplay(), 100);
+        
         // Phase 1 - Trump bidding
         this.phase1Bids = {
             north: null,
@@ -444,6 +451,38 @@ class IsraeliWhist {
             biddingInterface.style.display = 'block';
         } else {
             console.error('Bidding interface element not found!');
+        }
+        
+        // Clear previous selections for fresh start
+        this.selectedTricks = null;
+        this.selectedSuit = null;
+        
+        // Ensure pass button is enabled for fresh bidding round
+        const passBtn = document.getElementById('pass-btn');
+        if (passBtn) {
+            console.log('Resetting pass button state');
+            passBtn.disabled = false;
+            passBtn.style.opacity = '1';
+            passBtn.style.cursor = 'pointer';
+            passBtn.style.backgroundColor = '';  // Clear any inline background
+            passBtn.style.color = '';           // Clear any inline color
+            passBtn.style.filter = '';          // Clear any filters
+            passBtn.classList.remove('disabled'); // Remove disabled class if present
+            passBtn.removeAttribute('aria-disabled'); // Remove aria-disabled
+        }
+        
+        // Ensure bid button is enabled
+        const bidBtn = document.getElementById('bid-btn');
+        if (bidBtn) {
+            console.log('Resetting bid button state');
+            bidBtn.disabled = false;
+            bidBtn.style.opacity = '1';
+            bidBtn.style.cursor = 'pointer';
+            bidBtn.style.backgroundColor = '';  // Clear any inline background
+            bidBtn.style.color = '';           // Clear any inline color
+            bidBtn.style.filter = '';          // Clear any filters
+            bidBtn.classList.remove('disabled'); // Remove disabled class if present
+            bidBtn.removeAttribute('aria-disabled'); // Remove aria-disabled
         }
         
         this.populateBiddingButtons();
@@ -2112,10 +2151,10 @@ class IsraeliWhist {
     }
 
     updateDisplay() {
-        // Update round display
+        // Update game number display  
         const roundIndicator = document.getElementById('round-indicator');
         if (roundIndicator) {
-            roundIndicator.textContent = this.currentRound;
+            roundIndicator.textContent = this.gameNumber;
         }
         
         // Update trump display
@@ -3596,6 +3635,10 @@ class IsraeliWhist {
         if (winner) {
             const winnerDisplayName = this.getPlayerDisplayName(winner);
             console.log(`🏆 GAME WINNER: ${winnerDisplayName} with ${this.scores[winner]} points!`);
+            
+            // Save game to history before resetting
+            this.saveGameToHistory(winner, this.scores);
+            
             this.showGameNotification(`🎉 ${winnerDisplayName} WINS THE GAME with ${this.scores[winner]} points!`, 'success', 5000);
             this.resetForNewGame();
         } else {
@@ -3653,10 +3696,10 @@ class IsraeliWhist {
      }
      
      updateRoundDisplay() {
-         // Update the round indicator to show current round
+         // Update the round indicator to show current game number
          const roundIndicator = document.getElementById('round-indicator');
          if (roundIndicator) {
-             roundIndicator.textContent = this.currentRound;
+             roundIndicator.textContent = this.gameNumber;
          }
          
          // Reset tricks indicator
@@ -3681,6 +3724,9 @@ class IsraeliWhist {
      
      resetForNewGame() {
          console.log('=== RESETTING FOR NEW GAME ===');
+         
+         // Increment game number for next game
+         this.gameNumber++;
          
          // Show name modal again for new game
          this.showNameModal();
@@ -4197,6 +4243,54 @@ class IsraeliWhist {
              }
          }
          return highest;
+    }
+    
+    saveGameToHistory(winner, finalScores) {
+        const gameRecord = {
+            gameNumber: this.gameNumber,
+            winner: winner,
+            winnerName: this.getPlayerDisplayName(winner),
+            finalScores: { ...finalScores },
+            rounds: this.currentRound,
+            endTime: new Date().toLocaleString(),
+            playerName: this.playerName
+        };
+        
+        this.gameHistory.push(gameRecord);
+        console.log(`Game ${this.gameNumber} saved to history:`, gameRecord);
+        
+        // Update the display
+        this.updateGameHistoryDisplay();
+    }
+    
+    updateGameHistoryDisplay() {
+        const historyContent = document.getElementById('game-history-content');
+        if (!historyContent) return;
+        
+        if (this.gameHistory.length === 0) {
+            historyContent.innerHTML = '<div class="no-games-message">No completed games yet</div>';
+            return;
+        }
+        
+        // Show most recent games first (reverse order)
+        const recentGames = [...this.gameHistory].reverse().slice(0, 5); // Show last 5 games
+        
+        historyContent.innerHTML = recentGames.map(game => {
+            const isPlayerWinner = game.winner === 'south';
+            const winnerDisplay = isPlayerWinner ? 
+                `${game.playerName} (You)` : 
+                game.winnerName;
+            
+            return `
+                <div class="game-history-item">
+                    <div class="game-history-header">Game ${game.gameNumber}</div>
+                    <div class="game-history-winner">🏆 ${winnerDisplay}</div>
+                    <div class="game-history-scores">
+                        ${game.finalScores.north}/${game.finalScores.east}/${game.finalScores.south}/${game.finalScores.west}
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 }
 
