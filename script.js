@@ -2106,6 +2106,9 @@ class IsraeliWhist {
             score += this.evaluateExactBidLeadStrategy(card, player, context);
         }
         
+        // Apply zero-bid targeting strategy (works for all bid types)
+        score += this.evaluateZeroBidTargeting(card, player, context);
+        
         // Apply urgency multiplier based on how desperate the situation is
         score *= (1 + context.urgencyLevel * 0.5);
         
@@ -2262,6 +2265,9 @@ class IsraeliWhist {
             // EXACT BID STRATEGY: Play precisely to maintain exact count
             score += this.evaluateExactBidFollowStrategy(card, player, context, canWinTrick, isLeadSuit, isTrump, cardStrength);
         }
+        
+        // Apply zero-bid targeting strategy (works for all bid types)
+        score += this.evaluateZeroBidTargeting(card, player, context);
         
         // Apply urgency multiplier
         score *= (1 + context.urgencyLevel * 0.3);
@@ -2420,14 +2426,25 @@ class IsraeliWhist {
             someNeedTricks: false,
             someNeedToAvoid: false,
             mostDesperate: null,
-            maxUrgency: 0
+            maxUrgency: 0,
+            zeroBidders: [], // Players who bid 0
+            isUnderGame: false
         };
+        
+        // Calculate total bids to determine if this is an "under" game
+        const totalBids = Object.values(this.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0);
+        situations.isUnderGame = totalBids < 13;
         
         this.players.forEach(player => {
             const bid = this.phase2Bids[player] || 0;
             const taken = this.tricksWon[player] || 0;
             const needed = bid - taken;
             const remaining = 13 - this.tricksPlayed;
+            
+            // Track players who bid 0 (especially important in under games)
+            if (bid === 0 && taken === 0) {
+                situations.zeroBidders.push(player);
+            }
             
             if (needed > 0) {
                 situations.someNeedTricks = true;
@@ -2444,6 +2461,71 @@ class IsraeliWhist {
         return situations;
     }
     
+    evaluateZeroBidTargeting(card, player, context) {
+        let targetingScore = 0;
+        const opponentSituations = context.opponentSituations;
+        
+        // Only apply zero-bid targeting in under games where it's most effective
+        if (!opponentSituations.isUnderGame || opponentSituations.zeroBidders.length === 0) {
+            return 0;
+        }
+        
+        // Check if any zero-bidders are in the current trick and can be forced to win
+        for (const zeroBidder of opponentSituations.zeroBidders) {
+            if (this.isPlayerInCurrentTrick(zeroBidder)) {
+                // Try to force the zero-bidder to win by playing a low card
+                const cardStrength = this.getCardValue(card);
+                const isLowCard = cardStrength <= 9; // 2-9 are considered low
+                
+                if (isLowCard && this.canForcePlayerToWin(card, zeroBidder, context)) {
+                    targetingScore += 50; // High bonus for successfully targeting zero-bidder
+                    console.log(`🎯 ${this.getPlayerDisplayName(player)}: Targeting zero-bidder ${this.getPlayerDisplayName(zeroBidder)} with low ${card.rank}${this.getSuitSymbol(card.suit)}`);
+                }
+            }
+        }
+        
+        return targetingScore;
+    }
+    
+    isPlayerInCurrentTrick(player) {
+        // Check if the player will play in the current trick (hasn't played yet)
+        const playerIndex = this.players.indexOf(player);
+        const leadIndex = this.trickLeader;
+        const trickLength = this.currentTrick.length;
+        
+        // Calculate if this player is still to play in the current trick
+        for (let i = 0; i < 4 - trickLength; i++) {
+            const nextPlayerIndex = (leadIndex + trickLength + i) % 4;
+            if (nextPlayerIndex === playerIndex) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    canForcePlayerToWin(myCard, targetPlayer, context) {
+        // Simple heuristic: if we play a low card and the target player 
+        // will be forced to follow suit or trump, they might win
+        const targetHand = this.hands[targetPlayer];
+        if (!targetHand) return false;
+        
+        const leadSuit = context.leadSuit || myCard.suit;
+        const targetCanFollow = targetHand.some(card => card.suit === leadSuit);
+        
+        // If they can't follow suit, they might have to trump and win
+        // If they can follow suit with only high cards, they might be forced to win
+        if (!targetCanFollow) {
+            return targetHand.some(card => card.suit === this.trumpSuit);
+        }
+        
+        // Check if their lowest card in suit is still high
+        const suitCards = targetHand.filter(card => card.suit === leadSuit);
+        const lowestSuitCard = suitCards.reduce((lowest, card) => 
+            this.getCardValue(card) < this.getCardValue(lowest) ? card : lowest, suitCards[0]);
+        
+        return this.getCardValue(lowestSuitCard) > this.getCardValue(myCard);
+    }
+
     analyzeTrickSituation() {
         if (this.currentTrick.length === 0) {
             return { position: 'lead', highestCard: null, canWin: true };
