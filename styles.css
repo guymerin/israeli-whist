@@ -2419,39 +2419,7 @@ h1 {
     }
 }
 
-/* Victory message animation */
-.victory-message {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: linear-gradient(135deg, #FFD700, #FFA500, #FF6B35);
-    color: #000;
-    padding: 30px 50px;
-    border-radius: 20px;
-    font-size: 2.5em;
-    font-weight: bold;
-    text-align: center;
-    z-index: 10000;
-    animation: victoryBounce 1s ease-out forwards;
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.4);
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
 
-@keyframes victoryBounce {
-    0% {
-        transform: translate(-50%, -50%) scale(0) rotate(-180deg);
-        opacity: 0;
-    }
-    50% {
-        transform: translate(-50%, -50%) scale(1.2) rotate(0deg);
-        opacity: 1;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(1) rotate(0deg);
-        opacity: 1;
-    }
-}
 
 /* Winner announcement animation */
 @keyframes winnerAnnouncement {
@@ -3056,6 +3024,24 @@ h1 {
 }
 
 .scorecard-table .total-row {
+    background: linear-gradient(135deg, #e8dcc0 0%, #d4c4a0 100%);
+    color: #5d4e37;
+    font-weight: 700;
+    border-top: 2px solid #8b7355;
+}
+
+/* Total row merged cells styling */
+.scorecard-table tr.total-row-tr .total-score-cell {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #f0e6b8 0%, #e8dcc0 100%);
+    border-left: 2px solid #8b7355;
+    border-right: 2px solid #8b7355;
+}
+
+/* Total row label styling */
+.scorecard-table tr.total-row-tr .total-label {
     background: linear-gradient(135deg, #e8dcc0 0%, #d4c4a0 100%);
     color: #5d4e37;
     font-weight: 700;
