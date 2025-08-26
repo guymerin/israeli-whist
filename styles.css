@@ -2306,6 +2306,39 @@ h1 {
     animation: particleFloat 1s ease-out forwards;
 }
 
+/* +1 Trick Win Animation */
+.plus-one-animation {
+    position: absolute;
+    font-size: 48px;
+    font-weight: bold;
+    color: #FFD700;
+    text-shadow: 
+        0 0 10px rgba(255, 215, 0, 0.8),
+        2px 2px 4px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 2000;
+    animation: plusOneFloat 2s ease-out forwards;
+}
+
+@keyframes plusOneFloat {
+    0% {
+        transform: translateY(0) scale(0.5);
+        opacity: 0;
+    }
+    20% {
+        transform: translateY(-10px) scale(1.2);
+        opacity: 1;
+    }
+    40% {
+        transform: translateY(-25px) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-60px) scale(0.8);
+        opacity: 0;
+    }
+}
+
 /* Fireworks Animation */
 .fireworks-container {
     position: fixed;
