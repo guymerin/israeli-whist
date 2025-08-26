@@ -7064,41 +7064,74 @@ Keep your response concise and actionable.`;
          }
          
          const handStrength = this.evaluateHandStrength('south');
-         const bestSuit = this.getBestTrumpSuit('south', handStrength);
          const currentBid = this.getCurrentHighestBid();
+         const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
          
          let hint = '';
          
-         // Hand strength assessment
-         if (handStrength.score >= 20) {
-             hint += '<p>🔥 <strong>Strong hand</strong> - good bidding opportunity</p>';
-         } else if (handStrength.score >= 15) {
-             hint += '<p>✅ <strong>Decent hand</strong> - consider bidding carefully</p>';
-         } else {
-             hint += '<p>⚠️ <strong>Weak hand</strong> - passing might be wise</p>';
+         // === COMPACT BIDDING RECOMMENDATIONS ===
+         hint += '<h4 style="margin: 4px 0 6px 0; font-size: 1em;">🎯 Bidding Options</h4>';
+         
+         if (this.playersPassed.south) {
+             hint += '<p>You have already passed this round.</p>';
+             return hint;
          }
          
-         // Suit recommendation
-         hint += `<div class="card-suggestion">`;
-         hint += `<strong>Best Trump: ${this.getSuitSymbol(bestSuit)} ${bestSuit.charAt(0).toUpperCase() + bestSuit.slice(1)}</strong><br>`;
-         if (bestSuit !== 'notrump') {
-             const suitCards = hand.filter(card => card.suit === bestSuit);
-             hint += `${suitCards.length} cards with good strength`;
-         } else {
-             hint += `Balanced hand with high cards`;
-         }
-         hint += `</div>`;
+         const biddingOptions = this.calculateBiddingOptions(hand, handStrength, currentBid);
          
-         // Strategic advice
-         if (currentBid) {
-             const ourBestSuit = this.getBestTrumpSuit('south', handStrength);
-             if (ourBestSuit === currentBid.trumpSuit) {
-                 hint += '<p>💡 <strong>Same trump:</strong> Pass now, raise in Phase 2 if this wins</p>';
+         if (biddingOptions.length === 0 || (biddingOptions.length > 0 && biddingOptions[0].successRate < 70)) {
+             // Recommend PASS if no options or top option has <70% success rate
+             hint += `<div style="margin: 4px 0; padding: 6px; border: 2px solid #FF9800; border-radius: 4px; background: rgba(255,152,0,0.1);">`;
+             hint += '<strong>🚫 PASS</strong> ';
+             if (biddingOptions.length === 0) {
+                 if (currentBid) {
+                     hint += `(can't compete with ${currentBid.minTakes}${this.getSuitSymbol(currentBid.trumpSuit)})`;
+                 } else {
+                     hint += '(hand too weak)';
+                 }
              } else {
-                 hint += `<p>🎯 <strong>Compete:</strong> Try ${this.getSuitSymbol(bestSuit)} vs ${currentBid.minTakes} ${this.getSuitSymbol(currentBid.trumpSuit)}</p>`;
+                 const topOption = biddingOptions[0];
+                 hint += `(${topOption.minTakes}${this.getSuitSymbol(topOption.trumpSuit)} only ${topOption.successRate}% - risky)`;
+             }
+             hint += `</div>`;
+             
+             // Show compact risky alternatives
+             if (biddingOptions.length > 0) {
+                 hint += '<div style="margin: 4px 0;"><strong style="font-size: 0.9em;">Risky:</strong> ';
+                 biddingOptions.slice(0, 2).forEach((option, index) => {
+                     hint += `${option.minTakes}${this.getSuitSymbol(option.trumpSuit)} (${option.successRate}%)`;
+                     if (index < Math.min(biddingOptions.length, 2) - 1) hint += ', ';
+                 });
+                 hint += '</div>';
              }
          } else {
-             hint += '<p>🏁 <strong>Opening:</strong> Conservative 5-6 tricks recommended</p>';
+             // Top recommendation first (>=70% success rate)
+             const topOption = biddingOptions[0];
+             hint += `<div style="margin: 4px 0; padding: 6px; border: 2px solid #4CAF50; border-radius: 4px; background: rgba(76,175,80,0.1);">`;
+             hint += `<strong>💡 ${topOption.minTakes} ${this.getSuitSymbol(topOption.trumpSuit)}</strong> `;
+             hint += `<span style="color: ${this.getConfidenceLevel(topOption.successRate).color};">(${topOption.successRate}%)</span><br>`;
+             hint += `<small>${topOption.reasoning}</small>`;
+             hint += `</div>`;
+             
+             // Show compact alternatives
+             if (biddingOptions.length > 1) {
+                 const alternatives = biddingOptions.slice(1, 3); // Max 2 alternatives for space
+                 hint += '<div style="margin: 4px 0;"><strong style="font-size: 0.9em;">Alternatives:</strong> ';
+                 alternatives.forEach((option, index) => {
+                     hint += `${option.minTakes}${this.getSuitSymbol(option.trumpSuit)} (${option.successRate}%)`;
+                     if (index < alternatives.length - 1) hint += ', ';
+                 });
+                 hint += '</div>';
+             }
+         }
+         
+         // === COMPACT COMPETITIVE STRATEGY ===
+         if (currentBid) {
+             hint += '<div style="margin: 6px 0; padding: 4px; background: rgba(255,255,255,0.05); border-radius: 4px;">';
+             hint += '<strong style="font-size: 0.9em;">⚔️ vs ' + this.getPlayerDisplayName(this.findBidWinner()) + ':</strong> ';
+             const competitiveAdvice = this.getCompetitiveAdviceCompact(hand, handStrength, currentBid, biddingOptions);
+             hint += competitiveAdvice;
+             hint += '</div>';
          }
          
          return hint;
@@ -7175,6 +7208,361 @@ Keep your response concise and actionable.`;
          }
          
          return hint;
+     }
+     
+     getCompetitiveAdviceCompact(hand, handStrength, currentBid, biddingOptions) {
+         if (biddingOptions.length === 0) {
+             return 'Cannot compete safely';
+         }
+         
+         const bestOption = biddingOptions[0];
+         const samesuit = bestOption.trumpSuit === currentBid.trumpSuit;
+         
+         if (samesuit) {
+             if (bestOption.successRate >= 65) {
+                 return `Outbid with ${bestOption.minTakes}${this.getSuitSymbol(bestOption.trumpSuit)} (${bestOption.successRate}%)`;
+             } else {
+                 return 'Pass, raise in Phase 2 if they win';
+             }
+         } else {
+             if (bestOption.successRate >= 60) {
+                 return `Compete with ${bestOption.minTakes}${this.getSuitSymbol(bestOption.trumpSuit)} (${bestOption.successRate}%)`;
+             } else {
+                 return `Risky to compete (${bestOption.successRate}%)`;
+             }
+         }
+     }
+     
+     // Supporting functions for enhanced Phase 1 hints
+     getDetailedSuitAnalysis(hand) {
+         const analysis = {
+             clubs: { count: 0, honors: 0, strength: 0 },
+             diamonds: { count: 0, honors: 0, strength: 0 },
+             hearts: { count: 0, honors: 0, strength: 0 },
+             spades: { count: 0, honors: 0, strength: 0 },
+             notrump: { strength: 0 }
+         };
+         
+         const suits = ['clubs', 'diamonds', 'hearts', 'spades'];
+         const honorCards = ['A', 'K', 'Q', 'J'];
+         const cardValues = { 'A': 4, 'K': 3, 'Q': 2, 'J': 1, '10': 0.5 };
+         
+         suits.forEach(suit => {
+             const suitCards = hand.filter(card => card.suit === suit);
+             analysis[suit].count = suitCards.length;
+             
+             suitCards.forEach(card => {
+                 if (honorCards.includes(card.rank)) {
+                     analysis[suit].honors++;
+                 }
+                 analysis[suit].strength += cardValues[card.rank] || 0;
+             });
+             
+             // Length bonus for trump potential
+             if (suitCards.length >= 5) {
+                 analysis[suit].strength += (suitCards.length - 4) * 1.5;
+             }
+         });
+         
+         // No Trump strength = balanced distribution + high card points
+         const lengths = suits.map(suit => analysis[suit].count);
+         const maxLength = Math.max(...lengths);
+         const minLength = Math.min(...lengths);
+         const totalHCP = suits.reduce((sum, suit) => sum + analysis[suit].strength, 0);
+         
+         if (maxLength <= 4 && minLength >= 2) {
+             analysis.notrump.strength = totalHCP * 0.8; // Penalty for no trump
+         } else {
+             analysis.notrump.strength = totalHCP * 0.4; // Heavy penalty for unbalanced
+         }
+         
+         return analysis;
+     }
+     
+     calculateBiddingOptions(hand, handStrength, currentBid) {
+         const options = [];
+         const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
+         const suitAnalysis = this.getDetailedSuitAnalysis(hand);
+         
+         // Determine the minimum bid needed
+         let minTricks = 4;
+         let minSuitRank = -1;
+         
+         if (currentBid) {
+             minTricks = currentBid.minTakes;
+             minSuitRank = suits.indexOf(currentBid.trumpSuit);
+         }
+         
+         // Evaluate each possible bid (excluding 4 tricks unless competing against existing 4-bid)
+         for (let tricks = minTricks; tricks <= Math.min(8, 13); tricks++) {
+             suits.forEach((suit, suitRank) => {
+                 // Check if this bid is higher than current
+                 if (currentBid) {
+                     if (tricks < currentBid.minTakes) return;
+                     if (tricks === currentBid.minTakes && suitRank <= minSuitRank) return;
+                 }
+                 
+                 // Skip 4-trick bids unless we're competing against an existing 4-bid
+                 if (tricks === 4 && (!currentBid || currentBid.minTakes !== 4)) return;
+                 
+                 const assessment = this.assessBidViability(hand, suitAnalysis, suit, tricks, handStrength);
+                 
+                 // Only include viable options (reasonable success chance)
+                 if (assessment.successRate >= 35) {
+                     options.push({
+                         minTakes: tricks,
+                         trumpSuit: suit,
+                         successRate: assessment.successRate,
+                         expectedTricks: assessment.expectedTricks,
+                         reasoning: assessment.reasoning,
+                         score: assessment.score
+                     });
+                 }
+             });
+         }
+         
+         // Sort by success rate and expected outcome
+         options.sort((a, b) => {
+             const aScore = a.successRate * 0.7 + (a.expectedTricks / a.minTakes) * 30;
+             const bScore = b.successRate * 0.7 + (b.expectedTricks / b.minTakes) * 30;
+             return bScore - aScore;
+         });
+         
+         // Ensure trump suit diversity - don't show 3 options with same trump
+         const diversifiedOptions = this.diversifyTrumpOptions(options);
+         
+         return diversifiedOptions.slice(0, 3); // Return top 3 diversified options
+     }
+     
+     diversifyTrumpOptions(options) {
+         if (options.length <= 1) return options;
+         
+         const diversified = [];
+         const usedTrumps = new Set();
+         
+         // First pass: Add options with different trump suits
+         for (const option of options) {
+             if (!usedTrumps.has(option.trumpSuit)) {
+                 diversified.push(option);
+                 usedTrumps.add(option.trumpSuit);
+                 
+                 // Stop if we have 3 different trump suits
+                 if (diversified.length >= 3) break;
+             }
+         }
+         
+         // If we still need more options and haven't filled 3 slots
+         if (diversified.length < 3) {
+             // Add remaining options (which may have duplicate trump suits)
+             for (const option of options) {
+                 if (!diversified.includes(option)) {
+                     diversified.push(option);
+                     if (diversified.length >= 3) break;
+                 }
+             }
+         }
+         
+         // If we only have 1-2 viable options, that's fine - quality over quantity
+         return diversified;
+     }
+     
+     assessBidViability(hand, suitAnalysis, suit, tricks, handStrength) {
+         const assessment = {
+             successRate: 0,
+             expectedTricks: 0,
+             reasoning: '',
+             score: 0
+         };
+         
+         if (suit === 'notrump') {
+             return this.assessNoTrumpBid(hand, suitAnalysis, tricks, handStrength);
+         }
+         
+         const suitInfo = suitAnalysis[suit];
+         const trumpLength = suitInfo.count;
+         const trumpHonors = suitInfo.honors;
+         const trumpStrength = suitInfo.strength;
+         
+         // Base expected tricks from trump suit
+         let expectedTricks = Math.min(trumpLength - 1, 6); // Trump tricks (keeping one for emergencies)
+         expectedTricks += trumpHonors * 0.7; // Honor tricks in trump
+         
+         // Add non-trump honors
+         const otherSuits = ['clubs', 'diamonds', 'hearts', 'spades'].filter(s => s !== suit);
+         otherSuits.forEach(otherSuit => {
+             const otherInfo = suitAnalysis[otherSuit];
+             expectedTricks += otherInfo.honors * 0.6; // Lower probability in side suits
+         });
+         
+         assessment.expectedTricks = Math.round(expectedTricks * 10) / 10;
+         
+         // Calculate success rate
+         let successRate = 0;
+         
+         if (trumpLength >= 6) {
+             successRate = 85; // Excellent trump length
+             assessment.reasoning = `Excellent ${suit} length (${trumpLength} cards)`;
+         } else if (trumpLength >= 4 && trumpHonors >= 2) {
+             successRate = 70; // Good trump suit
+             assessment.reasoning = `Strong ${suit} suit (${trumpLength} cards, ${trumpHonors} honors)`;
+         } else if (trumpLength >= 4) {
+             successRate = 55; // Adequate trump length
+             assessment.reasoning = `Adequate ${suit} length (${trumpLength} cards)`;
+         } else if (trumpLength >= 3 && trumpHonors >= 2) {
+             successRate = 45; // Short but strong
+             assessment.reasoning = `Short but strong ${suit} (${trumpHonors} honors)`;
+         } else {
+             successRate = 25; // Risky
+             assessment.reasoning = `Risky ${suit} bid (only ${trumpLength} cards)`;
+         }
+         
+         // Adjust for overall hand strength
+         if (handStrength.score >= 25) {
+             successRate += 15;
+         } else if (handStrength.score >= 20) {
+             successRate += 10;
+         } else if (handStrength.score < 15) {
+             successRate -= 15;
+         }
+         
+         // Adjust for bid level
+         if (tricks <= 5) {
+             successRate += 10; // Conservative bids are safer
+         } else if (tricks >= 7) {
+             successRate -= (tricks - 6) * 8; // Aggressive bids are riskier
+         }
+         
+         // Reality check
+         if (assessment.expectedTricks < tricks - 1.5) {
+             successRate = Math.max(20, successRate - 30);
+             assessment.reasoning += ` (optimistic - need ${tricks} but expect ~${assessment.expectedTricks})`;
+         }
+         
+         assessment.successRate = Math.max(0, Math.min(95, Math.round(successRate)));
+         assessment.score = successRate + (assessment.expectedTricks / tricks) * 20;
+         
+         return assessment;
+     }
+     
+     assessNoTrumpBid(hand, suitAnalysis, tricks, handStrength) {
+         const assessment = {
+             successRate: 0,
+             expectedTricks: 0,
+             reasoning: '',
+             score: 0
+         };
+         
+         // No Trump requires balanced hand and high cards
+         const suits = ['clubs', 'diamonds', 'hearts', 'spades'];
+         const lengths = suits.map(suit => suitAnalysis[suit].count);
+         const maxLength = Math.max(...lengths);
+         const minLength = Math.min(...lengths);
+         
+         if (maxLength > 5 || minLength < 2) {
+             assessment.successRate = 20;
+             assessment.reasoning = 'Unbalanced hand - No Trump risky';
+             assessment.expectedTricks = handStrength.score / 4;
+             return assessment;
+         }
+         
+         // Count stoppers (honors in each suit)
+         let stoppers = 0;
+         let totalHonors = 0;
+         suits.forEach(suit => {
+             if (suitAnalysis[suit].honors >= 1) stoppers++;
+             totalHonors += suitAnalysis[suit].honors;
+         });
+         
+         assessment.expectedTricks = totalHonors * 0.8 + 2; // Base tricks from honors
+         
+         if (stoppers >= 3 && totalHonors >= 8) {
+             assessment.successRate = 75;
+             assessment.reasoning = `Strong balanced hand (${totalHonors} honors, ${stoppers} suits covered)`;
+         } else if (stoppers >= 3 && totalHonors >= 6) {
+             assessment.successRate = 60;
+             assessment.reasoning = `Decent balanced hand (${totalHonors} honors)`;
+         } else {
+             assessment.successRate = 35;
+             assessment.reasoning = `Weak for No Trump (only ${totalHonors} honors, ${stoppers} suits covered)`;
+         }
+         
+         // Adjust for bid level
+         if (tricks >= 7) {
+             assessment.successRate -= (tricks - 6) * 10;
+         }
+         
+         assessment.score = assessment.successRate + (assessment.expectedTricks / tricks) * 20;
+         return assessment;
+     }
+     
+     getCompetitiveAdvice(hand, handStrength, currentBid, biddingOptions) {
+         let advice = '';
+         const currentBidder = this.findBidWinner();
+         const currentBidderName = this.getPlayerDisplayName(currentBidder);
+         
+         advice += `<p><strong>Against ${currentBidderName}'s ${currentBid.minTakes} ${this.getSuitSymbol(currentBid.trumpSuit)}:</strong></p>`;
+         
+         if (biddingOptions.length === 0) {
+             advice += '<p>🛑 <strong>Cannot compete</strong> - your hand lacks the strength to overcall safely.</p>';
+             advice += '<p>💡 <strong>Strategy:</strong> Pass now, but consider raising in Phase 2 if they win and you have trump support.</p>';
+         } else {
+             const bestOption = biddingOptions[0];
+             const samesuit = bestOption.trumpSuit === currentBid.trumpSuit;
+             
+             if (samesuit) {
+                 advice += `<p>🔄 <strong>Same trump suit (${this.getSuitSymbol(currentBid.trumpSuit)})</strong> - you'd need to bid ${bestOption.minTakes} vs their ${currentBid.minTakes}.</p>`;
+                 if (bestOption.successRate >= 65) {
+                     advice += '<p>✅ <strong>Recommended:</strong> You have stronger trump support - outbid them!</p>';
+                 } else {
+                     advice += '<p>⚠️ <strong>Risky:</strong> Consider passing and raising in Phase 2 instead.</p>';
+                 }
+             } else {
+                 advice += `<p>🆚 <strong>Different trump (${this.getSuitSymbol(bestOption.trumpSuit)} vs ${this.getSuitSymbol(currentBid.trumpSuit)})</strong> - competing suits.</p>`;
+                 if (bestOption.successRate >= 60) {
+                     advice += '<p>💪 <strong>Compete:</strong> Your suit is strong enough to challenge theirs.</p>';
+                 } else {
+                     advice += '<p>🤔 <strong>Marginal:</strong> Consider your risk tolerance.</p>';
+                 }
+             }
+         }
+         
+         // Positional advice
+         const playersLeft = this.players.filter(p => 
+             !this.playersPassed[p] && !this.phase1Bids[p] && p !== 'south'
+         ).length;
+         
+         if (playersLeft > 0) {
+             advice += `<p><strong>⏳ ${playersLeft} player(s) still to bid</strong> - they might outbid you both!</p>`;
+         }
+         
+         return advice;
+     }
+     
+     getConfidenceLevel(successRate) {
+         if (successRate >= 75) {
+             return { text: 'High Confidence', color: '#4CAF50' };
+         } else if (successRate >= 60) {
+             return { text: 'Good Chance', color: '#8BC34A' };
+         } else if (successRate >= 45) {
+             return { text: 'Moderate Risk', color: '#FF9800' };
+         } else {
+             return { text: 'High Risk', color: '#F44336' };
+         }
+     }
+     
+     findBidWinner() {
+         // Find who made the current highest bid
+         for (const player of this.players) {
+             const bid = this.phase1Bids[player];
+             if (bid && !this.playersPassed[player]) {
+                 const currentHighest = this.getCurrentHighestBid();
+                 if (currentHighest && bid.minTakes === currentHighest.minTakes && 
+                     bid.trumpSuit === currentHighest.trumpSuit) {
+                     return player;
+                 }
+             }
+         }
+         return null;
      }
      
      getSuggestedCard(hand, currentTrick, tricksNeeded, tricksRemaining) {

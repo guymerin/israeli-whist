@@ -1399,6 +1399,10 @@ h1 {
     cursor: pointer !important;
     opacity: 1 !important;
     filter: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
 }
 
 #pass-btn:hover {
