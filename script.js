@@ -32,16 +32,22 @@ class IsraeliWhist {
             south: 0,
             west: 0
         };
-        this.gamesPlayed = 0;
-        this.gameHistory = []; // Track individual game data for scorecard
+        this.gamletsPlayed = 0;
+        this.gamletHistory = []; // Track individual gamlet data for scorecard
         this.extendedViewActive = false; // Track which view is currently shown
         
-        // Game history tracking
-        this.gameHistory = [];
-        this.gameNumber = 1;
+        // Gamlet history tracking
+        this.gamletHistory = [];
+        this.gamletNumber = 1;
+        this.fullGameNumber = 1; // Track full games (200 points or 10 gamlets)
         
-        // Initialize game history display when DOM is ready
-        setTimeout(() => this.updateGameHistoryDisplay(), 100);
+        // Last hand data for review
+        this.lastHandData = null;
+        
+        // Fast mode setting
+        this.fastMode = false;
+        
+
         
         // Phase 1 - Trump bidding
         this.phase1Bids = {
@@ -478,7 +484,7 @@ class IsraeliWhist {
         // Ensure pass button is enabled for fresh bidding round
         const passBtn = document.getElementById('pass-btn');
         if (passBtn) {
-            console.log('Resetting pass button state');
+
             passBtn.disabled = false;
             passBtn.style.opacity = '1';
             passBtn.style.cursor = 'pointer';
@@ -492,7 +498,7 @@ class IsraeliWhist {
         // Ensure bid button is enabled
         const bidBtn = document.getElementById('bid-btn');
         if (bidBtn) {
-            console.log('Resetting bid button state');
+
             bidBtn.disabled = false;
             bidBtn.style.opacity = '1';
             bidBtn.style.cursor = 'pointer';
@@ -706,11 +712,8 @@ class IsraeliWhist {
         const extendedContent = document.getElementById('extended-score-content');
         if (!extendedContent) return;
 
-        // If no games completed yet, show message
-        if (this.gameHistory.length === 0) {
-            extendedContent.innerHTML = '<div style="text-align: center; color: #FFD700; padding: 10px;">No completed games yet</div>';
-            return;
-        }
+        // Always show the table structure, even for first gamlet
+        const hasCompletedGamlets = this.gamletHistory.length > 0;
 
         // Generate scorecard table
         let tableHTML = '<table class="scorecard-table">';
@@ -721,54 +724,96 @@ class IsraeliWhist {
         
         // Player headers with Bid/Score columns
         this.players.forEach(player => {
-            const displayName = this.getPlayerDisplayName(player).split(' ')[0]; // First part only
-            tableHTML += `<th colspan="2" class="player-header">${displayName}</th>`;
+            const displayName = player === 'south' ? (this.playerName || 'Guy') : this.getPlayerDisplayName(player).split(' ')[0];
+            tableHTML += `<th colspan="2" class="player-header player-${player}">${displayName}</th>`;
         });
         
         tableHTML += '<th rowspan="2" class="total-row">Total<br/>Bid</th>';
+        tableHTML += '<th rowspan="2" class="trump-header">Trump</th>';
         tableHTML += '</tr>';
         
         // Sub-header row (Bid/Score)
         tableHTML += '<tr>';
-        this.players.forEach(() => {
-            tableHTML += '<th class="bid-col">Bid</th>';
-            tableHTML += '<th class="score-col">Score</th>';
+        this.players.forEach((player) => {
+            tableHTML += `<th class="bid-col player-${player}">Bid</th>`;
+            tableHTML += `<th class="score-col player-${player}">Score</th>`;
         });
         tableHTML += '</tr>';
         
-        // Game rows
-        this.gameHistory.forEach((game, index) => {
+        // Gamlet rows - show completed gamlets and current gamlet if in progress
+        if (hasCompletedGamlets) {
+            this.gamletHistory.forEach((gamlet, index) => {
             tableHTML += '<tr>';
-            tableHTML += `<td class="game-number">${game.gameNumber}</td>`;
+                tableHTML += `<td class="game-number">${gamlet.fullGameNumber}.${gamlet.gamletNumber}</td>`;
             
             let totalBid = 0;
             this.players.forEach(player => {
-                const playerData = game.players[player];
-                const bid = playerData.totalBids;
+                    const bid = gamlet.phase2Bids[player] || 0;
+                    const score = gamlet.finalScores[player];
                 totalBid += bid;
-                tableHTML += `<td class="bid-col">${bid}</td>`;
-                tableHTML += `<td class="score-col">${playerData.finalScore}</td>`;
+                    tableHTML += `<td class="bid-col player-${player}">${bid}</td>`;
+                    tableHTML += `<td class="score-col player-${player}">${score}</td>`;
             });
             
             tableHTML += `<td class="total-row">${totalBid}</td>`;
+                
+                // Add trump column
+                const trumpSymbol = this.getSuitSymbol(gamlet.trumpSuit);
+                const trumpWinnerName = gamlet.trumpWinner === 'south' ? 
+                    (this.playerName || 'Guy') : 
+                    this.getPlayerDisplayName(gamlet.trumpWinner).split(' ')[0];
+                tableHTML += `<td class="trump-col">${trumpSymbol}<br/><small>(${trumpWinnerName})</small></td>`;
+                
             tableHTML += '</tr>';
         });
+        }
+        
+        // Always show current gamlet row (in progress or as placeholder)
+        tableHTML += '<tr class="current-gamlet">';
+        tableHTML += `<td class="game-number current">${this.fullGameNumber}.${this.gamletNumber}</td>`;
+        
+        let currentTotalBid = 0;
+        this.players.forEach(player => {
+            const currentBid = this.phase2Bids[player] || '-';
+            const currentScore = this.scores[player] || 0;
+            if (typeof currentBid === 'number') currentTotalBid += currentBid;
+            
+            tableHTML += `<td class="bid-col player-${player} current">${currentBid}</td>`;
+            tableHTML += `<td class="score-col player-${player} current">${currentScore}</td>`;
+        });
+        
+        tableHTML += `<td class="total-row current">${currentTotalBid > 0 ? currentTotalBid : '-'}</td>`;
+        
+        // Current trump column
+        if (this.trumpSuit && this.trumpWinner) {
+            const currentTrumpSymbol = this.getSuitSymbol(this.trumpSuit);
+            const currentTrumpWinnerName = this.trumpWinner === 'south' ? 
+                (this.playerName || 'Guy') : 
+                this.getPlayerDisplayName(this.trumpWinner).split(' ')[0];
+            tableHTML += `<td class="trump-col current">${currentTrumpSymbol}<br/><small>(${currentTrumpWinnerName})</small></td>`;
+        } else {
+            tableHTML += `<td class="trump-col current">-</td>`;
+        }
+        
+        tableHTML += '</tr>';
         
         // Total row
         tableHTML += '<tr class="total-row">';
         tableHTML += '<td><strong>Total</strong></td>';
         
         this.players.forEach(player => {
-            const totalBids = this.gameHistory.reduce((sum, game) => sum + game.players[player].totalBids, 0);
-            const cumulativeScore = this.cumulativeScores[player];
-            tableHTML += `<td><strong>${totalBids}</strong></td>`;
-            tableHTML += `<td><strong>${cumulativeScore}</strong></td>`;
+            const totalBids = this.gamletHistory.reduce((sum, gamlet) => sum + (gamlet.phase2Bids[player] || 0), 0);
+            // Use current scores for cumulative score if no gamlets completed
+            const cumulativeScore = hasCompletedGamlets ? this.cumulativeScores[player] : this.scores[player];
+            tableHTML += `<td class="player-${player}"><strong>${totalBids || '-'}</strong></td>`;
+            tableHTML += `<td class="player-${player}"><strong>${cumulativeScore || 0}</strong></td>`;
         });
         
-        const grandTotalBids = this.gameHistory.reduce((sum, game) => {
-            return sum + this.players.reduce((gameSum, player) => gameSum + game.players[player].totalBids, 0);
+        const grandTotalBids = this.gamletHistory.reduce((sum, gamlet) => {
+            return sum + this.players.reduce((gamletSum, player) => gamletSum + (gamlet.phase2Bids[player] || 0), 0);
         }, 0);
-        tableHTML += `<td><strong>${grandTotalBids}</strong></td>`;
+        tableHTML += `<td><strong>${grandTotalBids || '-'}</strong></td>`;
+        tableHTML += '<td><strong>-</strong></td>'; // Empty trump cell for total row
         tableHTML += '</tr>';
         
         tableHTML += '</table>';
@@ -795,6 +840,9 @@ class IsraeliWhist {
             minTakes: minTakes,
             trumpSuit: trumpSuit
         };
+        
+        // Log the human player's bid to match bot logging
+        console.log(`🃏 PHASE 1: ${this.getPlayerDisplayName('south')} bids ${minTakes} ${trumpSuit}`);
         
         // Update the display to show the new bid
         this.updateDisplay();
@@ -926,7 +974,7 @@ class IsraeliWhist {
                console.log(`📊 PHASE 2 COMPLETE: Total bids = ${totalBids} (${totalBids === 13 ? 'EXACT' : totalBids > 13 ? 'OVER' : 'UNDER'})`);
                
                // Small delay to show the final bid before transitioning
-               setTimeout(() => this.startPhase3(), 1000);
+               setTimeout(() => this.startPhase3(), this.getDelay(1000));
               return;
           }
           
@@ -1129,40 +1177,63 @@ class IsraeliWhist {
     }
     
     calculateRealisticTricks(hand, trumpSuit, handStrength) {
-        // More accurate and conservative trick calculation
+        // Much more accurate trick calculation
         let tricks = 0;
         
-        // Count sure winners more conservatively
+        console.log(`Calculating tricks for hand: ${hand.map(c => c.rank + c.suit).join(', ')} with trump: ${trumpSuit}`);
+        
+        // Count sure winners more accurately
         const aces = hand.filter(card => card.rank === 'A').length;
-        tricks += aces * 0.85; // Aces are almost guaranteed but not 100%
+        tricks += aces * 0.95; // Aces are almost guaranteed
+        console.log(`Aces (${aces}): +${aces * 0.95} tricks`);
         
         // Trump suit analysis - be more realistic
         if (trumpSuit !== 'notrump') {
             const trumpCards = hand.filter(card => card.suit === trumpSuit);
             const trumpLength = trumpCards.length;
             
-            // Trump length analysis - more conservative
+            console.log(`Trump cards (${trumpSuit}): ${trumpCards.map(c => c.rank + c.suit).join(', ')} (${trumpLength} cards)`);
+            
+            // Trump length analysis - improved values
             if (trumpLength >= 6) {
-                tricks += 2.0; // Very long trump
+                tricks += 3.0; // Very long trump - can ruff extensively
             } else if (trumpLength >= 5) {
-                tricks += 1.2; // Long trump suit
+                tricks += 2.2; // Long trump suit - good control
+            } else if (trumpLength >= 4) {
+                tricks += 1.5; // Good trump length
             } else if (trumpLength >= 3) {
-                tricks += 0.6; // Decent trump suit
+                tricks += 0.8; // Decent trump suit
             } else if (trumpLength <= 1) {
-                tricks -= 0.3; // Short trump is disadvantageous
+                tricks -= 0.2; // Short trump is disadvantageous
             }
             
-            // Trump honors - more conservative values
+            // Trump honors - more accurate values
             const trumpAce = trumpCards.some(card => card.rank === 'A');
             const trumpKing = trumpCards.some(card => card.rank === 'K');
             const trumpQueen = trumpCards.some(card => card.rank === 'Q');
+            const trumpJack = trumpCards.some(card => card.rank === 'J');
             
-            if (trumpAce) tricks += 0.7;
-            if (trumpKing && trumpLength >= 2) tricks += 0.4; // King only valuable if protected
-            if (trumpQueen && trumpLength >= 3) tricks += 0.2; // Queen needs more protection
+            if (trumpAce) {
+                tricks += 0.9; // Trump ace is very strong
+                console.log(`Trump Ace: +0.9 tricks`);
+            }
+            if (trumpKing && trumpLength >= 2) {
+                tricks += 0.6; // Protected trump king
+                console.log(`Trump King (protected): +0.6 tricks`);
+            }
+            if (trumpQueen && trumpLength >= 3) {
+                tricks += 0.4; // Well-protected trump queen
+                console.log(`Trump Queen (protected): +0.4 tricks`);
+            }
+            if (trumpJack && trumpLength >= 4) {
+                tricks += 0.2; // Protected trump jack
+                console.log(`Trump Jack (protected): +0.2 tricks`);
+            }
+            
+            console.log(`Trump contribution: +${trumpLength >= 6 ? 3.0 : trumpLength >= 5 ? 2.2 : trumpLength >= 4 ? 1.5 : trumpLength >= 3 ? 0.8 : trumpLength <= 1 ? -0.2 : 0} for length`);
         }
         
-        // High cards in side suits - more realistic evaluation
+        // High cards in side suits - much more accurate evaluation
         ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
             if (suit !== trumpSuit) {
                 const suitCards = hand.filter(card => card.suit === suit);
@@ -1170,21 +1241,42 @@ class IsraeliWhist {
                 
                 if (suitLength === 0) return; // Skip void suits
                 
+                const suitAces = suitCards.filter(card => card.rank === 'A').length;
                 const kings = suitCards.filter(card => card.rank === 'K').length;
                 const queens = suitCards.filter(card => card.rank === 'Q').length;
                 const jacks = suitCards.filter(card => card.rank === 'J').length;
+                const tens = suitCards.filter(card => card.rank === '10').length;
                 
-                // More realistic side suit evaluation
-                if (suitLength >= 3) {
-                    tricks += kings * 0.5; // Well-protected kings
-                    tricks += queens * 0.25; // Protected queens
-                    tricks += jacks * 0.1; // Protected jacks
+                console.log(`Side suit ${suit} (${suitLength} cards): ${suitCards.map(c => c.rank + c.suit).join(', ')}`);
+                
+                // Aces already counted above, but side suit aces are excellent
+                if (suitAces > 0) {
+                    console.log(`  Side suit Aces: already counted in main calculation`);
+                }
+                
+                // More accurate side suit evaluation based on protection
+                if (suitLength >= 4) {
+                    // Long suits - very well protected
+                    tricks += kings * 0.8; // Well-protected kings
+                    tricks += queens * 0.5; // Protected queens
+                    tricks += jacks * 0.3; // Protected jacks
+                    tricks += tens * 0.2; // Protected tens
+                    console.log(`  Long suit (${suitLength}): K=${kings * 0.8}, Q=${queens * 0.5}, J=${jacks * 0.3}, 10=${tens * 0.2}`);
+                } else if (suitLength === 3) {
+                    // Well protected
+                    tricks += kings * 0.7; // Well-protected kings
+                    tricks += queens * 0.4; // Protected queens
+                    tricks += jacks * 0.2; // Protected jacks
+                    console.log(`  Medium suit (3): K=${kings * 0.7}, Q=${queens * 0.4}, J=${jacks * 0.2}`);
                 } else if (suitLength === 2) {
-                    tricks += kings * 0.35; // Somewhat protected
-                    tricks += queens * 0.15;
+                    // Somewhat protected
+                    tricks += kings * 0.5; // Somewhat protected
+                    tricks += queens * 0.25;
+                    console.log(`  Short suit (2): K=${kings * 0.5}, Q=${queens * 0.25}`);
                 } else { // singleton
-                    tricks += kings * 0.2; // Unprotected, risky
-                    // Don't count singleton queens/jacks
+                    tricks += kings * 0.3; // Singleton king still has some value
+                    console.log(`  Singleton: K=${kings * 0.3} (risky)`);
+                    // Don't count singleton queens/jacks - too risky
                 }
             }
         });
@@ -1412,6 +1504,8 @@ class IsraeliWhist {
         // For human player, immediately update their card display
         if (player === 'south') {
             this.updateHumanPlayerCards();
+            // Hide the "Show Last Hand" button when human player plays a new card
+            this.hideLastHandButton();
         }
         
         // Display the played card on the table
@@ -1422,11 +1516,13 @@ class IsraeliWhist {
         
         // Check if this completes a trick
         if (this.currentTrick.length === 4) {
+            // Show the "Show Last Hand" button after all 4 cards are played
+            this.showLastHandButton();
             // Wait a moment to show all cards before completing trick
-            setTimeout(() => this.completeTrick(), 1000);
+            setTimeout(() => this.completeTrick(), this.getDelay(1000));
         } else {
         // Move to next player
-            setTimeout(() => this.nextPlayerInTrick(), 500);
+            setTimeout(() => this.nextPlayerInTrick(), this.getDelay(500));
         }
     }
     
@@ -1482,6 +1578,9 @@ class IsraeliWhist {
     }
      
     completeTrick() {
+        // Store the current trick data for potential "Show Last Hand" animation
+        this.lastTrickData = [...this.currentTrick];
+        
         // Determine trick winner according to Israeli Whist rules
         const winner = this.determineTrickWinner();
         this.tricksWon[winner]++;
@@ -1507,7 +1606,7 @@ class IsraeliWhist {
 
             this.currentPhase = 'scoring';
             this.updateDisplay();
-            setTimeout(() => this.endHand(), 3000);
+            setTimeout(() => this.endHand(), this.getDelay(3000));
             return;
         }
         
@@ -1557,7 +1656,7 @@ class IsraeliWhist {
         if (!winnerNameElement) {
             console.error(`Could not find winner's name element for ${winner}`);
             // Fallback: just clear cards after delay
-            setTimeout(() => this.clearPlayedCards(), 1500);
+            setTimeout(() => this.clearPlayedCards(), this.getDelay(1500));
             return;
         }
         
@@ -1881,29 +1980,44 @@ class IsraeliWhist {
         const tricksNeeded = playerBid - tricksTaken;
         const tricksRemaining = 13 - this.tricksPlayed;
         
-        // Strategic decision based on position relative to bid
-        const needTricks = tricksNeeded > 0;
-        const hasEnoughTricks = tricksNeeded <= 0;
-        const mustAvoidTricks = tricksNeeded < 0;
+        // Enhanced strategic decision based on position relative to bid
+        const isUnderBid = tricksNeeded > 0;
+        const isOverBid = tricksNeeded < 0;
+        const isExactBid = tricksNeeded === 0;
+        const urgencyLevel = this.calculateUrgencyLevel(tricksNeeded, tricksRemaining);
+        
+        // Advanced context for card selection
+        const context = {
+            isUnderBid,
+            isOverBid,
+            isExactBid,
+            tricksNeeded,
+            tricksRemaining,
+            urgencyLevel,
+            handAnalysis,
+            playerBid,
+            tricksTaken,
+            // Add awareness of other players' situations
+            opponentSituations: this.analyzeOpponentSituations()
+        };
         
         let bestCardIndex = 0;
         let bestScore = -999;
         
         for (let i = 0; i < hand.length; i++) {
             const card = hand[i];
-            const score = this.evaluateLeadCardChoice(card, player, {
-                needTricks,
-                hasEnoughTricks,
-                mustAvoidTricks,
-                tricksRemaining,
-                handAnalysis
-            });
+            const score = this.evaluateLeadCardChoice(card, player, context);
             
             if (score > bestScore) {
                 bestScore = score;
                 bestCardIndex = i;
             }
         }
+        
+        // Log strategy for debugging
+        const chosenCard = hand[bestCardIndex];
+        const strategyType = isUnderBid ? 'UNDER' : isOverBid ? 'OVER' : 'EXACT';
+        console.log(`🧠 ${this.getPlayerDisplayName(player)} (${strategyType}, needs ${tricksNeeded}): leads ${chosenCard.rank}${this.getSuitSymbol(chosenCard.suit)}`);
         
         return bestCardIndex;
     }
@@ -1914,6 +2028,13 @@ class IsraeliWhist {
         const playerBid = this.phase2Bids[player] || 0;
         const tricksTaken = this.tricksWon[player] || 0;
         const tricksNeeded = playerBid - tricksTaken;
+        const tricksRemaining = 13 - this.tricksPlayed;
+        
+        // Enhanced strategic awareness
+        const isUnderBid = tricksNeeded > 0;
+        const isOverBid = tricksNeeded < 0;
+        const isExactBid = tricksNeeded === 0;
+        const urgencyLevel = this.calculateUrgencyLevel(tricksNeeded, tricksRemaining);
         
         // Find valid cards (must follow suit if possible)
         const validCards = [];
@@ -1928,23 +2049,44 @@ class IsraeliWhist {
         
         // Must follow suit if possible
         const followCards = suitCards.length > 0 ? suitCards : validCards;
+        const canFollowSuit = suitCards.length > 0;
+        
+        // Enhanced context for card selection
+        const context = {
+            leadSuit,
+            tricksNeeded,
+            tricksRemaining,
+            currentTrick: this.currentTrick,
+            canFollowSuit,
+            isUnderBid,
+            isOverBid,
+            isExactBid,
+            urgencyLevel,
+            playerBid,
+            tricksTaken,
+            // Analyze the current trick situation
+            trickAnalysis: this.analyzeTrickSituation(),
+            // Analyze what other players need
+            opponentSituations: this.analyzeOpponentSituations()
+        };
         
         let bestCardIndex = followCards[0].index;
         let bestScore = -999;
         
         for (const cardInfo of followCards) {
-            const score = this.evaluateFollowCardChoice(cardInfo.card, player, {
-                leadSuit,
-                tricksNeeded,
-                currentTrick: this.currentTrick,
-                canFollowSuit: suitCards.length > 0
-            });
+            const score = this.evaluateFollowCardChoice(cardInfo.card, player, context);
             
             if (score > bestScore) {
                 bestScore = score;
                 bestCardIndex = cardInfo.index;
             }
         }
+        
+        // Log strategy for debugging
+        const chosenCard = hand[bestCardIndex];
+        const strategyType = isUnderBid ? 'UNDER' : isOverBid ? 'OVER' : 'EXACT';
+        const actionType = canFollowSuit ? 'follows' : 'discards';
+        console.log(`🧠 ${this.getPlayerDisplayName(player)} (${strategyType}, needs ${tricksNeeded}): ${actionType} ${chosenCard.rank}${this.getSuitSymbol(chosenCard.suit)}`);
         
         return bestCardIndex;
     }
@@ -1953,30 +2095,154 @@ class IsraeliWhist {
         let score = 0;
         const cardStrength = this.getCardValue(card);
         const isTrump = card.suit === this.trumpSuit;
+        const hand = this.hands[player];
+        const suitLength = hand.filter(c => c.suit === card.suit).length;
         
-        // Basic card strength
+        // Basic card strength baseline
         score += cardStrength * 0.1;
         
-        // Strategic considerations
-        if (context.needTricks) {
-            // Need to win tricks - lead strong cards
-            if (isTrump) score += 10; // Trump cards are strong leads
-            if (cardStrength >= 12) score += 8; // Aces and Kings
-            if (cardStrength >= 10) score += 4; // Queens and Jacks
+        if (context.isUnderBid) {
+            // UNDER BID STRATEGY: Need to win tricks aggressively
+            score += this.evaluateUnderBidLeadStrategy(card, player, context);
             
-            // Lead from long suits to establish them
-            const suitLength = this.hands[player].filter(c => c.suit === card.suit).length;
-            if (suitLength >= 4) score += 3;
-            
-        } else if (context.mustAvoidTricks) {
-            // Must avoid tricks - lead low cards, avoid trump
-            if (isTrump) score -= 15; // Avoid trump leads
-            if (cardStrength <= 8) score += 8; // Low cards are safe
-            if (cardStrength >= 12) score -= 10; // Avoid high cards
+        } else if (context.isOverBid) {
+            // OVER BID STRATEGY: Need to avoid tricks while trying to get rid of dangerous cards
+            score += this.evaluateOverBidLeadStrategy(card, player, context);
             
         } else {
-            // Has enough tricks - play safely
-            score += 5 - Math.abs(cardStrength - 8); // Prefer middle cards
+            // EXACT BID STRATEGY: Play defensively to maintain exact count
+            score += this.evaluateExactBidLeadStrategy(card, player, context);
+        }
+        
+        // Apply urgency multiplier based on how desperate the situation is
+        score *= (1 + context.urgencyLevel * 0.5);
+        
+        return score;
+    }
+    
+    evaluateUnderBidLeadStrategy(card, player, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        const isTrump = card.suit === this.trumpSuit;
+        const hand = this.hands[player];
+        const suitLength = hand.filter(c => c.suit === card.suit).length;
+        
+        // Aggressive trick-taking strategy
+        if (isTrump) {
+            score += 15; // Trump leads are very strong
+            if (cardStrength >= 12) score += 10; // High trump is excellent
+        }
+        
+        // High cards in long suits
+        if (cardStrength >= 12) {
+            score += 12; // Aces and Kings
+            if (suitLength >= 4) score += 8; // Even better in long suits
+        }
+        
+        if (cardStrength >= 10) {
+            score += 6; // Queens and Jacks
+            if (suitLength >= 3) score += 4;
+        }
+        
+        // Establish long suits
+        if (suitLength >= 5) score += 10;
+        if (suitLength >= 4) score += 6;
+        
+        // Avoid weak leads unless desperate
+        if (cardStrength <= 6 && context.urgencyLevel < 0.7) {
+            score -= 8;
+        }
+        
+        // Consider opponents' situations - lead where they can't compete
+        const opponentAnalysis = context.opponentSituations;
+        if (opponentAnalysis.someNeedToAvoid && !isTrump) {
+            score += 5; // Lead non-trump when opponents want to avoid tricks
+        }
+        
+        return score;
+    }
+    
+    evaluateOverBidLeadStrategy(card, player, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        const isTrump = card.suit === this.trumpSuit;
+        const hand = this.hands[player];
+        const suitLength = hand.filter(c => c.suit === card.suit).length;
+        
+        // Smart disposal strategy
+        if (isTrump) {
+            score -= 20; // Avoid trump leads - too dangerous
+            if (cardStrength >= 12) score -= 15; // High trump is very dangerous
+        }
+        
+        // Get rid of dangerous cards strategically
+        if (cardStrength >= 12 && !isTrump) {
+            score += 8; // Lead high non-trump to get rid of it
+            if (suitLength === 1) score += 12; // Singleton high cards are very dangerous
+        }
+        
+        // Lead from short suits to get rid of them
+        if (suitLength <= 2 && !isTrump) {
+            score += 10;
+            if (cardStrength <= 8) score += 5; // Low cards in short suits
+        }
+        
+        // Safe low cards
+        if (cardStrength <= 6) {
+            score += 12;
+            if (!isTrump) score += 5;
+        }
+        
+        // Middle cards are risky - might accidentally win
+        if (cardStrength >= 8 && cardStrength <= 11) {
+            score -= 5;
+        }
+        
+        // Consider if opponents need tricks - can sometimes feed them safely
+        const opponentAnalysis = context.opponentSituations;
+        if (opponentAnalysis.someNeedTricks && cardStrength <= 8) {
+            score += 8; // Safe to lead low when opponents need tricks
+        }
+        
+        return score;
+    }
+    
+    evaluateExactBidLeadStrategy(card, player, context) {
+        let score = 0;
+        const cardStrength = this.getCardValue(card);
+        const isTrump = card.suit === this.trumpSuit;
+        const hand = this.hands[player];
+        const suitLength = hand.filter(c => c.suit === card.suit).length;
+        
+        // Conservative strategy - avoid both winning and losing unexpectedly
+        
+        // Moderate preference for middle cards
+        if (cardStrength >= 7 && cardStrength <= 10) {
+            score += 8;
+        }
+        
+        // Avoid very high cards unless in long suits where we control them
+        if (cardStrength >= 12) {
+            if (suitLength >= 4) score += 3; // Can control long suit
+            else score -= 8; // Dangerous high cards
+        }
+        
+        // Avoid very low cards that might let others take unexpected tricks
+        if (cardStrength <= 5) {
+            score -= 5;
+        }
+        
+        // Trump considerations
+        if (isTrump) {
+            if (cardStrength >= 10) score -= 5; // Avoid high trump
+            else score += 3; // Low trump can be useful
+        }
+        
+        // Lead from suits where we have good control
+        if (suitLength >= 3) {
+            const suitCards = hand.filter(c => c.suit === card.suit);
+            const highCardsInSuit = suitCards.filter(c => this.getCardValue(c) >= 10).length;
+            if (highCardsInSuit >= 2) score += 6; // Good control
         }
         
         return score;
@@ -1989,40 +2255,224 @@ class IsraeliWhist {
         const isLeadSuit = card.suit === context.leadSuit;
         
         // Analyze current trick situation
-        const highestCardInTrick = this.getHighestCardInCurrentTrick();
         const canWinTrick = this.canCardWinTrick(card, context.currentTrick);
+        const trickAnalysis = context.trickAnalysis;
         
-        if (context.tricksNeeded > 0) {
-            // Need tricks - try to win
-            if (canWinTrick) {
-                score += 15; // Strong bonus for winning
-                if (isTrump && !isLeadSuit) score += 5; // Extra for trump
-            } else if (isLeadSuit) {
-                // Can't win - play lowest card to save higher ones
-                score += (15 - cardStrength);
-            } else {
-                // No lead suit - opportunity to trump or discard
-                if (isTrump) score += 20; // Trump to win
-                else score += 10 - cardStrength; // Discard low cards
-            }
+        if (context.isUnderBid) {
+            // UNDER BID STRATEGY: Aggressively try to win tricks
+            score += this.evaluateUnderBidFollowStrategy(card, player, context, canWinTrick, isLeadSuit, isTrump, cardStrength);
             
-        } else if (context.tricksNeeded < 0) {
-            // Avoid tricks
-            if (canWinTrick) {
-                score -= 20; // Strong penalty for winning
-            } else {
-                score += 10; // Bonus for not winning
-                if (isLeadSuit) score += (15 - cardStrength); // Play low in suit
-                else if (!isTrump) score += 5; // Safe discard
+        } else if (context.isOverBid) {
+            // OVER BID STRATEGY: Avoid tricks while getting rid of dangerous cards
+            score += this.evaluateOverBidFollowStrategy(card, player, context, canWinTrick, isLeadSuit, isTrump, cardStrength);
+            
+        } else {
+            // EXACT BID STRATEGY: Play precisely to maintain exact count
+            score += this.evaluateExactBidFollowStrategy(card, player, context, canWinTrick, isLeadSuit, isTrump, cardStrength);
+        }
+        
+        // Apply urgency multiplier
+        score *= (1 + context.urgencyLevel * 0.3);
+        
+        return score;
+    }
+    
+    evaluateUnderBidFollowStrategy(card, player, context, canWinTrick, isLeadSuit, isTrump, cardStrength) {
+        let score = 0;
+        
+        if (canWinTrick) {
+            // Excellent - we can win this trick
+            score += 25;
+            
+            // Prefer winning with lower cards to save high ones
+            if (isLeadSuit) {
+                score += (20 - cardStrength); // Win cheaply in suit
+            } else if (isTrump) {
+                score += 20; // Trump wins are good
+                if (cardStrength <= 8) score += 10; // Low trump wins are excellent
             }
             
         } else {
-            // Has exact number - neutral play
-            if (canWinTrick) score -= 5; // Slight penalty for winning
-            else score += 5; // Slight bonus for not winning
+            // Can't win - minimize loss and save good cards
+            if (isLeadSuit) {
+                score += (15 - cardStrength); // Play lowest possible in suit
+            } else {
+                // Not following suit - opportunity to discard or trump
+                if (isTrump) {
+                    // Check if we can trump to win
+                    const hasTrumpWin = this.hands[player].some(c => 
+                        c.suit === this.trumpSuit && this.canCardWinTrick(c, context.currentTrick));
+                    if (!hasTrumpWin) {
+                        score += 15; // Trump anyway if no better trump
+                    } else {
+                        score -= 10; // Save this trump for better opportunity
+                    }
+                } else {
+                    // Discard safely
+                    score += 12;
+                    // Get rid of dangerous high cards
+                    if (cardStrength >= 12) score += 8;
+                    // Keep middle cards
+                    if (cardStrength >= 8 && cardStrength <= 11) score -= 3;
+                }
+            }
         }
         
         return score;
+    }
+    
+    evaluateOverBidFollowStrategy(card, player, context, canWinTrick, isLeadSuit, isTrump, cardStrength) {
+        let score = 0;
+        
+        if (canWinTrick) {
+            // Bad - we might win when we don't want to
+            score -= 25;
+            
+            // Especially bad if we're forced to win with a high card
+            if (isLeadSuit && cardStrength >= 10) {
+                score -= 15; // Very bad to be forced to win with high card
+            }
+            
+            // Trump wins are very dangerous when over-bid
+            if (isTrump) {
+                score -= 20;
+                if (cardStrength >= 10) score -= 10;
+            }
+            
+        } else {
+            // Good - we won't win
+            score += 20;
+            
+            if (isLeadSuit) {
+                // Play highest card that won't win to get rid of dangerous cards
+                score += cardStrength; // Higher cards are better to discard
+            } else {
+                // Discarding opportunity
+                if (isTrump) {
+                    // Avoid trumping unless forced
+                    score -= 10;
+                } else {
+                    score += 15; // Great discard opportunity
+                    // Prioritize getting rid of dangerous cards
+                    if (cardStrength >= 12) score += 15; // Aces and Kings are dangerous
+                    if (cardStrength >= 10) score += 8; // Queens and Jacks too
+                    // Keep safe low cards for later
+                    if (cardStrength <= 6) score -= 5;
+                }
+            }
+        }
+        
+        // Consider if someone else might need this trick
+        const opponentAnalysis = context.opponentSituations;
+        if (opponentAnalysis.someNeedTricks && !canWinTrick) {
+            score += 8; // Good to let others win when we want to avoid
+        }
+        
+        return score;
+    }
+    
+    evaluateExactBidFollowStrategy(card, player, context, canWinTrick, isLeadSuit, isTrump, cardStrength) {
+        let score = 0;
+        
+        if (canWinTrick) {
+            // Neutral to slightly negative - we need to be selective
+            score -= 8;
+            
+            // Only win if we have good reason
+            if (isLeadSuit) {
+                // Win cheaply in suit if possible
+                if (cardStrength <= 10) score += 15;
+                else score -= 5; // Avoid winning with high cards unless necessary
+            } else if (isTrump) {
+                // Trump wins should be calculated
+                score -= 5; // Generally avoid unless strategic
+            }
+            
+        } else {
+            // Good - safe play
+            score += 10;
+            
+            if (isLeadSuit) {
+                // Play middle cards when following suit
+                if (cardStrength >= 7 && cardStrength <= 10) score += 8;
+                else if (cardStrength <= 6) score += 5; // Low cards are safe
+                else score += 2; // High cards are risky but sometimes necessary
+            } else {
+                // Discard opportunity
+                if (isTrump) {
+                    score -= 5; // Avoid trumping when exact
+                } else {
+                    score += 12; // Good discard
+                    // Get rid of problematic cards
+                    if (cardStrength >= 12) score += 6;
+                    if (cardStrength <= 5) score += 3;
+                }
+            }
+        }
+        
+        return score;
+    }
+    
+    calculateUrgencyLevel(tricksNeeded, tricksRemaining) {
+        if (tricksNeeded === 0) return 0; // No urgency when exact
+        
+        const absNeeded = Math.abs(tricksNeeded);
+        if (absNeeded >= tricksRemaining) return 1.0; // Maximum urgency
+        
+        const ratio = absNeeded / Math.max(tricksRemaining, 1);
+        return Math.min(ratio * 1.5, 1.0); // Scale urgency
+    }
+    
+    analyzeOpponentSituations() {
+        const situations = {
+            someNeedTricks: false,
+            someNeedToAvoid: false,
+            mostDesperate: null,
+            maxUrgency: 0
+        };
+        
+        this.players.forEach(player => {
+            const bid = this.phase2Bids[player] || 0;
+            const taken = this.tricksWon[player] || 0;
+            const needed = bid - taken;
+            const remaining = 13 - this.tricksPlayed;
+            
+            if (needed > 0) {
+                situations.someNeedTricks = true;
+                const urgency = this.calculateUrgencyLevel(needed, remaining);
+                if (urgency > situations.maxUrgency) {
+                    situations.maxUrgency = urgency;
+                    situations.mostDesperate = player;
+                }
+            } else if (needed < 0) {
+                situations.someNeedToAvoid = true;
+            }
+        });
+        
+        return situations;
+    }
+    
+    analyzeTrickSituation() {
+        if (this.currentTrick.length === 0) {
+            return { position: 'lead', highestCard: null, canWin: true };
+        }
+        
+        const leadSuit = this.currentTrick[0].card.suit;
+        const highestCard = this.getHighestCardInCurrentTrick();
+        
+        return {
+            position: this.currentTrick.length + 1,
+            leadSuit,
+            highestCard,
+            hasTrump: this.currentTrick.some(play => play.card.suit === this.trumpSuit),
+            tricksNeededByLeader: this.calculateTricksNeededByPlayer(this.currentTrick[0].player)
+        };
+    }
+    
+    calculateTricksNeededByPlayer(player) {
+        const bid = this.phase2Bids[player] || 0;
+        const taken = this.tricksWon[player] || 0;
+        return bid - taken;
     }
     
     canCardWinTrick(card, currentTrick) {
@@ -2371,10 +2821,10 @@ class IsraeliWhist {
     }
 
     updateDisplay() {
-        // Update game number display  
+        // Update gamlet number display  
         const roundIndicator = document.getElementById('round-indicator');
         if (roundIndicator) {
-            roundIndicator.textContent = this.gameNumber;
+            roundIndicator.textContent = this.gamletNumber;
         }
         
         // Update trump display
@@ -2382,8 +2832,11 @@ class IsraeliWhist {
         if (trumpIndicator) {
             if (this.trumpSuit) {
                 trumpIndicator.textContent = this.getSuitSymbol(this.trumpSuit);
+                // Apply appropriate color class based on suit
+                trumpIndicator.className = `trump-${this.trumpSuit}`;
             } else {
                 trumpIndicator.textContent = '-';
+                trumpIndicator.className = 'trump-none';
             }
         }
         
@@ -2478,6 +2931,7 @@ class IsraeliWhist {
         playerScores.forEach((playerData, index) => {
             const scoreItem = document.createElement('div');
             scoreItem.className = 'score-item';
+            scoreItem.setAttribute('data-player', playerData.player);
             
             // Add ranking indicator for top 3 positions
             let rankingClass = '';
@@ -2716,6 +3170,26 @@ class IsraeliWhist {
             });
         }
 
+        // Fast mode checkbox
+        const fastModeCheckbox = document.getElementById('fast-mode-checkbox');
+        const fastModeLabel = document.querySelector('.fast-mode-label');
+        
+        if (fastModeCheckbox) {
+            fastModeCheckbox.addEventListener('change', (e) => {
+                this.fastMode = e.target.checked;
+                
+                if (this.fastMode) {
+                    fastModeLabel.classList.add('active');
+                    this.showGameNotification('⚡ Fast Mode Enabled! All animations 10x faster', 'success', 2000);
+                } else {
+                    fastModeLabel.classList.remove('active');
+                    this.showGameNotification('🐌 Normal Speed Restored', 'info', 2000);
+                }
+                
+                console.log(`Fast mode ${this.fastMode ? 'enabled' : 'disabled'}`);
+            });
+        }
+
         // Deal button
         const dealBtn = document.getElementById('deal-btn');
         if (dealBtn) {
@@ -2850,11 +3324,36 @@ class IsraeliWhist {
             });
         }
 
-        // New Game button
+        // New Game button - starts a completely new full game
         const newGameBtn = document.getElementById('new-game-btn');
         if (newGameBtn) {
             newGameBtn.addEventListener('click', () => {
-                this.resetForNewGame();
+                this.resetForNewFullGame();
+            });
+        }
+        
+        // Last Hand button - shows last completed hand details
+        const lastHandBtn = document.getElementById('last-hand-btn');
+        if (lastHandBtn) {
+            lastHandBtn.disabled = true; // Start disabled until first hand is played
+            lastHandBtn.addEventListener('click', () => {
+                this.animateLastHandCards();
+            });
+        }
+        
+        // Last Hand modal close buttons
+        const lastHandClose = document.getElementById('last-hand-close');
+        const lastHandBtnClose = document.getElementById('last-hand-btn-close');
+        
+        if (lastHandClose) {
+            lastHandClose.addEventListener('click', () => {
+                this.hideLastHand();
+            });
+        }
+        
+        if (lastHandBtnClose) {
+            lastHandBtnClose.addEventListener('click', () => {
+                this.hideLastHand();
             });
         }
     }
@@ -2877,7 +3376,7 @@ class IsraeliWhist {
         if (this.passCount >= 4) {
             console.log('All players passed. Starting new hand.');
             this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
-            setTimeout(() => this.resetForNewHand(), 1000);
+            setTimeout(() => this.resetForNewHand(), this.getDelay(1000));
             return;
         }
         
@@ -2890,7 +3389,7 @@ class IsraeliWhist {
                 this.trumpSuit = this.phase1Bids[winner].trumpSuit;
                 this.minimumTakes = this.phase1Bids[winner].minTakes;
                 console.log(`Phase 1 complete. ${winner} won with ${this.minimumTakes} ${this.trumpSuit}`);
-                setTimeout(() => this.startPhase2(), 1000);
+                setTimeout(() => this.startPhase2(), this.getDelay(1000));
                 return;
             }
         }
@@ -2913,7 +3412,7 @@ class IsraeliWhist {
         if (this.passCount >= 4) {
             console.log('All players passed. Starting new hand.');
             this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
-            setTimeout(() => this.resetForNewHand(), 1000);
+            setTimeout(() => this.resetForNewHand(), this.getDelay(1000));
             return;
         }
         
@@ -2926,7 +3425,7 @@ class IsraeliWhist {
                 this.trumpSuit = this.phase1Bids[winner].trumpSuit;
                 this.minimumTakes = this.phase1Bids[winner].minTakes;
                 console.log(`Phase 1 complete. ${winner} won with ${this.minimumTakes} ${this.trumpSuit}`);
-                setTimeout(() => this.startPhase2(), 1000);
+                setTimeout(() => this.startPhase2(), this.getDelay(1000));
                 return;
             }
         }
@@ -3038,7 +3537,7 @@ class IsraeliWhist {
             if (this.passCount >= 4) {
                 console.log('All players passed. Starting new hand.');
                 this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
-                setTimeout(() => this.resetForNewHand(), 1000);
+                setTimeout(() => this.resetForNewHand(), this.getDelay(1000));
                 return;
             }
             
@@ -3050,7 +3549,7 @@ class IsraeliWhist {
                     this.trumpSuit = this.phase1Bids[winner].trumpSuit;
                     this.minimumTakes = this.phase1Bids[winner].minTakes;
                     console.log(`Phase 1 complete. ${winner} won with ${this.minimumTakes} ${this.trumpSuit}`);
-                    setTimeout(() => this.startPhase2(), 1000);
+                    setTimeout(() => this.startPhase2(), this.getDelay(1000));
                     return;
                 }
             }
@@ -3899,44 +4398,81 @@ class IsraeliWhist {
          this.showScoreAnimations(scoreChanges);
          
          // Update the score table display after animations
-         setTimeout(() => this.updateScoresDisplay(), 2000);
+         setTimeout(() => this.updateScoresDisplay(), this.getDelay(2000));
          
-         // Check for game winner (first to reach 100 points)
-                 const winner = this.players.find(player => this.scores[player] >= 100);
-        if (winner) {
-            const winnerDisplayName = this.getPlayerDisplayName(winner);
-            console.log(`🏆 GAME WINNER: ${winnerDisplayName} with ${this.scores[winner]} points!`);
+         // Store last hand data for review
+         this.storeLastHandData(scoreChanges);
+         
+         // Always save gamlet to history after completion
+         this.saveGamletToHistory(this.scores);
+         
+                 // Check for full game completion (200 points OR 10 gamlets)
+        const winnerBy200 = this.players.find(player => this.scores[player] >= 200);
+        const gameComplete = winnerBy200 || this.gamletNumber >= 10;
+        
+        // Check if human player won this gamlet
+        const gamletWinner = this.players.reduce((leader, player) => 
+            this.scores[player] > this.scores[leader] ? player : leader
+        );
+        
+        if (gamletWinner === 'south') {
+            // Human player won this gamlet - show fireworks!
+            this.showFireworks();
+        }
+        
+        if (gameComplete) {
+            const winnerDisplayName = winnerBy200 ? 
+                this.getPlayerDisplayName(winnerBy200) : 
+                this.getPlayerDisplayName(this.players.reduce((leader, player) => 
+                    this.scores[player] > this.scores[leader] ? player : leader
+                ));
             
-            // Save game to history before resetting
-            this.saveGameToHistory(winner, this.scores);
+            const winReason = winnerBy200 ? 
+                `with ${this.scores[winnerBy200]} points!` : 
+                `after ${this.gamletNumber} gamlets!`;
             
-            this.showGameNotification(`🎉 ${winnerDisplayName} WINS THE GAME with ${this.scores[winner]} points!`, 'success', 5000);
+            console.log(`🏆 FULL GAME WINNER: ${winnerDisplayName} ${winReason}`);
             
-            // Save current game data to history before resetting
+            // If human player won the full game, show extra fireworks
+            const fullGameWinner = winnerBy200 || this.players.reduce((leader, player) => 
+                this.scores[player] > this.scores[leader] ? player : leader
+            );
+            
+            if (fullGameWinner === 'south') {
+                setTimeout(() => this.showFireworks(true), 1000); // Extra fireworks for full game win
+            }
+            
+            this.showGameNotification(`🎉 ${winnerDisplayName} WINS THE FULL GAME ${winReason}`, 'success', 5000);
+             
+             // Save current full game data to history
             const gameData = {
-                gameNumber: this.gamesPlayed + 1,
+                 gameNumber: this.gamletsPlayed + 1,
                 players: {}
             };
             
             this.players.forEach(player => {
                 gameData.players[player] = {
                     finalScore: this.scores[player],
-                    // We'll need to track total bids per game - for now use placeholder
                     totalBids: this.getTotalBidsForPlayer(player)
                 };
                 this.cumulativeScores[player] += this.scores[player];
             });
             
-            this.gameHistory.push(gameData);
-            this.gamesPlayed++;
-            
-            this.resetForNewGame();
+             this.gamletHistory.push(gameData);
+             this.gamletsPlayed++;
+             
+             // Show full game completion and start new full game
+             this.showGameNotification(`Full Game ${this.fullGameNumber} Complete! Starting new full game in 3 seconds...`, 'info', 3000);
+             setTimeout(() => {
+                 this.resetForNewFullGame();
+             }, this.getDelay(3000));
         } else {
-             // Continue to next hand - increment game number and show deal button
-             console.log('No winner yet, continuing to next hand...');
-             this.currentRound++;
-             this.showDealButtonForNextHand();
-             setTimeout(() => this.resetForNewHand(), 2000);
+             // Continue with new gamlet
+             console.log(`Gamlet ${this.gamletNumber} complete. Starting next gamlet...`);
+             this.showGameNotification(`Gamlet ${this.gamletNumber} Complete! Starting Gamlet ${this.gamletNumber + 1} in 2 seconds...`, 'info', 2000);
+             setTimeout(() => {
+                 this.resetForNewGamlet();
+             }, this.getDelay(2000));
          }
      }
      
@@ -3986,10 +4522,10 @@ class IsraeliWhist {
      }
      
      updateRoundDisplay() {
-         // Update the round indicator to show current game number
+         // Update the round indicator to show current gamlet number
          const roundIndicator = document.getElementById('round-indicator');
          if (roundIndicator) {
-             roundIndicator.textContent = this.gameNumber;
+             roundIndicator.textContent = this.gamletNumber;
          }
          
          // Reset tricks indicator
@@ -4009,20 +4545,37 @@ class IsraeliWhist {
          const trumpIndicator = document.getElementById('trump-indicator');
          if (trumpIndicator) {
              trumpIndicator.textContent = '-';
+             trumpIndicator.className = 'trump-none';
          }
      }
      
-     resetForNewGame() {
-         console.log('=== RESETTING FOR NEW GAME ===');
+     resetForNewGamlet() {
+         console.log('=== RESETTING FOR NEW GAMLET ===');
          
-         // Increment game number for next game
-         this.gameNumber++;
+         // Increment gamlet number for next gamlet
+         this.gamletNumber++;
          
-         // Show name modal again for new game
+         // Force immediate update of gamlet counter display
+         const roundIndicator = document.getElementById('round-indicator');
+         if (roundIndicator) {
+             roundIndicator.textContent = this.gamletNumber;
+             console.log(`Gamlet counter updated to: ${this.gamletNumber}`);
+         }
+         
+         // Check if we have a cached player name to auto-continue
+         const cachedName = localStorage.getItem('israeliWhist_playerName');
+         if (cachedName && cachedName.trim()) {
+             // Auto-continue with cached name - no need to show modal
+             console.log(`Auto-starting new gamlet with cached name: ${cachedName}`);
+             this.playerName = cachedName.trim();
+         } else {
+             // Show name modal for new players
          this.showNameModal();
+             return; // Exit early since the modal will handle the rest
+         }
          
-         // Reset current game scores to zero (but keep cumulative scores)
-         this.scores = { north: 0, east: 0, south: 0, west: 0 };
+         // DON'T reset scores for new gamlet - scores carry over until full game ends
+         // this.scores = { north: 0, east: 0, south: 0, west: 0 }; // Keep current scores!
          this.currentRound = 1;
          
          // Reset game state completely
@@ -4037,6 +4590,8 @@ class IsraeliWhist {
          // Clear all displays
          this.updateScoresDisplay();
          this.updateRoundDisplay();
+         this.updateDisplay(); // Ensure main display (including game number) is updated
+         this.updatePlayerNameDisplay(); // Ensure player name is updated
          this.hideBiddingInterface();
          this.hidePhase2Interface();
          this.clearAllCards();
@@ -4053,7 +4608,72 @@ class IsraeliWhist {
             this.updateTrickCount(player);
         });
         
-        console.log('New game started fresh!');
+        console.log('New gamlet started fresh!');
+     }
+     
+     resetForNewFullGame() {
+         console.log('=== RESETTING FOR NEW FULL GAME ===');
+         
+         // Increment full game number
+         this.fullGameNumber++;
+         
+         // Reset gamlet counter to 1 for new full game
+         this.gamletNumber = 1;
+         
+         // Force immediate update of gamlet counter display
+         const roundIndicator = document.getElementById('round-indicator');
+         if (roundIndicator) {
+             roundIndicator.textContent = this.gamletNumber;
+             console.log(`New full game started - Gamlet counter reset to: ${this.gamletNumber}`);
+         }
+         
+         // Check if we have a cached player name to auto-continue
+         const cachedName = localStorage.getItem('israeliWhist_playerName');
+         if (cachedName && cachedName.trim()) {
+             // Auto-continue with cached name - no need to show modal
+             console.log(`Auto-starting new full game with cached name: ${cachedName}`);
+             this.playerName = cachedName.trim();
+         } else {
+             // Show name modal for new players
+             this.showNameModal();
+             return; // Exit early since the modal will handle the rest
+         }
+         
+         // Reset ALL scores for new full game
+         this.scores = { north: 0, east: 0, south: 0, west: 0 };
+         this.currentRound = 1;
+         
+         // Reset game state completely
+         this.currentPhase = 'dealing';
+         this.trumpSuit = null;
+         this.trumpWinner = null;
+         this.minimumTakes = 0;
+         this.handType = null;
+         this.passCount = 0;
+         this.playersPassed = { north: false, east: false, south: false, west: false };
+         
+         // Clear all displays
+         this.updateScoresDisplay();
+         this.updateRoundDisplay();
+         this.updateDisplay(); // Ensure main display (including gamlet number) is updated
+         this.updatePlayerNameDisplay(); // Ensure player name is updated
+         this.hideBiddingInterface();
+         this.hidePhase2Interface();
+         this.clearAllCards();
+         this.clearTrickArea();
+         
+         // Reset pass button state for new game
+         this.resetPassButtonState();
+         
+                 // Reset for new hand
+         this.resetForNewHand();
+        
+        // Ensure trick counts are reset in display
+        this.players.forEach(player => {
+            this.updateTrickCount(player);
+        });
+        
+         console.log('New full game started fresh!');
      }
      
      showDealButtonForNextHand() {
@@ -4294,6 +4914,176 @@ class IsraeliWhist {
          if (rulesModal) {
              rulesModal.style.display = 'none';
          }
+     }
+     
+     showLastHand() {
+         if (!this.lastHandData) {
+             this.showGameNotification('No previous hand data available!', 'warning');
+             return;
+         }
+         
+         const lastHandBody = document.getElementById('last-hand-body');
+         const lastHandModal = document.getElementById('last-hand-modal');
+         
+         if (!lastHandBody || !lastHandModal) return;
+         
+         // Generate the last hand summary
+         const content = this.generateLastHandContent();
+         lastHandBody.innerHTML = content;
+         
+         // Show the modal
+         lastHandModal.style.display = 'flex';
+     }
+     
+     hideLastHand() {
+         const lastHandModal = document.getElementById('last-hand-modal');
+         if (lastHandModal) {
+             lastHandModal.style.display = 'none';
+         }
+     }
+     
+     showLastHandButton() {
+         const lastHandBtn = document.getElementById('last-hand-btn');
+         // Show button if we have either last trick data or full last hand data
+         if (lastHandBtn && (this.lastTrickData || this.lastHandData)) {
+             lastHandBtn.style.display = 'block';
+         }
+     }
+     
+     hideLastHandButton() {
+         const lastHandBtn = document.getElementById('last-hand-btn');
+         if (lastHandBtn) {
+             lastHandBtn.style.display = 'none';
+         }
+     }
+     
+     animateLastHandCards() {
+         // Use last trick data if available, otherwise use last hand data
+         let cards;
+         if (this.lastTrickData && this.lastTrickData.length > 0) {
+             cards = this.lastTrickData;
+         } else if (this.lastHandData && this.lastHandData.lastTrickCards) {
+             cards = this.lastHandData.lastTrickCards;
+         } else {
+             this.showGameNotification('No last trick cards available!', 'warning');
+             return;
+         }
+         
+         // Hide the button during animation
+         this.hideLastHandButton();
+         
+         // Create animation container
+         const animationContainer = document.createElement('div');
+         animationContainer.className = 'last-hand-animation';
+         animationContainer.style.cssText = `
+             position: absolute;
+             top: 50%;
+             left: 50%;
+             transform: translate(-50%, -50%);
+             z-index: 2000;
+             width: 300px;
+             height: 200px;
+             pointer-events: none;
+         `;
+         
+         document.body.appendChild(animationContainer);
+         
+         // Animate each card in sequence
+         cards.forEach((cardData, index) => {
+             setTimeout(() => {
+                 const cardElement = document.createElement('div');
+                 cardElement.className = 'animated-card';
+                 cardElement.innerHTML = `
+                     <div class="card-mini">
+                         <div class="card-rank">${cardData.card.rank}</div>
+                         <div class="card-suit" style="color: ${cardData.card.suit === 'hearts' || cardData.card.suit === 'diamonds' ? '#dc143c' : '#000'}">${this.getSuitSymbol(cardData.card.suit)}</div>
+                     </div>
+                     <div class="card-player">${this.getPlayerDisplayName(cardData.player)}</div>
+                 `;
+                 
+                 // Position cards in a circle
+                 const angle = (index * 90) * Math.PI / 180;
+                 const radius = 80;
+                 const x = Math.cos(angle) * radius;
+                 const y = Math.sin(angle) * radius;
+                 
+                 cardElement.style.cssText = `
+                     position: absolute;
+                     left: 50%;
+                     top: 50%;
+                     transform: translate(-50%, -50%) translate(${x}px, ${y}px) scale(0);
+                     animation: cardAppear 0.5s ease-out forwards;
+                     text-align: center;
+                 `;
+                 
+                 animationContainer.appendChild(cardElement);
+             }, index * 200);
+         });
+         
+         // Clean up animation after 2 seconds
+         setTimeout(() => {
+             if (animationContainer.parentNode) {
+                 animationContainer.remove();
+             }
+             // Show button again if we have last trick or hand data
+             if (this.lastTrickData || this.lastHandData) {
+                 this.showLastHandButton();
+             }
+         }, 2000);
+     }
+     
+     generateLastHandContent() {
+         const data = this.lastHandData;
+         
+         let content = `
+             <h4>Full Game ${data.fullGameNumber}, Gamlet ${data.gamletNumber}</h4>
+             <div class="hand-section">
+                 <strong>Trump:</strong> ${this.getSuitSymbol(data.trumpSuit)} (${data.trumpWinnerName})<br>
+                 <strong>Completed:</strong> ${data.endTime}
+             </div>
+             
+             <h4>Results Summary</h4>
+             <div class="hand-section">
+         `;
+         
+         // Generate player results
+         this.players.forEach(player => {
+             const playerName = player === 'south' ? data.playerName : this.getPlayerDisplayName(player);
+             const bid = data.phase2Bids[player] || 0;
+             const actual = data.tricksWon[player] || 0;
+             const scoreChange = data.scoreChanges[player] || 0;
+             const finalScore = data.finalScores[player] || 0;
+             
+             const status = actual === bid ? '✅ EXACT' : actual > bid ? '📈 OVER' : '📉 UNDER';
+             const scoreClass = scoreChange >= 0 ? 'score-positive' : 'score-negative';
+             const scoreSign = scoreChange >= 0 ? '+' : '';
+             
+             content += `
+                 <div class="player-result">
+                     <div>
+                         <span class="player-name">${playerName}</span><br>
+                         <span class="bid-vs-actual">${status} Bid: ${bid}, Took: ${actual}</span>
+                     </div>
+                     <div>
+                         <span class="score-change ${scoreClass}">${scoreSign}${scoreChange}</span><br>
+                         <span style="font-size: 11px; color: #ccc;">Total: ${finalScore}</span>
+                     </div>
+                 </div>
+             `;
+         });
+         
+         content += `
+             </div>
+             
+             <h4>Hand Details</h4>
+             <div class="hand-section">
+                 <strong>Total Bids:</strong> ${Object.values(data.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0)}<br>
+                 <strong>Hand Type:</strong> ${Object.values(data.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0) > 13 ? 'OVER' : 'UNDER'}<br>
+                 <strong>Total Tricks:</strong> ${Object.values(data.tricksWon).reduce((sum, tricks) => sum + (tricks || 0), 0)}/13
+             </div>
+         `;
+         
+         return content;
      }
      
      generateHint() {
@@ -4538,53 +5328,192 @@ class IsraeliWhist {
          return highest;
     }
     
-    saveGameToHistory(winner, finalScores) {
-        const gameRecord = {
-            gameNumber: this.gameNumber,
-            winner: winner,
-            winnerName: this.getPlayerDisplayName(winner),
+    storeLastHandData(scoreChanges) {
+        this.lastHandData = {
+            gamletNumber: this.gamletNumber,
+            fullGameNumber: this.fullGameNumber,
+            trumpSuit: this.trumpSuit,
+            trumpWinner: this.trumpWinner,
+            trumpWinnerName: this.getPlayerDisplayName(this.trumpWinner),
+            phase2Bids: { ...this.phase2Bids },
+            tricksWon: { ...this.tricksWon },
+            scoreChanges: { ...scoreChanges },
+            finalScores: { ...this.scores },
+            endTime: new Date().toLocaleString(),
+            playerName: this.playerName,
+            // Store the last trick cards for animation
+            lastTrickCards: this.lastTrickData ? [...this.lastTrickData] : []
+        };
+        
+        // Enable the Last Hand button now that we have data
+        const lastHandBtn = document.getElementById('last-hand-btn');
+        if (lastHandBtn) {
+            lastHandBtn.disabled = false;
+        }
+    }
+
+    saveGamletToHistory(finalScores) {
+        const gamletRecord = {
+            gamletNumber: this.gamletNumber,
+            fullGameNumber: this.fullGameNumber,
             finalScores: { ...finalScores },
             rounds: this.currentRound,
             endTime: new Date().toLocaleString(),
-            playerName: this.playerName
+            playerName: this.playerName,
+            trumpSuit: this.trumpSuit,
+            trumpWinner: this.trumpWinner,
+            phase2Bids: { ...this.phase2Bids },
+            tricksWon: { ...this.tricksWon }
         };
         
-        this.gameHistory.push(gameRecord);
-        console.log(`Game ${this.gameNumber} saved to history:`, gameRecord);
+        this.gamletHistory.push(gamletRecord);
+        console.log(`Gamlet ${this.gamletNumber} saved to history:`, gamletRecord);
         
-        // Update the display
-        this.updateGameHistoryDisplay();
+
     }
     
-    updateGameHistoryDisplay() {
-        const historyContent = document.getElementById('game-history-content');
-        if (!historyContent) return;
+    // Fireworks animation for when human player wins
+    showFireworks(isFullGameWin = false) {
+        // Create fireworks container
+        const fireworksContainer = document.createElement('div');
+        fireworksContainer.className = 'fireworks-container';
+        document.body.appendChild(fireworksContainer);
         
-        if (this.gameHistory.length === 0) {
-            historyContent.innerHTML = '<div class="no-games-message">No completed games yet</div>';
-            return;
+        // Show victory message
+        if (isFullGameWin) {
+            this.showVictoryMessage('🎉 CONGRATULATIONS! 🎉<br>YOU WON THE FULL GAME!');
+        } else {
+            this.showVictoryMessage('🎊 GAMLET WINNER! 🎊');
         }
         
-        // Show most recent games first (reverse order)
-        const recentGames = [...this.gameHistory].reverse().slice(0, 5); // Show last 5 games
+        // Create multiple fireworks
+        const fireworkCount = isFullGameWin ? 15 : 8;
         
-        historyContent.innerHTML = recentGames.map(game => {
-            const isPlayerWinner = game.winner === 'south';
-            const winnerDisplay = isPlayerWinner ? 
-                `${game.playerName} (You)` : 
-                game.winnerName;
-            
-            return `
-                <div class="game-history-item">
-                    <div class="game-history-header">Game ${game.gameNumber}</div>
-                    <div class="game-history-winner">🏆 ${winnerDisplay}</div>
-                    <div class="game-history-scores">
-                        ${game.finalScores.north}/${game.finalScores.east}/${game.finalScores.south}/${game.finalScores.west}
-                    </div>
-                </div>
-            `;
-        }).join('');
+        for (let i = 0; i < fireworkCount; i++) {
+            setTimeout(() => {
+                this.createFirework(fireworksContainer);
+            }, i * (isFullGameWin ? 200 : 300));
+        }
+        
+        // Clean up after animation
+        setTimeout(() => {
+            if (fireworksContainer.parentNode) {
+                fireworksContainer.parentNode.removeChild(fireworksContainer);
+            }
+        }, isFullGameWin ? 6000 : 4000);
     }
+    
+    showVictoryMessage(message) {
+        const victoryMsg = document.createElement('div');
+        victoryMsg.className = 'victory-message';
+        victoryMsg.innerHTML = message;
+        document.body.appendChild(victoryMsg);
+        
+        // Remove victory message after animation
+        setTimeout(() => {
+            if (victoryMsg.parentNode) {
+                victoryMsg.parentNode.removeChild(victoryMsg);
+            }
+        }, 3000);
+    }
+    
+    createFirework(container) {
+        // Random position
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * (window.innerHeight * 0.6) + (window.innerHeight * 0.2);
+        
+        // Create trail
+        this.createFireworkTrail(container, x, y);
+        
+        // Create explosion after trail
+        setTimeout(() => {
+            this.createFireworkExplosion(container, x, y);
+        }, 1500);
+    }
+    
+    createFireworkTrail(container, x, targetY) {
+        const trail = document.createElement('div');
+        trail.className = 'firework-trail';
+        trail.style.left = x + 'px';
+        trail.style.backgroundColor = this.getRandomFireworkColor();
+        trail.style.setProperty('--target-y', targetY + 'px');
+        container.appendChild(trail);
+        
+        // Remove trail after animation
+        setTimeout(() => {
+            if (trail.parentNode) {
+                trail.parentNode.removeChild(trail);
+            }
+        }, 1500);
+    }
+    
+    createFireworkExplosion(container, x, y) {
+        const colors = [this.getRandomFireworkColor(), this.getRandomFireworkColor()];
+        
+        // Create center explosion
+        const firework = document.createElement('div');
+        firework.className = 'firework';
+        firework.style.left = x + 'px';
+        firework.style.top = y + 'px';
+        firework.style.backgroundColor = colors[0];
+        container.appendChild(firework);
+        
+        // Create particles
+        const particleCount = 25;
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'firework-particle';
+            
+            const angle = (i / particleCount) * Math.PI * 2;
+            const distance = 100 + Math.random() * 100;
+            const dx = Math.cos(angle) * distance;
+            const dy = Math.sin(angle) * distance;
+            
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            particle.style.backgroundColor = colors[i % colors.length];
+            particle.style.setProperty('--dx', dx + 'px');
+            particle.style.setProperty('--dy', dy + 'px');
+            
+            container.appendChild(particle);
+            
+            // Remove particle after animation
+            setTimeout(() => {
+                if (particle.parentNode) {
+                    particle.parentNode.removeChild(particle);
+                }
+            }, 3000);
+        }
+        
+        // Remove main firework after animation
+        setTimeout(() => {
+            if (firework.parentNode) {
+                firework.parentNode.removeChild(firework);
+            }
+        }, 2000);
+    }
+    
+    getRandomFireworkColor() {
+        const colors = [
+            '#FFD700', // Gold
+            '#FF6B35', // Orange-red
+            '#FF1493', // Deep pink
+            '#00BFFF', // Deep sky blue
+            '#32CD32', // Lime green
+            '#FF69B4', // Hot pink
+            '#FFA500', // Orange
+            '#4169E1', // Royal blue
+            '#FF4500', // Red-orange
+            '#9932CC'  // Dark orchid
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    // Get delay time adjusted for fast mode (10x faster when enabled)
+    getDelay(normalDelay) {
+        return this.fastMode ? Math.max(normalDelay / 10, 50) : normalDelay; // Minimum 50ms even in fast mode
+    }
+
 }
 
 // Initialize the game when the page loads

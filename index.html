@@ -15,29 +15,34 @@
     <div class="game-container">
         <h1>Israeli Whist</h1>
         
+        <!-- Fast Game Mode Toggle -->
+        <div class="fast-mode-container">
+            <label class="fast-mode-label">
+                <input type="checkbox" id="fast-mode-checkbox" class="fast-mode-checkbox">
+                <span class="fast-mode-text">⚡ Turbo</span>
+            </label>
+        </div>
+
         <!-- Game Control Buttons - positioned on the right side -->
         <div class="game-control-buttons">
             <button id="new-game-btn" class="new-game-btn">🔄 New Game</button>
             <button id="rules-btn" class="rules-btn">📖 Rules</button>
             <button id="hint-btn" class="hint-btn">💡 Hint</button>
+            <button id="last-hand-btn" class="last-hand-btn">👁️ Show Last Hand</button>
         </div>
         
         <!-- Game Status -->
         <div class="game-status">
-            <div class="round-counter">Game: <span id="round-indicator">1</span></div>
             <div class="tricks-counter">Round: <span id="tricks-indicator">0</span></div>
-            <div class="trump-suit"><span id="trump-indicator">-</span></div>
-            <div class="current-turn">Bid: <span id="turn-indicator">-</span></div>
+            <div class="bid-trump-container">
+                <div class="trump-suit"><span id="trump-indicator">-</span></div>
+                <div class="current-turn">Bid: <span id="turn-indicator">-</span></div>
+            </div>
+            <div class="round-counter">Gamlet: <span id="round-indicator">1</span></div>
             <div class="total-bids" id="total-bids" style="display: none;">Total Bids: <span id="total-bids-value">0</span></div>
         </div>
 
-        <!-- Game History Box -->
-        <div class="game-history-box">
-            <div class="game-history-title">Game History 📋</div>
-            <div class="game-history-content" id="game-history-content">
-                <div class="no-games-message">No completed games yet</div>
-            </div>
-        </div>
+
 
         <!-- Total Score Box -->
         <div class="total-score-box">
@@ -317,6 +322,22 @@
             </div>
             <div class="hint-footer">
                 <button class="hint-btn-close" id="hint-btn-close">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Last Hand Modal -->
+    <div id="last-hand-modal" class="last-hand-modal" style="display: none;">
+        <div class="last-hand-content">
+            <div class="last-hand-header">
+                <h3>👁️ Last Hand Summary</h3>
+                <button class="last-hand-close" id="last-hand-close">&times;</button>
+            </div>
+            <div class="last-hand-body" id="last-hand-body">
+                <!-- Last hand content will be populated by JavaScript -->
+            </div>
+            <div class="last-hand-footer">
+                <button class="last-hand-btn-close" id="last-hand-btn-close">Close</button>
             </div>
         </div>
     </div>
