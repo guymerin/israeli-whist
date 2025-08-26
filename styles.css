@@ -216,6 +216,8 @@ h1 {
 /* Tricks counter on the left */
 .tricks-counter {
     order: 1; /* Position on the left */
+    position: relative;
+    left: 25px;
 }
 
 /* Standardize ALL text elements in the game status bar */
@@ -358,13 +360,13 @@ h1 {
 
 .west-player {
     left: 15px;
-    top: calc(45% + 70px);
+    top: 50%;
     transform: translateY(-50%);
 }
 
 .east-player {
     right: 15px;
-    top: calc(45% + 70px);
+    top: 50%;
     transform: translateY(-50%);
 }
 
@@ -598,6 +600,8 @@ h1 {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: center bottom;
     position: relative;
+    width: 70px;
+    height: 98px;
 }
 
 /* Simple fan layout - just rotation and 3D tilt */

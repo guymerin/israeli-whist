@@ -2245,7 +2245,7 @@ class IsraeliWhist {
         // Apply urgency multiplier based on how desperate the situation is
         score *= (1 + context.urgencyLevel * 0.5);
         
-                return score;
+        return score;
     }
 
     // Helper function to count how many opponents are void in a suit
@@ -2323,7 +2323,7 @@ class IsraeliWhist {
         
         return value;
     }
-
+    
     evaluateUnderBidLeadStrategy(card, player, context) {
         let score = 0;
         const cardStrength = this.getCardValue(card);
@@ -2546,7 +2546,7 @@ class IsraeliWhist {
         const trumpCount = hand.filter(c => c.suit === this.trumpSuit).length;
         const tricksLeft = 13 - this.tricksPlayed;
         
-        if (canWinTrick) {
+            if (canWinTrick) {
             // Excellent - we can win this trick
             score += 25;
             
@@ -2582,7 +2582,7 @@ class IsraeliWhist {
                 }
             }
             
-        } else {
+            } else {
             // Can't win - minimize loss and save good cards
             if (isLeadSuit) {
                 score += (15 - cardStrength); // Play lowest possible in suit
