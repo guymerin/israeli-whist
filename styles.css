@@ -71,6 +71,7 @@ h1 {
     border-radius: 12px;
     border: 2px solid rgba(255, 215, 0, 0.6);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
+    -webkit-backdrop-filter: blur(15px);
     backdrop-filter: blur(15px);
     z-index: 1000;
     width: 180px;
@@ -124,6 +125,9 @@ h1 {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
@@ -245,6 +249,7 @@ h1 {
     font-size: 14px;
     font-weight: bold;
     border: 2px solid rgba(255, 255, 255, 0.2);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     animation: notificationSlideIn 0.5s ease-out;
 }
@@ -278,6 +283,7 @@ h1 {
     min-height: 50px;
     margin-bottom: 15px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
 }
 
@@ -463,6 +469,7 @@ h1 {
     text-align: center;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    -webkit-backdrop-filter: blur(5px);
     backdrop-filter: blur(5px);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -543,6 +550,9 @@ h1 {
     /* Safari-specific fixes */
     -webkit-user-select: none;
     -moz-user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
@@ -977,6 +987,9 @@ h1 {
     /* Safari-specific touch handling */
     -webkit-user-select: none;
     -moz-user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
@@ -1137,6 +1150,7 @@ h1 {
     max-width: 520px;
     min-width: 420px;
     background: none;
+    -webkit-backdrop-filter: none;
     backdrop-filter: none;
     display: flex;
     justify-content: center;
@@ -1420,6 +1434,9 @@ h1 {
     font-weight: bold;
     font-size: 14px;
     text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
     user-select: none;
 }
 
@@ -1494,6 +1511,9 @@ h1 {
     font-weight: bold;
     text-align: center;
     white-space: nowrap;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
     user-select: none;
 }
 
@@ -1703,6 +1723,7 @@ h1 {
         0 10px 25px rgba(0, 0, 0, 0.8),
         0 5px 15px rgba(0, 0, 0, 0.6);
     font-size: 0.8em;
+    -webkit-backdrop-filter: blur(15px);
     backdrop-filter: blur(15px);
     animation: interfaceSlideUp 0.4s ease-out;
     height: fit-content;
@@ -1730,10 +1751,11 @@ h1 {
         0 5px 15px rgba(0, 0, 0, 0.6);
     z-index: 1000;
     font-size: 0.75em;
+    -webkit-backdrop-filter: blur(15px);
     backdrop-filter: blur(15px);
     animation: interfaceSlideUp 0.4s ease-out;
     height: auto;
-    min-height: auto;
+    min-height: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -2667,7 +2689,6 @@ h1 {
 /* Smooth scrolling for human cards */
 .human-cards {
     scroll-behavior: smooth;
-    -webkit-scrollbar-width: thin;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 215, 0, 0.5) transparent;
 }
@@ -2737,6 +2758,7 @@ h1 {
     border-radius: 15px;
     border: 2px solid rgba(255, 215, 0, 0.6);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    -webkit-backdrop-filter: blur(15px);
     backdrop-filter: blur(15px);
     max-width: 500px;
     width: 90%;
@@ -2812,6 +2834,7 @@ h1 {
     justify-content: center;
     align-items: center;
     z-index: 10000;
+    -webkit-backdrop-filter: blur(5px);
     backdrop-filter: blur(5px);
 }
 
@@ -3120,6 +3143,59 @@ h1 {
     z-index: -1;
 }
 
+/* Pencil decoration */
+.extended-score-content .pencil {
+    position: absolute;
+    bottom: 80px;
+    right: 15px;
+    width: 8px;
+    height: 120px;
+    background: linear-gradient(to bottom, 
+        #FFD700 0%, 
+        #FFC107 15%, 
+        #FFA726 20%, 
+        #FF8F00 25%, 
+        #8B4513 30%, 
+        #D2691E 90%, 
+        #2C2C2C 95%, 
+        #000000 100%);
+    border-radius: 4px 4px 0 0;
+    z-index: 10;
+    transform: rotate(135deg);
+    transform-origin: center bottom;
+    box-shadow: 
+        2px 2px 4px rgba(0, 0, 0, 0.3),
+        inset -1px 0 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Pencil tip */
+.extended-score-content .pencil::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 2px;
+    width: 0;
+    height: 0;
+    border-left: 2px solid transparent;
+    border-right: 2px solid transparent;
+    border-bottom: 8px solid #2C2C2C;
+    z-index: 11;
+}
+
+/* Pencil eraser */
+.extended-score-content .pencil::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 1px;
+    width: 6px;
+    height: 6px;
+    background: #E91E63;
+    border-radius: 50%;
+    border: 1px solid #C2185B;
+    z-index: 11;
+}
+
 .scorecard-table {
     width: 100%;
     border-collapse: separate;
@@ -3189,8 +3265,8 @@ h1 {
 }
 
 .scorecard-table .game-number {
-    background: linear-gradient(135deg, #fff9e6 0%, #f5efdb 100%);
-    color: #8b4513;
+    background: linear-gradient(135deg, #e8dcc0 0%, #d4c4a0 100%);
+    color: #5d4e37;
     font-weight: 600;
 }
 
@@ -3210,21 +3286,25 @@ h1 {
 
 /* Player-specific total row colors */
 .scorecard-table tr.total-row-tr .player-total-north {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
     color: #1976D2;
     text-shadow: 1px 1px 1px rgba(25, 118, 210, 0.3);
 }
 
 .scorecard-table tr.total-row-tr .player-total-east {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
     color: #F57C00;
     text-shadow: 1px 1px 1px rgba(245, 124, 0, 0.3);
 }
 
 .scorecard-table tr.total-row-tr .player-total-south {
+    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
     color: #388E3C;
     text-shadow: 1px 1px 1px rgba(56, 142, 60, 0.3);
 }
 
 .scorecard-table tr.total-row-tr .player-total-west {
+    background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
     color: #C2185B;
     text-shadow: 1px 1px 1px rgba(194, 24, 91, 0.3);
 }
@@ -3282,16 +3362,16 @@ h1 {
     font-weight: 600;
 }
 
-/* Player-specific score column colors */
+/* Player-specific score column colors - same as bid columns */
 .scorecard-table .score-col.player-north {
-    background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
-    color: #0277BD;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #1976D2;
     font-weight: 700;
 }
 
 .scorecard-table .score-col.player-east {
-    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
-    color: #EF6C00;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    color: #F57C00;
     font-weight: 700;
 }
 
@@ -3303,7 +3383,7 @@ h1 {
 
 .scorecard-table .score-col.player-west {
     background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
-    color: #AD1457;
+    color: #C2185B;
     font-weight: 700;
 }
 
@@ -3349,8 +3429,8 @@ h1 {
 }
 
 .scorecard-table .current-gamlet .score-col.player-north.current {
-    background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
-    color: #0277BD;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #1976D2;
 }
 
 .scorecard-table .current-gamlet .bid-col.player-east.current {
@@ -3359,8 +3439,8 @@ h1 {
 }
 
 .scorecard-table .current-gamlet .score-col.player-east.current {
-    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
-    color: #EF6C00;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    color: #F57C00;
 }
 
 .scorecard-table .current-gamlet .bid-col.player-south.current {
@@ -3380,7 +3460,7 @@ h1 {
 
 .scorecard-table .current-gamlet .score-col.player-west.current {
     background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
-    color: #AD1457;
+    color: #C2185B;
 }
 
 .scorecard-table .current-gamlet .trump-col.current {

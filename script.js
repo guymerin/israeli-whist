@@ -80,10 +80,10 @@ class IsraeliWhist {
         this.players = ['north', 'east', 'south', 'west'];
         this.playerName = 'Player'; // Human player's name (default)
         this.botNames = {
-            north: 'Botti (N)',
-            east: 'Droidi (E)',
+            north: 'Botti',
+            east: 'Droidi',
             south: this.playerName, // Will be updated when player enters name
-            west: 'Chati (W)'
+            west: 'Chati'
         };
         this.currentDealer = 0; // North starts as dealer
         this.currentRound = 1; // Track current round
@@ -266,7 +266,7 @@ class IsraeliWhist {
         this.shuffleDeck();
         
         // Update botNames for south player before updating displays
-        this.botNames.south = `${this.playerName} (S)`;
+        this.botNames.south = this.playerName;
         
         this.updateDisplay();
         this.updateScoresDisplay();
@@ -940,7 +940,23 @@ class IsraeliWhist {
         
         tableHTML += '</table>';
         
+        // Set the table content
         extendedContent.innerHTML = tableHTML;
+        
+        // Add paper decorations only if they don't already exist
+        if (!extendedContent.querySelector('.paper-shadow')) {
+            const paperShadow = document.createElement('div');
+            paperShadow.className = 'paper-shadow';
+            extendedContent.appendChild(paperShadow);
+        }
+        
+        if (!extendedContent.querySelector('.coffee-stain')) {
+            const coffeeStain = document.createElement('div');
+            coffeeStain.className = 'coffee-stain';
+            extendedContent.appendChild(coffeeStain);
+        }
+        
+
     }
 
     makePhase1Bid(minTakes, trumpSuit) {
@@ -4794,7 +4810,7 @@ class IsraeliWhist {
          updateScoresDisplay() {
         // Ensure botNames.south is up to date with current player name
         if (this.playerName && this.playerName !== 'Player') {
-            this.botNames.south = `${this.playerName} (S)`;
+            this.botNames.south = this.playerName;
         }
         
         // Create an array of players with their scores for sorting
@@ -5181,18 +5197,7 @@ class IsraeliWhist {
             });
         }
         
-        // Hint button - refresh Phase 2 displays
-        const hintBtn = document.getElementById('hint-btn');
-        if (hintBtn) {
-            hintBtn.addEventListener('click', () => {
-                if (this.currentPhase === 'phase2') {
-                    this.refreshAllPhase2Displays();
-
-                } else {
-                    console.log('Hint button: Not in Phase 2, current phase:', this.currentPhase);
-                }
-            });
-        }
+        // Hint button is handled by initializeHintSystem() - no duplicate handler needed
 
         // Rules button - show game rules
         const rulesBtn = document.getElementById('rules-btn');
@@ -6979,12 +6984,12 @@ class IsraeliWhist {
 
          updatePlayerNameDisplay() {
         // Update the botNames mapping for south player with position
-        this.botNames.south = `${this.playerName} (S)`;
+        this.botNames.south = this.playerName;
 
         // Update player name in the game board
         const southPlayerName = document.getElementById('south-player-name');
         if (southPlayerName) {
-            southPlayerName.textContent = `${this.playerName} (S)`;
+            southPlayerName.textContent = this.playerName;
         }
 
         // Update player name in score display
