@@ -1036,6 +1036,28 @@ h1 {
     }
 }
 
+/* Animation for cards moving to center when all players pass */
+.card-to-center {
+    transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+@keyframes cardToCenter {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(0.9) rotate(15deg);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(0.8) rotate(30deg);
+        opacity: 0.7;
+    }
+}
+
 /* Hint Modal Styles */
 .hint-modal {
     position: fixed;

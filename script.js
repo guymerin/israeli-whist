@@ -5154,7 +5154,11 @@ class IsraeliWhist {
         if (this.passCount >= 4) {
             console.log('All players passed. Starting new hand.');
             this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
-            setTimeout(() => this.resetForNewHand(), this.getDelay(1000));
+            
+            // Animate human player cards to center and remove them
+            this.animateCardsToCenter(() => {
+                setTimeout(() => this.resetForNewHand(), this.getDelay(500));
+            });
             return;
         }
         
@@ -5177,6 +5181,54 @@ class IsraeliWhist {
             this.nextPhase1Bidder();
         }, 1500);
     }
+    
+    animateCardsToCenter(callback) {
+        const humanCards = document.querySelectorAll('#south-cards .card');
+        const centerArea = document.querySelector('.trick-area');
+        
+        if (!humanCards || humanCards.length === 0 || !centerArea) {
+            if (callback) callback();
+            return;
+        }
+        
+        // Get center position
+        const centerRect = centerArea.getBoundingClientRect();
+        const centerX = centerRect.left + centerRect.width / 2;
+        const centerY = centerRect.top + centerRect.height / 2;
+        
+        let animationsCompleted = 0;
+        const totalCards = humanCards.length;
+        
+        humanCards.forEach((card, index) => {
+            const cardRect = card.getBoundingClientRect();
+            const deltaX = centerX - (cardRect.left + cardRect.width / 2);
+            const deltaY = centerY - (cardRect.top + cardRect.height / 2);
+            
+            // Add animation class
+            card.classList.add('card-to-center');
+            
+            // Apply transform with slight delay per card
+            setTimeout(() => {
+                card.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.8) rotate(${(Math.random() - 0.5) * 30}deg)`;
+                card.style.opacity = '0.7';
+                
+                // After animation completes, fade out and remove
+                setTimeout(() => {
+                    card.style.opacity = '0';
+                    card.style.transform += ' scale(0)';
+                    
+                    setTimeout(() => {
+                        card.remove();
+                        animationsCompleted++;
+                        
+                        if (animationsCompleted === totalCards && callback) {
+                            callback();
+                        }
+                    }, 300);
+                }, 800);
+            }, index * 50);
+        });
+    }
 
     nextPhase1Bidder() {
          // Move to next player in clockwise order, skipping those who have passed
@@ -5190,7 +5242,11 @@ class IsraeliWhist {
         if (this.passCount >= 4) {
             console.log('All players passed. Starting new hand.');
             this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
-            setTimeout(() => this.resetForNewHand(), this.getDelay(1000));
+            
+            // Animate human player cards to center and remove them
+            this.animateCardsToCenter(() => {
+                setTimeout(() => this.resetForNewHand(), this.getDelay(500));
+            });
             return;
         }
         
@@ -5315,7 +5371,11 @@ class IsraeliWhist {
             if (this.passCount >= 4) {
                 console.log('All players passed. Starting new hand.');
                 this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
-                setTimeout(() => this.resetForNewHand(), this.getDelay(1000));
+                
+                // Animate human player cards to center and remove them
+                this.animateCardsToCenter(() => {
+                    setTimeout(() => this.resetForNewHand(), this.getDelay(500));
+                });
                 return;
             }
             
