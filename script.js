@@ -4981,10 +4981,10 @@ class IsraeliWhist {
                 
                 if (this.fastMode) {
                     fastModeLabel.classList.add('active');
-                    this.showGameNotification('⚡ Fast Mode Enabled! All animations 10x faster', 'success', 2000);
+                    this.showGameNotification('⚡ Fast Mode Enabled! All animations 10x faster', 'success', 1000);
                 } else {
                     fastModeLabel.classList.remove('active');
-                    this.showGameNotification('🐌 Normal Speed Restored', 'info', 2000);
+                    this.showGameNotification('🐌 Normal Speed Restored', 'info', 1000);
                 }
                 
                 console.log(`Fast mode ${this.fastMode ? 'enabled' : 'disabled'}`);
@@ -5224,9 +5224,9 @@ class IsraeliWhist {
                         if (animationsCompleted === totalCards && callback) {
                             callback();
                         }
-                    }, 300);
-                }, 800);
-            }, index * 50);
+                    }, this.getDelay(300));
+                }, this.getDelay(800));
+            }, this.getDelay(index * 50));
         });
     }
 
@@ -5282,7 +5282,7 @@ class IsraeliWhist {
             setTimeout(() => {
                 this.currentBidder = (this.currentBidder + 1) % 4;
                 this.nextPhase1Bidder();
-            }, 500);
+            }, this.getDelay(500));
             return;
         }
         
@@ -5396,7 +5396,7 @@ class IsraeliWhist {
         // Move to next player after animation
         setTimeout(() => {
             this.nextPhase1Bidder();
-        }, 1500);
+        }, this.getDelay(1500));
     }
 
     promptPhase1Bidder() {
@@ -6327,13 +6327,14 @@ class IsraeliWhist {
         const winnerBy200 = this.players.find(player => this.scores[player] >= 200);
         const gameComplete = winnerBy200 || this.gamletNumber >= 10;
         
-        // Check if human player won this gamlet
+        // Check if human player got the most points in this specific gamlet
         const gamletWinner = this.players.reduce((leader, player) => 
-            this.scores[player] > this.scores[leader] ? player : leader
+            gamletScores[player] > gamletScores[leader] ? player : leader
         );
         
         if (gamletWinner === 'south') {
-            // Human player won this gamlet - show fireworks!
+            // Human player got the most points in this gamlet - show fireworks!
+            console.log(`🎆 Human player won the gamlet with ${gamletScores.south} points! Showing fireworks.`);
             this.showFireworks();
         }
         
@@ -6350,14 +6351,7 @@ class IsraeliWhist {
             
             console.log(`🏆 FULL GAME WINNER: ${winnerDisplayName} ${winReason}`);
             
-            // If human player won the full game, show extra fireworks
-            const fullGameWinner = winnerBy200 || this.players.reduce((leader, player) => 
-                this.scores[player] > this.scores[leader] ? player : leader
-            );
-            
-            if (fullGameWinner === 'south') {
-                setTimeout(() => this.showFireworks(true), 1000); // Extra fireworks for full game win
-            }
+            // Fireworks only for gamlet wins, not full game wins
             
             this.showGameNotification(`🎉 ${winnerDisplayName} WINS THE FULL GAME ${winReason}`, 'success', 5000);
              
