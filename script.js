@@ -764,7 +764,6 @@ class IsraeliWhist {
         });
         
         tableHTML += '<th rowspan="2" class="total-row">Total<br/>Bid</th>';
-        tableHTML += '<th rowspan="2" class="trump-header">Trump</th>';
         tableHTML += '</tr>';
         
         // Sub-header row (Bid/Score)
@@ -779,7 +778,7 @@ class IsraeliWhist {
         if (hasCompletedGamlets) {
             this.gamletHistory.forEach((gamlet, index) => {
             tableHTML += '<tr>';
-                tableHTML += `<td class="game-number">${gamlet.fullGameNumber}.${gamlet.gamletNumber}</td>`;
+                tableHTML += `<td class="game-number">${gamlet.gamletNumber}</td>`;
             
             let totalBid = 0;
             this.players.forEach(player => {
@@ -792,12 +791,7 @@ class IsraeliWhist {
             
             tableHTML += `<td class="total-row">${totalBid}</td>`;
                 
-                // Add trump column
-                const trumpSymbol = this.getSuitSymbol(gamlet.trumpSuit);
-                const trumpWinnerName = gamlet.trumpWinner === 'south' ? 
-                    (this.playerName || 'Guy') : 
-                    this.getPlayerDisplayName(gamlet.trumpWinner).split(' ')[0];
-                tableHTML += `<td class="trump-col">${trumpSymbol}<br/><small>(${trumpWinnerName})</small></td>`;
+
                 
             tableHTML += '</tr>';
         });
@@ -806,7 +800,7 @@ class IsraeliWhist {
         // Only show current gamlet row if there are no completed gamlets (i.e., very first gamlet)
         if (!hasCompletedGamlets) {
             tableHTML += '<tr class="current-gamlet">';
-            tableHTML += `<td class="game-number current">${this.fullGameNumber}.${this.gamletNumber}</td>`;
+            tableHTML += `<td class="game-number current">${this.gamletNumber}</td>`;
             
             let currentTotalBid = 0;
             this.players.forEach(player => {
@@ -820,16 +814,7 @@ class IsraeliWhist {
             
             tableHTML += `<td class="total-row current">${currentTotalBid > 0 ? currentTotalBid : '-'}</td>`;
             
-            // Current trump column
-            if (this.trumpSuit && this.trumpWinner) {
-                const currentTrumpSymbol = this.getSuitSymbol(this.trumpSuit);
-                const currentTrumpWinnerName = this.trumpWinner === 'south' ? 
-                    (this.playerName || 'Guy') : 
-                    this.getPlayerDisplayName(this.trumpWinner).split(' ')[0];
-                tableHTML += `<td class="trump-col current">${currentTrumpSymbol}<br/><small>(${currentTrumpWinnerName})</small></td>`;
-            } else {
-                tableHTML += `<td class="trump-col current">-</td>`;
-            }
+
             
             tableHTML += '</tr>';
         }
@@ -848,14 +833,14 @@ class IsraeliWhist {
                 // For first gamlet, use current scores
                 cumulativeScore = this.scores[player] || 0;
             }
-            tableHTML += `<td class="player-${player} total-score-cell" colspan="2"><strong>${cumulativeScore}</strong></td>`;
+            tableHTML += `<td class="player-${player} total-score-cell player-total-${player}" colspan="2"><strong>${cumulativeScore}</strong></td>`;
         });
         
         const grandTotalBids = this.gamletHistory.reduce((sum, gamlet) => {
             return sum + this.players.reduce((gamletSum, player) => gamletSum + (gamlet.phase2Bids[player] || 0), 0);
         }, 0);
         tableHTML += `<td><strong>${grandTotalBids || '-'}</strong></td>`;
-        tableHTML += '<td><strong>-</strong></td>'; // Empty trump cell for total row
+
         tableHTML += '</tr>';
         
         tableHTML += '</table>';
@@ -1230,55 +1215,69 @@ class IsraeliWhist {
         
         console.log(`Calculating tricks for hand: ${hand.map(c => c.rank + c.suit).join(', ')} with trump: ${trumpSuit}`);
         
-        // Count ONLY very sure winners - be pessimistic
+        // Count aces - more accurate evaluation
         const aces = hand.filter(card => card.rank === 'A').length;
-        tricks += aces * 0.85; // Aces can still lose to trumps or in competitive play
-        console.log(`Aces (${aces}): +${aces * 0.85} tricks`);
+        tricks += aces * 0.9; // Aces are very strong but can lose to trumps
+        console.log(`Aces (${aces}): +${aces * 0.9} tricks`);
         
-        // Trump suit analysis - MUCH more conservative
+        // Trump suit analysis - improved accuracy
         if (trumpSuit !== 'notrump') {
             const trumpCards = hand.filter(card => card.suit === trumpSuit);
             const trumpLength = trumpCards.length;
             
             console.log(`Trump cards (${trumpSuit}): ${trumpCards.map(c => c.rank + c.suit).join(', ')} (${trumpLength} cards)`);
             
-            // Trump length analysis - SEVERELY reduced values (Chati's problem!)
-            if (trumpLength >= 6) {
-                tricks += 1.8; // Even very long trump is not guaranteed - opponents compete
+            // Trump length analysis - more accurate values
+            if (trumpLength >= 7) {
+                tricks += 2.8; // Very long trump dominance
+            } else if (trumpLength >= 6) {
+                tricks += 2.2; // Long trump with excellent control (was too low at 1.8)
             } else if (trumpLength >= 5) {
-                tricks += 1.2; // Long trump - but conservative (Chati had 5 and got 2.2, should be 1.2)
+                tricks += 1.6; // Good trump length (was 1.2)
             } else if (trumpLength >= 4) {
-                tricks += 0.8; // Good trump length - but realistic
+                tricks += 1.0; // Decent trump length
             } else if (trumpLength >= 3) {
-                tricks += 0.4; // Decent trump suit - much more conservative
+                tricks += 0.5; // Minimum viable trump suit
             } else if (trumpLength <= 2) {
-                tricks -= 0.3; // Short trump is quite disadvantageous
+                tricks -= 0.3; // Short trump is disadvantageous
             }
             
-            // Trump honors - more conservative values
+            // Trump honors - improved accuracy
             const trumpAce = trumpCards.some(card => card.rank === 'A');
             const trumpKing = trumpCards.some(card => card.rank === 'K');
             const trumpQueen = trumpCards.some(card => card.rank === 'Q');
             const trumpJack = trumpCards.some(card => card.rank === 'J');
+            const trump10 = trumpCards.some(card => card.rank === '10');
             
             if (trumpAce) {
-                tricks += 0.7; // Trump ace is strong but more conservative
-                console.log(`Trump Ace: +0.7 tricks`);
+                tricks += 0.8; // Trump ace is very strong
+                console.log(`Trump Ace: +0.8 tricks`);
             }
-            if (trumpKing && trumpLength >= 3) { // Need more protection
-                tricks += 0.4; // More conservative trump king
-                console.log(`Trump King (protected): +0.4 tricks`);
+            if (trumpKing && trumpLength >= 3) {
+                tricks += 0.5; // Trump king with protection
+                console.log(`Trump King (protected): +0.5 tricks`);
             }
-            if (trumpQueen && trumpLength >= 4) { // Need even more protection
-                tricks += 0.2; // Much more conservative trump queen
-                console.log(`Trump Queen (protected): +0.2 tricks`);
+            if (trumpQueen && trumpLength >= 3) { // Lower protection requirement
+                tricks += 0.3; // Trump queen is more valuable with length
+                console.log(`Trump Queen (protected): +0.3 tricks`);
             }
-            if (trumpJack && trumpLength >= 5) { // Rarely worth much
-                tricks += 0.1; // Very conservative trump jack
-                console.log(`Trump Jack (protected): +0.1 tricks`);
+            if (trumpJack && trumpLength >= 4) {
+                tricks += 0.2; // Trump jack with good length
+                console.log(`Trump Jack (protected): +0.2 tricks`);
+            }
+            if (trump10 && trumpLength >= 4) {
+                tricks += 0.1; // Trump ten can be valuable
+                console.log(`Trump Ten (protected): +0.1 tricks`);
             }
             
-            const lengthContribution = trumpLength >= 6 ? 1.8 : trumpLength >= 5 ? 1.2 : trumpLength >= 4 ? 0.8 : trumpLength >= 3 ? 0.4 : trumpLength <= 2 ? -0.3 : 0;
+            // Trump sequence evaluation - NEW
+            const trumpSequence = this.evaluateTrumpSequence(trumpCards);
+            if (trumpSequence > 0) {
+                tricks += trumpSequence;
+                console.log(`Trump sequence value: +${trumpSequence} tricks`);
+            }
+            
+            const lengthContribution = trumpLength >= 7 ? 2.8 : trumpLength >= 6 ? 2.2 : trumpLength >= 5 ? 1.6 : trumpLength >= 4 ? 1.0 : trumpLength >= 3 ? 0.5 : trumpLength <= 2 ? -0.3 : 0;
             console.log(`Trump contribution: +${lengthContribution} for length`);
         }
         
@@ -1303,27 +1302,34 @@ class IsraeliWhist {
                     console.log(`  Side suit Aces: already counted in main calculation`);
                 }
                 
-                // More accurate side suit evaluation based on protection
-                if (suitLength >= 4) {
-                    // Long suits - very well protected
+                // Improved side suit evaluation based on protection and position
+                if (suitLength >= 5) {
+                    // Very long suits - excellent protection
+                    tricks += kings * 0.9; // Very well-protected kings
+                    tricks += queens * 0.6; // Protected queens in long suits
+                    tricks += jacks * 0.4; // Protected jacks
+                    tricks += tens * 0.3; // Protected tens
+                    console.log(`  Very long suit (${suitLength}): K=${kings * 0.9}, Q=${queens * 0.6}, J=${jacks * 0.4}, 10=${tens * 0.3}`);
+                } else if (suitLength === 4) {
+                    // Long suits - well protected
                     tricks += kings * 0.8; // Well-protected kings
                     tricks += queens * 0.5; // Protected queens
                     tricks += jacks * 0.3; // Protected jacks
                     tricks += tens * 0.2; // Protected tens
-                    console.log(`  Long suit (${suitLength}): K=${kings * 0.8}, Q=${queens * 0.5}, J=${jacks * 0.3}, 10=${tens * 0.2}`);
+                    console.log(`  Long suit (4): K=${kings * 0.8}, Q=${queens * 0.5}, J=${jacks * 0.3}, 10=${tens * 0.2}`);
                 } else if (suitLength === 3) {
-                    // Well protected
-                    tricks += kings * 0.7; // Well-protected kings
+                    // Medium suits - decent protection
+                    tricks += kings * 0.7; // Reasonably protected kings
                     tricks += queens * 0.4; // Protected queens
                     tricks += jacks * 0.2; // Protected jacks
                     console.log(`  Medium suit (3): K=${kings * 0.7}, Q=${queens * 0.4}, J=${jacks * 0.2}`);
                 } else if (suitLength === 2) {
-                    // Somewhat protected
-                    tricks += kings * 0.5; // Somewhat protected
-                    tricks += queens * 0.25;
-                    console.log(`  Short suit (2): K=${kings * 0.5}, Q=${queens * 0.25}`);
+                    // Short suits - some protection
+                    tricks += kings * 0.5; // Some protection
+                    tricks += queens * 0.3; // Better than before
+                    console.log(`  Short suit (2): K=${kings * 0.5}, Q=${queens * 0.3}`);
                 } else { // singleton
-                    tricks += kings * 0.3; // Singleton king still has some value
+                    tricks += kings * 0.3; // Singleton king still has value
                     console.log(`  Singleton: K=${kings * 0.3} (risky)`);
                     // Don't count singleton queens/jacks - too risky
                 }
@@ -1351,10 +1357,52 @@ class IsraeliWhist {
             tricks *= 1.1; // Strong hands perform better
         }
         
-        // Cap the estimate to be realistic - lower ceiling for realism
-        tricks = Math.max(0.5, Math.min(5.5, tricks));
+        // Cap the estimate to be realistic - adjusted ceiling for better accuracy
+        tricks = Math.max(0.5, Math.min(7.0, tricks));
         
         return tricks;
+    }
+    
+    evaluateTrumpSequence(trumpCards) {
+        // Evaluate trump sequence strength for better trick estimation
+        if (trumpCards.length < 3) return 0;
+        
+        // Convert trump cards to numerical ranks for sequence analysis
+        const rankValues = {
+            'A': 14, 'K': 13, 'Q': 12, 'J': 11, '10': 10, '9': 9, '8': 8, 
+            '7': 7, '6': 6, '5': 5, '4': 4, '3': 3, '2': 2
+        };
+        
+        const trumpValues = trumpCards.map(card => rankValues[card.rank]).sort((a, b) => b - a);
+        let sequenceValue = 0;
+        
+        // Count consecutive sequences starting from highest cards
+        let currentSequence = 1;
+        let highestInSequence = trumpValues[0];
+        
+        for (let i = 1; i < trumpValues.length; i++) {
+            if (trumpValues[i] === trumpValues[i-1] - 1) {
+                currentSequence++;
+            } else {
+                // Process completed sequence
+                if (currentSequence >= 3) {
+                    let seqBonus = (currentSequence - 2) * 0.2; // 0.2 per card beyond 2
+                    if (highestInSequence >= 12) seqBonus *= 1.5; // Bonus for high sequences
+                    sequenceValue += seqBonus;
+                }
+                currentSequence = 1;
+                highestInSequence = trumpValues[i];
+            }
+        }
+        
+        // Check final sequence
+        if (currentSequence >= 3) {
+            let seqBonus = (currentSequence - 2) * 0.2;
+            if (highestInSequence >= 12) seqBonus *= 1.5;
+            sequenceValue += seqBonus;
+        }
+        
+        return Math.min(sequenceValue, 0.8); // Cap sequence bonus
     }
     
     analyzeOpponentBids() {
@@ -3399,294 +3447,8 @@ class IsraeliWhist {
         return score * pattern.confidence; // Scale by confidence in pattern
     }
     
-    // ADVANCED: Ask ChatGPT for bidding advice
-    async askChatGPTForBiddingAdvice() {
-        const chatGPTBtn = document.getElementById('ask-chatgpt-btn');
-        if (!chatGPTBtn) return;
-        
-        // Show loading state
-        chatGPTBtn.classList.add('loading');
-        chatGPTBtn.innerHTML = '<span class="gpt-logo">🤖</span> Thinking...';
-        chatGPTBtn.disabled = true;
-        
-        try {
-            // Get current player's hand
-            const playerHand = this.hands.south;
-            if (!playerHand || playerHand.length === 0) {
-                this.showGameNotification('No cards to analyze!', 'warning');
-                return;
-            }
-            
-            // Get current bidding context
-            const currentBids = this.getCurrentBiddingContext();
-            
-            // Prepare hand analysis for ChatGPT
-            const handAnalysis = this.analyzeHandForGPT(playerHand);
-            
-            // Create prompt for ChatGPT
-            const prompt = this.createBiddingPrompt(handAnalysis, currentBids);
-            
-            // Make API call to ChatGPT
-            const advice = await this.callChatGPTAPI(prompt);
-            
-            // Display the advice
-            this.displayChatGPTAdvice(advice);
-            
-        } catch (error) {
-            console.error('Error getting ChatGPT advice:', error);
-            this.showGameNotification('Sorry, ChatGPT is temporarily unavailable. Try again later!', 'error');
-        } finally {
-            // Reset button state
-            chatGPTBtn.classList.remove('loading');
-            chatGPTBtn.innerHTML = '<span class="gpt-logo">🤖</span> Ask ChatGPT';
-            chatGPTBtn.disabled = false;
-        }
-    }
+
     
-    // Helper: Get current bidding context
-    getCurrentBiddingContext() {
-        const context = {
-            currentHighestBid: null,
-            totalBidders: 0,
-            remainingPlayers: 0
-        };
-        
-        // Find highest bid so far
-        this.players.forEach(player => {
-            if (this.phase1Bids[player]) {
-                context.totalBidders++;
-                if (!context.currentHighestBid || 
-                    this.isBidHigher(this.phase1Bids[player], context.currentHighestBid)) {
-                    context.currentHighestBid = this.phase1Bids[player];
-                }
-            }
-        });
-        
-        context.remainingPlayers = this.players.filter(p => 
-            !this.phase1Bids[p] && !this.playersPassed[p]
-        ).length;
-        
-        return context;
-    }
-    
-    // Helper: Analyze hand for GPT
-    analyzeHandForGPT(hand) {
-        const analysis = {
-            totalCards: hand.length,
-            suitDistribution: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 },
-            highCards: { clubs: [], diamonds: [], hearts: [], spades: [] },
-            longestSuit: '',
-            shortestSuit: '',
-            balancedHand: false,
-            trumpPotential: {}
-        };
-        
-        // Count cards by suit and identify high cards
-        hand.forEach(card => {
-            analysis.suitDistribution[card.suit]++;
-            if (['A', 'K', 'Q', 'J'].includes(card.rank)) {
-                analysis.highCards[card.suit].push(card.rank);
-            }
-        });
-        
-        // Find longest and shortest suits
-        const suitLengths = Object.entries(analysis.suitDistribution);
-        suitLengths.sort((a, b) => b[1] - a[1]);
-        analysis.longestSuit = suitLengths[0][0];
-        analysis.shortestSuit = suitLengths[3][0];
-        
-        // Check if hand is balanced (no suit longer than 4, no suit shorter than 2)
-        const lengths = Object.values(analysis.suitDistribution);
-        analysis.balancedHand = Math.max(...lengths) <= 4 && Math.min(...lengths) >= 2;
-        
-        // Assess trump potential for each suit
-        ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
-            const assessment = this.assessTrumpPotential(hand, suit);
-            analysis.trumpPotential[suit] = {
-                score: assessment.totalScore,
-                length: assessment.length,
-                honors: assessment.honors
-            };
-        });
-        
-        // Assess No Trump potential
-        const ntAssessment = this.assessNoTrumpPotential(hand);
-        analysis.trumpPotential.notrump = {
-            score: ntAssessment.totalScore,
-            suitControl: ntAssessment.suitControl || 0
-        };
-        
-        return analysis;
-    }
-    
-    // Helper: Create prompt for ChatGPT
-    createBiddingPrompt(handAnalysis, biddingContext) {
-        let prompt = `You are an expert Israeli Whist player. Analyze this hand and recommend a bidding strategy.
-
-HAND ANALYSIS:
-- Total cards: ${handAnalysis.totalCards}
-- Suit distribution: 
-  • Clubs: ${handAnalysis.suitDistribution.clubs} cards (high cards: ${handAnalysis.highCards.clubs.join(', ') || 'none'})
-  • Diamonds: ${handAnalysis.suitDistribution.diamonds} cards (high cards: ${handAnalysis.highCards.diamonds.join(', ') || 'none'})
-  • Hearts: ${handAnalysis.suitDistribution.hearts} cards (high cards: ${handAnalysis.highCards.hearts.join(', ') || 'none'})
-  • Spades: ${handAnalysis.suitDistribution.spades} cards (high cards: ${handAnalysis.highCards.spades.join(', ') || 'none'})
-- Longest suit: ${handAnalysis.longestSuit} (${handAnalysis.suitDistribution[handAnalysis.longestSuit]} cards)
-- Hand type: ${handAnalysis.balancedHand ? 'Balanced' : 'Unbalanced'}
-
-TRUMP POTENTIAL SCORES:
-- Clubs: ${handAnalysis.trumpPotential.clubs.score.toFixed(1)}
-- Diamonds: ${handAnalysis.trumpPotential.diamonds.score.toFixed(1)}
-- Hearts: ${handAnalysis.trumpPotential.hearts.score.toFixed(1)}
-- Spades: ${handAnalysis.trumpPotential.spades.score.toFixed(1)}
-- No Trump: ${handAnalysis.trumpPotential.notrump.score.toFixed(1)}
-
-BIDDING CONTEXT:`;
-
-        if (biddingContext.currentHighestBid) {
-            prompt += `
-- Current highest bid: ${biddingContext.currentHighestBid.minTakes} ${biddingContext.currentHighestBid.trumpSuit}
-- Players who have bid: ${biddingContext.totalBidders}
-- Remaining players: ${biddingContext.remainingPlayers}`;
-        } else {
-            prompt += `
-- No bids yet (you're first to bid)
-- All 4 players still to bid`;
-        }
-
-        prompt += `
-
-ISRAELI WHIST RULES REMINDER:
-- Phase 1: Bid trump suit and minimum tricks (4-13)
-- Each bid must be higher: more tricks OR same tricks with higher suit
-- Suit ranking: Clubs < Diamonds < Hearts < Spades < No Trump
-- You need to be realistic - overbidding leads to penalties
-
-Please provide:
-1. Your recommended bid (number of tricks and trump suit) OR recommendation to PASS
-2. Brief reasoning (2-3 sentences explaining the strategy)
-3. Alternative consideration if applicable
-
-Keep your response concise and actionable.`;
-
-        return prompt;
-    }
-    
-    // Helper: Call ChatGPT API
-    async callChatGPTAPI(prompt) {
-        // For demonstration, I'll create a mock response
-        // In a real implementation, you would need to set up a backend API endpoint
-        // that calls OpenAI's API with your API key for security reasons
-        
-        // This is a placeholder - you would replace this with actual API call
-        return this.generateMockChatGPTResponse(prompt);
-    }
-    
-    // Helper: Generate mock ChatGPT response (replace with real API call)
-    generateMockChatGPTResponse(prompt) {
-        // Simulate API delay
-        return new Promise(resolve => {
-            setTimeout(() => {
-                resolve({
-                    recommendation: "7 Hearts",
-                    reasoning: "Your hand shows good heart length with high cards. The unbalanced distribution favors a trump contract over No Trump. Hearts ranks high enough to compete effectively.",
-                    alternative: "Consider passing if opponents bid aggressively, as your hand may play better defensively."
-                });
-            }, 1500);
-        });
-    }
-    
-    // Helper: Display ChatGPT advice
-    displayChatGPTAdvice(advice) {
-        const notification = document.createElement('div');
-        notification.className = 'chatgpt-advice';
-        notification.innerHTML = `
-            <div class="advice-header">
-                <span class="gpt-logo">🤖</span> ChatGPT Recommendation
-                <button class="advice-close" onclick="this.parentElement.parentElement.remove()">×</button>
-            </div>
-            <div class="advice-content">
-                <div class="advice-recommendation">
-                    <strong>Recommended Bid:</strong> ${advice.recommendation}
-                </div>
-                <div class="advice-reasoning">
-                    <strong>Reasoning:</strong> ${advice.reasoning}
-                </div>
-                ${advice.alternative ? `<div class="advice-alternative">
-                    <strong>Alternative:</strong> ${advice.alternative}
-                </div>` : ''}
-            </div>
-        `;
-        
-        // Add CSS if not already added
-        if (!document.querySelector('.chatgpt-advice-styles')) {
-            const style = document.createElement('style');
-            style.className = 'chatgpt-advice-styles';
-            style.textContent = `
-                .chatgpt-advice {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    background: linear-gradient(135deg, #10a37f, #087f5b);
-                    color: white;
-                    border-radius: 12px;
-                    padding: 0;
-                    max-width: 350px;
-                    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-                    z-index: 1000;
-                    animation: slideInRight 0.3s ease-out;
-                }
-                .advice-header {
-                    background: rgba(0,0,0,0.2);
-                    padding: 12px 15px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    border-radius: 12px 12px 0 0;
-                    font-weight: bold;
-                }
-                .advice-close {
-                    background: none;
-                    border: none;
-                    color: white;
-                    font-size: 20px;
-                    cursor: pointer;
-                    padding: 0;
-                    width: 24px;
-                    height: 24px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .advice-content {
-                    padding: 15px;
-                    line-height: 1.4;
-                }
-                .advice-recommendation {
-                    margin-bottom: 10px;
-                    font-size: 16px;
-                }
-                .advice-reasoning, .advice-alternative {
-                    margin-bottom: 8px;
-                    font-size: 14px;
-                    opacity: 0.9;
-                }
-                @keyframes slideInRight {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        document.body.appendChild(notification);
-        
-        // Auto-remove after 10 seconds
-        setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
-            }
-        }, 10000);
-    }
     
     // ADVANCED: Update behavior profiles when bids are made
     updateBehaviorProfile(player, phase, bidData) {
@@ -5261,14 +5023,6 @@ Keep your response concise and actionable.`;
         if (clearBtn) {
             clearBtn.addEventListener('click', () => {
                 this.clearBidSelections();
-            });
-        }
-        
-        // ChatGPT button
-        const chatGPTBtn = document.getElementById('ask-chatgpt-btn');
-        if (chatGPTBtn) {
-            chatGPTBtn.addEventListener('click', () => {
-                this.askChatGPTForBiddingAdvice();
             });
         }
         
@@ -7070,7 +6824,7 @@ Keep your response concise and actionable.`;
          let hint = '';
          
          // === COMPACT BIDDING RECOMMENDATIONS ===
-         hint += '<h4 style="margin: 4px 0 6px 0; font-size: 1em;">🎯 Bidding Options</h4>';
+         hint += '<h4 style="margin: 8px 0 12px 0; font-size: 1.2em;">🎯 Bidding Options</h4>';
          
          if (this.playersPassed.south) {
              hint += '<p>You have already passed this round.</p>';
@@ -7081,8 +6835,9 @@ Keep your response concise and actionable.`;
          
          if (biddingOptions.length === 0 || (biddingOptions.length > 0 && biddingOptions[0].successRate < 70)) {
              // Recommend PASS if no options or top option has <70% success rate
-             hint += `<div style="margin: 4px 0; padding: 6px; border: 2px solid #FF9800; border-radius: 4px; background: rgba(255,152,0,0.1);">`;
+             hint += `<div class="hint-pass-recommendation">`;
              hint += '<strong>🚫 PASS</strong> ';
+ 
              if (biddingOptions.length === 0) {
                  if (currentBid) {
                      hint += `(can't compete with ${currentBid.minTakes}${this.getSuitSymbol(currentBid.trumpSuit)})`;
@@ -7097,7 +6852,7 @@ Keep your response concise and actionable.`;
              
              // Show compact risky alternatives
              if (biddingOptions.length > 0) {
-                 hint += '<div style="margin: 4px 0;"><strong style="font-size: 0.9em;">Risky:</strong> ';
+                 hint += '<div class="hint-alternatives"><strong>Risky:</strong> ';
                  biddingOptions.slice(0, 2).forEach((option, index) => {
                      hint += `${option.minTakes}${this.getSuitSymbol(option.trumpSuit)} (${option.successRate}%)`;
                      if (index < Math.min(biddingOptions.length, 2) - 1) hint += ', ';
@@ -7107,16 +6862,17 @@ Keep your response concise and actionable.`;
          } else {
              // Top recommendation first (>=70% success rate)
              const topOption = biddingOptions[0];
-             hint += `<div style="margin: 4px 0; padding: 6px; border: 2px solid #4CAF50; border-radius: 4px; background: rgba(76,175,80,0.1);">`;
+             hint += `<div class="hint-recommendation">`;
              hint += `<strong>💡 ${topOption.minTakes} ${this.getSuitSymbol(topOption.trumpSuit)}</strong> `;
+ 
              hint += `<span style="color: ${this.getConfidenceLevel(topOption.successRate).color};">(${topOption.successRate}%)</span><br>`;
-             hint += `<small>${topOption.reasoning}</small>`;
+             hint += `<div class="hint-reasoning">${topOption.reasoning}</div>`;
              hint += `</div>`;
              
              // Show compact alternatives
              if (biddingOptions.length > 1) {
                  const alternatives = biddingOptions.slice(1, 3); // Max 2 alternatives for space
-                 hint += '<div style="margin: 4px 0;"><strong style="font-size: 0.9em;">Alternatives:</strong> ';
+                 hint += '<div class="hint-alternatives"><strong>Alternatives:</strong> ';
                  alternatives.forEach((option, index) => {
                      hint += `${option.minTakes}${this.getSuitSymbol(option.trumpSuit)} (${option.successRate}%)`;
                      if (index < alternatives.length - 1) hint += ', ';
@@ -7127,8 +6883,9 @@ Keep your response concise and actionable.`;
          
          // === COMPACT COMPETITIVE STRATEGY ===
          if (currentBid) {
-             hint += '<div style="margin: 6px 0; padding: 4px; background: rgba(255,255,255,0.05); border-radius: 4px;">';
-             hint += '<strong style="font-size: 0.9em;">⚔️ vs ' + this.getPlayerDisplayName(this.findBidWinner()) + ':</strong> ';
+             hint += '<div class="hint-competitive">';
+            hint += '<strong>⚔️ vs ' + this.getPlayerDisplayName(this.findBidWinner()) + ':</strong> ';
+ 
              const competitiveAdvice = this.getCompetitiveAdviceCompact(hand, handStrength, currentBid, biddingOptions);
              hint += competitiveAdvice;
              hint += '</div>';

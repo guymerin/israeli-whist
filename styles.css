@@ -1012,12 +1012,12 @@ h1 {
 /* Hint Modal Styles */
 .hint-modal {
     position: fixed;
-    top: 120px;
+    top: 80px;
     left: 50%;
     transform: translateX(-50%);
     width: auto;
-    max-width: 400px;
-    min-width: 300px;
+    max-width: 520px;
+    min-width: 420px;
     background: none;
     backdrop-filter: none;
     display: flex;
@@ -1029,13 +1029,13 @@ h1 {
 
 .hint-content {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 0;
     width: 100%;
-    max-height: 300px;
+    max-height: 400px;
     overflow-y: auto;
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.3);
     pointer-events: all;
 }
 
@@ -1043,15 +1043,16 @@ h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 15px 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 18px 20px 12px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .hint-header h3 {
     margin: 0;
     color: #FFD700;
-    font-size: 14px;
+    font-size: 20px;
     font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .hint-close {
@@ -1076,16 +1077,17 @@ h1 {
 }
 
 .hint-body {
-    padding: 12px 15px;
+    padding: 20px 24px;
     color: #fff;
-    line-height: 1.4;
-    font-size: 13px;
+    line-height: 1.6;
+    font-size: 16px;
 }
 
 .hint-body h4 {
     color: #4CAF50;
-    margin: 8px 0 6px 0;
-    font-size: 14px;
+    margin: 12px 0 10px 0;
+    font-size: 18px;
+    font-weight: bold;
 }
 
 .hint-body ul {
@@ -1099,20 +1101,21 @@ h1 {
 }
 
 .hint-body .card-suggestion {
-    background: rgba(76, 175, 80, 0.1);
-    border: 1px solid #4CAF50;
-    border-radius: 6px;
-    padding: 10px;
-    margin: 8px 0;
+    background: rgba(76, 175, 80, 0.15);
+    border: 2px solid #4CAF50;
+    border-radius: 10px;
+    padding: 16px;
+    margin: 12px 0;
 }
 
 .hint-body .card-suggestion strong {
     color: #4CAF50;
-    font-size: 14px;
+    font-size: 18px;
+    font-weight: bold;
 }
 
 .hint-footer {
-    padding: 8px 15px 12px;
+    padding: 12px 20px 18px;
     display: flex;
     justify-content: center;
 }
@@ -1121,18 +1124,66 @@ h1 {
     background: linear-gradient(135deg, #4CAF50, #45a049);
     color: white;
     border: none;
-    padding: 6px 16px;
-    border-radius: 16px;
-    font-size: 12px;
+    padding: 12px 24px;
+    border-radius: 20px;
+    font-size: 16px;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 .hint-btn-close:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Hint Content Styling Classes */
+.hint-recommendation {
+    margin: 8px 0;
+    padding: 12px;
+    border: 2px solid #4CAF50;
+    border-radius: 8px;
+    background: rgba(76, 175, 80, 0.15);
+    font-size: 16px;
+}
+
+.hint-recommendation strong {
+    font-size: 18px;
+    color: #4CAF50;
+}
+
+.hint-pass-recommendation {
+    margin: 8px 0;
+    padding: 12px;
+    border: 2px solid #FF9800;
+    border-radius: 8px;
+    background: rgba(255, 152, 0, 0.15);
+    font-size: 16px;
+}
+
+.hint-pass-recommendation strong {
+    font-size: 18px;
+    color: #FF9800;
+}
+
+.hint-competitive {
+    margin: 10px 0;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    font-size: 15px;
+}
+
+.hint-alternatives {
+    margin: 8px 0;
+    font-size: 16px;
+}
+
+.hint-reasoning {
+    margin-top: 6px;
+    font-size: 14px;
+    opacity: 0.9;
 }
 
 
@@ -1486,34 +1537,7 @@ h1 {
     background: linear-gradient(135deg, #F57C00, #E65100);
 }
 
-/* ChatGPT button styling */
-.chatgpt-btn {
-    background: linear-gradient(135deg, #10a37f, #087f5b) !important;
-    border: 2px solid #10a37f;
-    position: relative;
-    overflow: hidden;
-}
 
-.chatgpt-btn:hover {
-    background: linear-gradient(135deg, #0f8e6f, #076d54) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
-}
-
-.chatgpt-btn:active {
-    transform: translateY(0);
-}
-
-.chatgpt-btn.loading {
-    opacity: 0.7;
-    cursor: not-allowed;
-}
-
-.gpt-logo {
-    font-size: 18px;
-    margin-right: 8px;
-    display: inline-block;
-}
 
 /* Bidding Interface */
 .bidding-interface {
@@ -3011,6 +3035,11 @@ h1 {
     position: relative;
 }
 
+.scorecard-table .score-col,
+.scorecard-table td.score-col {
+    padding: 12px 4px; /* Reduced padding for score columns */
+}
+
 .scorecard-table th {
     background: linear-gradient(135deg, #e8dcc0 0%, #d4c4a0 100%);
     color: #5d4e37;
@@ -3018,7 +3047,6 @@ h1 {
     font-size: 18px;
     font-family: 'Kalam', cursive;
     text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
-    border-bottom: 2px solid #8b7355;
 }
 
 .scorecard-table .player-header {
@@ -3026,8 +3054,6 @@ h1 {
     color: #8b4513;
     font-weight: 700;
     font-family: 'Kalam', cursive;
-    border-left: 2px solid #8b7355;
-    border-right: 2px solid #8b7355;
     font-size: 20px;
     text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.7);
 }
@@ -3057,14 +3083,12 @@ h1 {
     background: linear-gradient(135deg, #fff9e6 0%, #f5efdb 100%);
     color: #8b4513;
     font-weight: 600;
-    border-right: 2px solid #8b7355;
 }
 
 .scorecard-table .total-row {
     background: linear-gradient(135deg, #e8dcc0 0%, #d4c4a0 100%);
     color: #5d4e37;
     font-weight: 700;
-    border-top: 2px solid #8b7355;
 }
 
 /* Total row merged cells styling */
@@ -3073,8 +3097,27 @@ h1 {
     font-size: 18px;
     font-weight: 700;
     background: linear-gradient(135deg, #f0e6b8 0%, #e8dcc0 100%);
-    border-left: 2px solid #8b7355;
-    border-right: 2px solid #8b7355;
+}
+
+/* Player-specific total row colors */
+.scorecard-table tr.total-row-tr .player-total-north {
+    color: #1976D2;
+    text-shadow: 1px 1px 1px rgba(25, 118, 210, 0.3);
+}
+
+.scorecard-table tr.total-row-tr .player-total-east {
+    color: #F57C00;
+    text-shadow: 1px 1px 1px rgba(245, 124, 0, 0.3);
+}
+
+.scorecard-table tr.total-row-tr .player-total-south {
+    color: #388E3C;
+    text-shadow: 1px 1px 1px rgba(56, 142, 60, 0.3);
+}
+
+.scorecard-table tr.total-row-tr .player-total-west {
+    color: #C2185B;
+    text-shadow: 1px 1px 1px rgba(194, 24, 91, 0.3);
 }
 
 /* Total row label styling */
@@ -3082,53 +3125,16 @@ h1 {
     background: linear-gradient(135deg, #e8dcc0 0%, #d4c4a0 100%);
     color: #5d4e37;
     font-weight: 700;
-    border-top: 2px solid #8b7355;
 }
 
-.scorecard-table .trump-header {
-    background: linear-gradient(135deg, #e6d3f7 0%, #d1b3f0 100%);
-    color: #6a1b9a;
-    font-weight: 700;
-    font-size: 16px;
-}
 
-.scorecard-table .trump-col {
-    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
-    color: #4a148c;
-    text-align: center;
-    font-size: 18px;
-    line-height: 1.3;
-    font-weight: 500;
-}
-
-.scorecard-table .trump-col small {
-    font-size: 12px;
-    color: #7b1fa2;
-    font-style: italic;
-}
 
 .scorecard-table td {
     color: #2c3e50;
     background: rgba(255, 255, 255, 0.7);
 }
 
-/* Player-specific column separations */
-.scorecard-table .player-north {
-    border-left: 2px solid #8b7355;
-}
-
-.scorecard-table .player-east {
-    border-left: 2px solid #8b7355;
-}
-
-.scorecard-table .player-south {
-    border-left: 2px solid #8b7355;
-}
-
-.scorecard-table .player-west {
-    border-left: 2px solid #8b7355;
-    border-right: 2px solid #8b7355;
-}
+/* Player-specific column separations - removed as they create inconsistent borders */
 
 .scorecard-table .bid-col {
     background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
@@ -3195,8 +3201,6 @@ h1 {
 /* Current gamlet row styling - looks like fresh ink */
 .scorecard-table .current-gamlet {
     background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
-    border: 2px solid #4caf50;
-    border-style: dashed;
 }
 
 .scorecard-table .current-gamlet td {
