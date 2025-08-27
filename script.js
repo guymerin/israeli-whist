@@ -1,6 +1,80 @@
 // Israeli Whist Game Implementation - Complete Rebuild
 // Following proper Israeli Whist rules with 3 phases
 
+// Browser compatibility utilities
+const BrowserSupport = {
+    // Detect if localStorage is available
+    hasLocalStorage: function() {
+        try {
+            const test = 'test';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch(e) {
+            return false;
+        }
+    },
+    
+    // Safe localStorage methods with fallbacks
+    storage: {
+        getItem: function(key) {
+            if (BrowserSupport.hasLocalStorage()) {
+                return localStorage.getItem(key);
+            }
+            // Fallback to cookies or session storage
+            return this.getCookie(key);
+        },
+        
+        setItem: function(key, value) {
+            if (BrowserSupport.hasLocalStorage()) {
+                localStorage.setItem(key, value);
+            } else {
+                // Fallback to cookies
+                this.setCookie(key, value, 365);
+            }
+        },
+        
+        getCookie: function(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        },
+        
+        setCookie: function(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+    },
+    
+    // Safe console logging for browsers without console
+    log: function(message) {
+        if (typeof console !== 'undefined' && console.log) {
+            console.log(message);
+        }
+    },
+    
+    // Safe event listener addition
+    addEvent: function(element, event, handler) {
+        if (element.addEventListener) {
+            element.addEventListener(event, handler, false);
+        } else if (element.attachEvent) {
+            element.attachEvent('on' + event, handler);
+        } else {
+            element['on' + event] = handler;
+        }
+    }
+};
+
 class IsraeliWhist {
     constructor() {
         this.players = ['north', 'east', 'south', 'west'];
@@ -161,7 +235,7 @@ class IsraeliWhist {
 
     initializeGame() {
         // Check if we have a cached name
-        const cachedName = localStorage.getItem('israeliWhist_playerName');
+        const cachedName = BrowserSupport.storage.getItem('israeliWhist_playerName');
         
         // Show name modal first (it will auto-fill the cached name if available)
         this.showNameModal();
@@ -175,7 +249,7 @@ class IsraeliWhist {
         
         // Cache the player name in localStorage for future games
         if (playerName && playerName.trim()) {
-            localStorage.setItem('israeliWhist_playerName', playerName.trim());
+            BrowserSupport.storage.setItem('israeliWhist_playerName', playerName.trim());
         }
         
         // Hide name modal
@@ -427,6 +501,9 @@ class IsraeliWhist {
               dealBtn.style.display = 'none';
           }
           
+          // Hide persistent notification when dealing new cards
+          this.hidePersistentNotification();
+          
           // Add safety check for deck
         if (!this.deck || !Array.isArray(this.deck) || this.deck.length < 52) {
             console.warn('Deck not properly initialized, reshuffling...');
@@ -610,12 +687,14 @@ class IsraeliWhist {
         this.selectedTricks = tricks;
         this.updateButtonSelection('tricks', tricks);
         this.updatePassButtonState();
+        this.updateBidButtonState();
     }
 
     selectSuit(suit) {
         this.selectedSuit = suit;
         this.updateButtonSelection('suit', suit);
         this.updatePassButtonState();
+        this.updateBidButtonState();
     }
 
     updateButtonSelection(type, value) {
@@ -626,6 +705,20 @@ class IsraeliWhist {
         } else if (type === 'suit') {
             document.querySelectorAll('.suit-button').forEach(btn => btn.classList.remove('selected'));
             document.querySelector(`.suit-button[data-value="${value}"]`)?.classList.add('selected');
+        }
+    }
+
+    updateBidButtonState() {
+        const bidBtn = document.getElementById('bid-btn');
+        if (!bidBtn) return;
+
+        // Check if both tricks and suit are selected
+        if (this.selectedTricks && this.selectedSuit) {
+            // Both selections made - turn button green
+            bidBtn.classList.add('ready');
+        } else {
+            // Missing selections - remove green state
+            bidBtn.classList.remove('ready');
         }
     }
 
@@ -650,9 +743,10 @@ class IsraeliWhist {
         this.selectedTricks = null;
         this.selectedSuit = null;
         
-        // Clear button selections
+        // Clear button selections and reset bid button state
         document.querySelectorAll('.trick-button').forEach(btn => btn.classList.remove('selected'));
         document.querySelectorAll('.suit-button').forEach(btn => btn.classList.remove('selected'));
+        this.updateBidButtonState();
     }
 
     clearBidSelections() {
@@ -664,8 +758,9 @@ class IsraeliWhist {
         document.querySelectorAll('.trick-button').forEach(btn => btn.classList.remove('selected'));
         document.querySelectorAll('.suit-button').forEach(btn => btn.classList.remove('selected'));
         
-        // Re-enable pass button
+        // Re-enable pass button and update bid button state
         this.updatePassButtonState();
+        this.updateBidButtonState();
         
         // Show feedback to user
         this.showGameNotification('Bid selections cleared. You can now pass or make a new selection.', 'info');
@@ -680,7 +775,7 @@ class IsraeliWhist {
         if (extraButtons && mainButtons) {
             // Hide main buttons (0-7) and show full range (0-13)
             mainButtons.style.display = 'none';
-            extraButtons.style.display = 'grid';
+            extraButtons.style.display = 'flex';
             
             // Show Less button, hide More button
             if (moreBtn) moreBtn.style.display = 'none';
@@ -5153,7 +5248,7 @@ class IsraeliWhist {
         // Check if all 4 players have passed
         if (this.passCount >= 4) {
             console.log('All players passed. Starting new hand.');
-            this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
+            this.showPersistentNotification('All Players passed! Press Deal Cards to start with fresh cards.', 'info');
             
             // Animate human player cards to center and remove them
             this.animateCardsToCenter(() => {
@@ -5241,7 +5336,7 @@ class IsraeliWhist {
         // Check if all 4 players have passed
         if (this.passCount >= 4) {
             console.log('All players passed. Starting new hand.');
-            this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
+            this.showPersistentNotification('All Players passed! Press Deal Cards to start with fresh cards.', 'info');
             
             // Animate human player cards to center and remove them
             this.animateCardsToCenter(() => {
@@ -5370,7 +5465,7 @@ class IsraeliWhist {
             // Check if all 4 players have passed
             if (this.passCount >= 4) {
                 console.log('All players passed. Starting new hand.');
-                this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
+                this.showPersistentNotification('All Players passed! Press Deal Cards to start with fresh cards.', 'info');
                 
                 // Animate human player cards to center and remove them
                 this.animateCardsToCenter(() => {
@@ -6474,7 +6569,7 @@ class IsraeliWhist {
          }
          
          // Check if we have a cached player name to auto-continue
-         const cachedName = localStorage.getItem('israeliWhist_playerName');
+         const cachedName = BrowserSupport.storage.getItem('israeliWhist_playerName');
          if (cachedName && cachedName.trim()) {
              // Auto-continue with cached name - no need to show modal
              console.log(`Auto-starting new gamlet with cached name: ${cachedName}`);
@@ -6542,7 +6637,7 @@ class IsraeliWhist {
          }
          
          // Check if we have a cached player name to auto-continue
-         const cachedName = localStorage.getItem('israeliWhist_playerName');
+         const cachedName = BrowserSupport.storage.getItem('israeliWhist_playerName');
          if (cachedName && cachedName.trim()) {
              // Auto-continue with cached name - no need to show modal
              console.log(`Auto-starting new full game with cached name: ${cachedName}`);
@@ -6808,6 +6903,51 @@ class IsraeliWhist {
             }
         }, duration);
     }
+
+    // Show persistent notification next to North player
+    showPersistentNotification(message, type = 'info') {
+        const northNotification = document.getElementById('north-notification');
+        if (!northNotification) return;
+
+        // Create icon based on type
+        let icon = '';
+        switch(type) {
+            case 'warning':
+                icon = '⚠️';
+                break;
+            case 'error':
+                icon = '❌';
+                break;
+            case 'success':
+                icon = '✅';
+                break;
+            case 'info':
+            default:
+                icon = 'ℹ️';
+                break;
+        }
+
+        // Set the notification content
+        northNotification.innerHTML = `
+            <span class="notification-icon">${icon}</span>
+            <span class="notification-message">${message}</span>
+        `;
+
+        // Show the notification
+        northNotification.style.display = 'block';
+        
+        // Store that we have a persistent notification active
+        this.persistentNotificationActive = true;
+    }
+
+    // Hide persistent notification
+    hidePersistentNotification() {
+        const northNotification = document.getElementById('north-notification');
+        if (northNotification) {
+            northNotification.style.display = 'none';
+            this.persistentNotificationActive = false;
+        }
+    }
     
     showRules() {
          const rulesModal = document.getElementById('rules-modal');
@@ -6824,7 +6964,7 @@ class IsraeliWhist {
             nameModal.style.display = 'flex';
             
             // Try to load cached name from localStorage
-            const cachedName = localStorage.getItem('israeliWhist_playerName');
+            const cachedName = BrowserSupport.storage.getItem('israeliWhist_playerName');
             if (cachedName && playerNameInput) {
                 playerNameInput.value = cachedName;
                 playerNameInput.focus();
@@ -7653,21 +7793,55 @@ class IsraeliWhist {
 
 }
 
-// Initialize the game when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing game...');
+// Initialize the game when the page loads - with cross-browser compatibility
+function initializeGame() {
+    BrowserSupport.log('DOM loaded, initializing game...');
     try {
         window.game = new IsraeliWhist();
-        console.log('Israeli Whist game loaded successfully!');
+        BrowserSupport.log('Israeli Whist game loaded successfully!');
         
-                 // Expose debug methods globally for console access
-         window.debugPhase2Bids = () => window.game.debugPhase2Bids();
-         window.refreshPhase2Displays = () => window.game.refreshAllPhase2Displays();
-         window.forceUpdate = () => window.game.forceDisplayUpdate();
-         window.testBidUpdate = (player, takes) => window.game.updatePhase2BidDisplay(player, takes);
-         
-                 // Debug helper functions available in console
+        // Expose debug methods globally for console access
+        if (typeof window !== 'undefined') {
+            window.debugPhase2Bids = function() { return window.game.debugPhase2Bids(); };
+            window.refreshPhase2Displays = function() { return window.game.refreshAllPhase2Displays(); };
+            window.forceUpdate = function() { return window.game.forceDisplayUpdate(); };
+            window.testBidUpdate = function(player, takes) { return window.game.updatePhase2BidDisplay(player, takes); };
+        }
+        
+        // Debug helper functions available in console
     } catch (error) {
-        console.error('Error initializing game:', error);
+        BrowserSupport.log('Error initializing game: ' + error.message);
+        
+        // Fallback initialization for older browsers
+        setTimeout(function() {
+            try {
+                window.game = new IsraeliWhist();
+                BrowserSupport.log('Game initialized on fallback attempt');
+            } catch (fallbackError) {
+                BrowserSupport.log('Fallback initialization also failed: ' + fallbackError.message);
+            }
+        }, 1000);
     }
-});
+}
+
+// Cross-browser DOM ready detection
+if (document.addEventListener) {
+    // Modern browsers
+    document.addEventListener('DOMContentLoaded', initializeGame, false);
+} else if (document.attachEvent) {
+    // IE8 and older
+    document.attachEvent('onreadystatechange', function() {
+        if (document.readyState === 'complete') {
+            initializeGame();
+        }
+    });
+} else {
+    // Very old browsers - fallback to window.onload
+    if (window.addEventListener) {
+        window.addEventListener('load', initializeGame, false);
+    } else if (window.attachEvent) {
+        window.attachEvent('onload', initializeGame);
+    } else {
+        window.onload = initializeGame;
+    }
+}

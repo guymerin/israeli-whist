@@ -2,12 +2,33 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <!-- Safari specific meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Israeli Whist">
+    
+    <!-- Prevent text size adjustment on mobile Safari -->
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- Chrome/Android specific -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f0f23">
+    
+    <!-- Firefox specific optimizations -->
+    <meta name="msapplication-tap-highlight" content="no">
+    
     <title>Israeli Whist</title>
+    
+    <!-- Preload fonts for better cross-browser performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <!-- Main stylesheet with fallbacks -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -70,6 +91,8 @@
                 </div>
                 <div class="player-cards bot-cards" id="north-cards"></div>
                 <div class="trick-counter" id="north-tricks"></div>
+                <!-- Persistent notification area -->
+                <div id="north-notification" class="north-notification" style="display: none;"></div>
             </div>
 
             <!-- West Player (Bot) -->
@@ -193,8 +216,8 @@
             
             <div class="your-prediction" id="your-prediction-controls" style="display: none;">
                 <h4>How many tricks will you take?</h4>
-                <div class="tricks-prediction">
-                    <div class="tricks-buttons-main">
+                <div class="tricks-prediction" id="tricks-prediction">
+                    <div class="tricks-buttons-main" id="tricks-buttons-main">
                         <button class="trick-btn" data-value="0">0</button>
                         <button class="trick-btn" data-value="1">1</button>
                         <button class="trick-btn" data-value="2">2</button>
@@ -205,20 +228,32 @@
                         <button class="trick-btn" data-value="7">7</button>
                     </div>
                     <div class="tricks-buttons-extra" id="tricks-buttons-extra" style="display: none;">
-                        <button class="trick-btn" data-value="0">0</button>
-                        <button class="trick-btn" data-value="1">1</button>
-                        <button class="trick-btn" data-value="2">2</button>
-                        <button class="trick-btn" data-value="3">3</button>
-                        <button class="trick-btn" data-value="4">4</button>
-                        <button class="trick-btn" data-value="5">5</button>
-                        <button class="trick-btn" data-value="6">6</button>
-                        <button class="trick-btn" data-value="7">7</button>
-                        <button class="trick-btn" data-value="8">8</button>
-                        <button class="trick-btn" data-value="9">9</button>
-                        <button class="trick-btn" data-value="10">10</button>
-                        <button class="trick-btn" data-value="11">11</button>
-                        <button class="trick-btn" data-value="12">12</button>
-                        <button class="trick-btn" data-value="13">13</button>
+                        <!-- Row 1: 0-3 -->
+                        <div class="tricks-row">
+                            <button class="trick-btn" data-value="0">0</button>
+                            <button class="trick-btn" data-value="1">1</button>
+                            <button class="trick-btn" data-value="2">2</button>
+                            <button class="trick-btn" data-value="3">3</button>
+                        </div>
+                        <!-- Row 2: 4-7 -->
+                        <div class="tricks-row">
+                            <button class="trick-btn" data-value="4">4</button>
+                            <button class="trick-btn" data-value="5">5</button>
+                            <button class="trick-btn" data-value="6">6</button>
+                            <button class="trick-btn" data-value="7">7</button>
+                        </div>
+                        <!-- Row 3: 8-11 -->
+                        <div class="tricks-row">
+                            <button class="trick-btn" data-value="8">8</button>
+                            <button class="trick-btn" data-value="9">9</button>
+                            <button class="trick-btn" data-value="10">10</button>
+                            <button class="trick-btn" data-value="11">11</button>
+                        </div>
+                        <!-- Row 4: 12-13 (centered) -->
+                        <div class="tricks-row tricks-row-final">
+                            <button class="trick-btn" data-value="12">12</button>
+                            <button class="trick-btn" data-value="13">13</button>
+                        </div>
                     </div>
                     <button class="more-btn" id="more-tricks-btn">More</button>
                     <button class="less-btn" id="less-tricks-btn" style="display: none;">Less</button>
@@ -328,6 +363,104 @@
     </div>
 
 
+
+    <!-- Polyfills for older browser support -->
+    <script>
+        // Array.includes polyfill for IE
+        if (!Array.prototype.includes) {
+            Array.prototype.includes = function(searchElement /*, fromIndex*/) {
+                'use strict';
+                var O = Object(this);
+                var len = parseInt(O.length) || 0;
+                if (len === 0) return false;
+                var n = parseInt(arguments[1]) || 0;
+                var k;
+                if (n >= 0) {
+                    k = n;
+                } else {
+                    k = len + n;
+                    if (k < 0) k = 0;
+                }
+                var currentElement;
+                while (k < len) {
+                    currentElement = O[k];
+                    if (searchElement === currentElement ||
+                       (searchElement !== searchElement && currentElement !== currentElement)) {
+                        return true;
+                    }
+                    k++;
+                }
+                return false;
+            };
+        }
+
+        // Object.values polyfill for older browsers
+        if (!Object.values) {
+            Object.values = function(obj) {
+                var vals = [];
+                for (var key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        vals.push(obj[key]);
+                    }
+                }
+                return vals;
+            };
+        }
+
+        // Array.from polyfill for older browsers
+        if (!Array.from) {
+            Array.from = function(arrayLike) {
+                var result = [];
+                for (var i = 0; i < arrayLike.length; i++) {
+                    result.push(arrayLike[i]);
+                }
+                return result;
+            };
+        }
+
+        // querySelector polyfill for very old browsers
+        if (!document.querySelector) {
+            document.querySelector = function(selector) {
+                return document.querySelectorAll(selector)[0] || null;
+            };
+        }
+
+        // classList polyfill for older browsers
+        if (!("classList" in document.documentElement)) {
+            Object.defineProperty(HTMLElement.prototype, 'classList', {
+                get: function() {
+                    var self = this;
+                    function update(fn) {
+                        return function(value) {
+                            var classes = self.className.split(/\s+/);
+                            var index = classes.indexOf(value);
+                            fn(classes, index, value);
+                            self.className = classes.join(" ");
+                        };
+                    }
+                    var ret = {
+                        add: update(function(classes, index, value) {
+                            if (!~index) classes.push(value);
+                        }),
+                        remove: update(function(classes, index) {
+                            if (~index) classes.splice(index, 1);
+                        }),
+                        toggle: update(function(classes, index, value) {
+                            if (~index) {
+                                classes.splice(index, 1);
+                            } else {
+                                classes.push(value);
+                            }
+                        }),
+                        contains: function(value) {
+                            return !!~self.className.split(/\s+/).indexOf(value);
+                        }
+                    };
+                    return ret;
+                }
+            });
+        }
+    </script>
 
     <script src="script.js"></script>
 </body>
