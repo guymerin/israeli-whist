@@ -730,7 +730,7 @@ class IsraeliWhist {
             normalContent.style.display = 'none';
             extendedContent.style.display = 'block';
             viewTitle.textContent = 'Game History';
-            toggleBtn.textContent = '📋';
+            toggleBtn.textContent = '−';
             toggleBtn.title = 'Show current scores';
             this.generateExtendedScorecard();
         } else {
@@ -738,7 +738,7 @@ class IsraeliWhist {
             normalContent.style.display = 'flex';
             extendedContent.style.display = 'none';
             viewTitle.textContent = 'Total Score';
-            toggleBtn.textContent = '📊';
+            toggleBtn.textContent = '+';
             toggleBtn.title = 'Show extended scorecard';
         }
     }
@@ -1483,14 +1483,33 @@ class IsraeliWhist {
             const newCard = card.cloneNode(true);
             card.parentNode.replaceChild(newCard, card);
             
-            // Add click handler to the new card
-            newCard.addEventListener('click', () => this.onCardClick(newCard));
+            // Safari-specific fixes
             newCard.style.cursor = 'pointer';
+            newCard.style.webkitUserSelect = 'none';
+            newCard.style.userSelect = 'none';
+            newCard.style.webkitTouchCallout = 'none';
+            newCard.style.pointerEvents = 'auto';
+            
+            // Add multiple event handlers for Safari compatibility
+            const clickHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.onCardClick(newCard);
+            };
+            
+            newCard.addEventListener('click', clickHandler);
+            newCard.addEventListener('touchend', clickHandler);
+            
+            // Add visual feedback for touch devices
+            newCard.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                newCard.style.transform = 'translateY(-10px) scale(1.05)';
+            });
+            
+            newCard.addEventListener('touchcancel', () => {
+                newCard.style.transform = '';
+            });
         });
-        
-        // Card highlighting removed
-        
-
     }
     
     disableCardSelection() {
@@ -1502,13 +1521,13 @@ class IsraeliWhist {
             humanCardsContainer.classList.remove('player-turn');
         }
         
-        // Card highlighting removed
-        
         // Remove click handlers and pointer cursor
         cards.forEach(card => {
             const newCard = card.cloneNode(true);
             card.parentNode.replaceChild(newCard, card);
             newCard.style.cursor = 'default';
+            newCard.style.pointerEvents = 'none';
+            newCard.style.transform = '';
         });
     }
     
