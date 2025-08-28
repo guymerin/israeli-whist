@@ -86,8 +86,10 @@
             <div class="player north-player" id="north-player">
                 <div class="player-info">
                     <span class="player-name">Botti</span>
-                    <span class="player-bid">Bid: <span id="north-bid">-</span></span>
-                    <span class="player-tricks">Takes: <span id="north-takes">0</span></span>
+                    <div class="player-stats">
+                        <span class="player-bid">Bid: <span id="north-bid">-</span></span>
+                        <span class="player-tricks">Takes: <span id="north-takes">0</span></span>
+                    </div>
                 </div>
                 <div class="player-cards bot-cards" id="north-cards"></div>
                 <div class="trick-counter" id="north-tricks"></div>
@@ -99,8 +101,10 @@
             <div class="player west-player" id="west-player">
                 <div class="player-info">
                     <span class="player-name">Chati</span>
-                    <span class="player-bid">Bid: <span id="west-bid">-</span></span>
-                    <span class="player-tricks">Takes: <span id="west-takes">0</span></span>
+                    <div class="player-stats">
+                        <span class="player-bid">Bid: <span id="west-bid">-</span></span>
+                        <span class="player-tricks">Takes: <span id="west-takes">0</span></span>
+                    </div>
                 </div>
                 <div class="player-cards bot-cards" id="west-cards"></div>
                 <div class="trick-counter" id="west-tricks"></div>
@@ -115,7 +119,6 @@
                     <div class="played-card east-played" id="east-played"></div>
                     <div class="game-controls">
                         <button id="deal-btn" class="action-btn">Deal Cards</button>
-                        <button id="force-bid-btn" class="action-btn" style="background: orange; color: white; font-weight: bold; display: none;" onclick="if(window.forceBidding) window.forceBidding();">Show Bidding</button>
                     </div>
                 </div>
                 
@@ -132,8 +135,10 @@
             <div class="player east-player" id="east-player">
                 <div class="player-info">
                     <span class="player-name">Droidi</span>
-                    <span class="player-bid">Bid: <span id="east-bid">-</span></span>
-                    <span class="player-tricks">Takes: <span id="east-takes">0</span></span>
+                    <div class="player-stats">
+                        <span class="player-bid">Bid: <span id="east-bid">-</span></span>
+                        <span class="player-tricks">Takes: <span id="east-takes">0</span></span>
+                    </div>
                 </div>
                 <div class="player-cards bot-cards" id="east-cards"></div>
                 <div class="trick-counter" id="east-tricks"></div>
@@ -143,8 +148,10 @@
             <div class="player south-player" id="south-player">
                 <div class="player-info">
                     <span class="player-name" id="south-player-name">South (You)</span>
-                    <span class="player-bid">Bid: <span id="south-bid">-</span></span>
-                    <span class="player-tricks">Takes: <span id="south-takes">0</span></span>
+                    <div class="player-stats">
+                        <span class="player-bid">Bid: <span id="south-bid">-</span></span>
+                        <span class="player-tricks">Takes: <span id="south-takes">0</span></span>
+                    </div>
                 </div>
                 <div class="player-cards human-cards" id="south-cards"></div>
                 <div class="trick-counter" id="south-tricks"></div>
@@ -172,7 +179,7 @@
                 <div class="button-row">
                     <button id="bid-btn" class="action-btn">Bid</button>
                     <button id="pass-btn" class="action-btn">Pass</button>
-
+                    <button id="skip-btn" class="action-btn">Skip</button>
                 </div>
             </div>
         </div>

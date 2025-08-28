@@ -5148,6 +5148,14 @@ class IsraeliWhist {
             });
         }
         
+        // Skip button
+        const skipBtn = document.getElementById('skip-btn');
+        if (skipBtn) {
+            skipBtn.addEventListener('click', () => {
+                this.skipHand();
+            });
+        }
+        
         // Clear button
         const clearBtn = document.getElementById('clear-btn');
         if (clearBtn) {
@@ -5280,6 +5288,31 @@ class IsraeliWhist {
         setTimeout(() => {
             this.nextPhase1Bidder();
         }, 1500);
+    }
+    
+    skipHand() {
+        this.logPlayer(`${this.getPlayerDisplayName('south')} skipped the hand`, 'south');
+        
+        // Show skip animation
+        this.showBidAnimation('south', 'Skip');
+        
+        // Hide bidding interface
+        this.hideBiddingInterface();
+        
+        // Mark all players as passed to trigger the same logic as when all pass
+        this.playersPassed = { north: true, east: true, south: true, west: true };
+        this.passCount = 4;
+        
+        // Update display
+        this.updateDisplay();
+        
+        console.log('Hand skipped by player. Starting new hand.');
+        this.showPersistentNotification('Hand skipped! Press Deal Cards to start with fresh cards.', 'info');
+        
+        // Animate human player cards to center and remove them
+        this.animateCardsToCenter(() => {
+            setTimeout(() => this.resetForNewHand(), this.getDelay(500));
+        });
     }
     
     animateCardsToCenter(callback) {
