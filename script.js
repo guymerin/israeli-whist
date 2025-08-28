@@ -6279,16 +6279,41 @@ class IsraeliWhist {
          }
      }
      
-     // End hand and calculate scores
-     endHand() {
-                 console.log('🏁 HAND COMPLETE - Final Results:');
-        const results = Object.entries(this.tricksWon).map(([p, t]) => `${this.getPlayerDisplayName(p)}: ${t} tricks`).join(', ');
-        console.log(`   Tricks Won: ${results}`);
-         
-         // Calculate scores for each player and collect score changes
-         const scoreChanges = {};
-         const gamletScores = {};
-         this.players.forEach(player => {
+         // End hand and calculate scores
+    endHand() {
+                console.log('🏁 HAND COMPLETE - Final Results:');
+       const results = Object.entries(this.tricksWon).map(([p, t]) => `${this.getPlayerDisplayName(p)}: ${t} tricks`).join(', ');
+       console.log(`   Tricks Won: ${results}`);
+        
+        // Check if all players failed their bids - if so, cancel the gamlet
+        const allPlayersFailed = this.players.every(player => {
+            const bid = this.phase2Bids[player];
+            const tricks = this.tricksWon[player];
+            // A player failed if their bid doesn't equal their tricks won
+            return bid !== tricks;
+        });
+        
+        if (allPlayersFailed) {
+            console.log('❌ ALL PLAYERS FAILED THEIR BIDS - GAMLET CANCELLED');
+            this.logPlayer('🚫 All players failed their bids! This gamlet is cancelled and will not be scored.', 'south');
+            this.players.forEach(player => {
+                this.logPlayer(`   ${this.getPlayerDisplayName(player)}: bid ${this.phase2Bids[player]}, took ${this.tricksWon[player]} → FAILED`, player);
+            });
+            
+            // Show cancellation notification
+            this.showGameNotification('🚫 Gamlet Cancelled! All players failed their bids - no points awarded.', 'warning', 4000);
+            
+            // Skip scoring and continue to next gamlet
+            setTimeout(() => {
+                this.resetForNewGamlet();
+            }, this.getDelay(4000));
+            return;
+        }
+        
+        // Calculate scores for each player and collect score changes
+        const scoreChanges = {};
+        const gamletScores = {};
+        this.players.forEach(player => {
              const bid = this.phase2Bids[player];
              const tricks = this.tricksWon[player];
              

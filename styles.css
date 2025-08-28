@@ -46,6 +46,7 @@ h1 {
     border-radius: 12px;
     border: 2px solid rgba(255, 215, 0, 0.6);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
+    -webkit-backdrop-filter: blur(15px);
     backdrop-filter: blur(15px);
     z-index: 1000;
     width: 180px;
@@ -209,6 +210,7 @@ h1 {
     min-height: 50px;
     margin-bottom: 15px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
 }
 
@@ -394,6 +396,7 @@ h1 {
     text-align: center;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    -webkit-backdrop-filter: blur(5px);
     backdrop-filter: blur(5px);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -1068,6 +1071,7 @@ h1 {
     max-width: 520px;
     min-width: 420px;
     background: none;
+    -webkit-backdrop-filter: none;
     backdrop-filter: none;
     display: flex;
     justify-content: center;
@@ -1351,6 +1355,8 @@ h1 {
     font-weight: bold;
     font-size: 14px;
     text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+    -webkit-user-select: none;
+    -moz-user-select: none;
     user-select: none;
 }
 
@@ -1425,6 +1431,8 @@ h1 {
     font-weight: bold;
     text-align: center;
     white-space: nowrap;
+    -webkit-user-select: none;
+    -moz-user-select: none;
     user-select: none;
 }
 
@@ -1607,6 +1615,7 @@ h1 {
         0 5px 15px rgba(0, 0, 0, 0.6);
     z-index: 1000;
     font-size: 0.8em;
+    -webkit-backdrop-filter: blur(15px);
     backdrop-filter: blur(15px);
     animation: interfaceSlideUp 0.4s ease-out;
     height: fit-content;
@@ -1634,10 +1643,11 @@ h1 {
         0 5px 15px rgba(0, 0, 0, 0.6);
     z-index: 1000;
     font-size: 0.75em;
+    -webkit-backdrop-filter: blur(15px);
     backdrop-filter: blur(15px);
     animation: interfaceSlideUp 0.4s ease-out;
     height: auto;
-    min-height: auto;
+    min-height: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -2560,9 +2570,16 @@ h1 {
 /* Smooth scrolling for human cards */
 .human-cards {
     scroll-behavior: smooth;
-    -webkit-scrollbar-width: thin;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 215, 0, 0.5) transparent;
+    /* Safari doesn't support scrollbar-width and scrollbar-color */
+    /* Using webkit scrollbar styling below for Safari compatibility */
+}
+
+/* Modern browsers that support standard scrollbar properties */
+@supports (scrollbar-width: thin) {
+    .human-cards {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 215, 0, 0.5) transparent;
+    }
 }
 
 .human-cards::-webkit-scrollbar {
@@ -2630,6 +2647,7 @@ h1 {
     border-radius: 15px;
     border: 2px solid rgba(255, 215, 0, 0.6);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    -webkit-backdrop-filter: blur(15px);
     backdrop-filter: blur(15px);
     max-width: 500px;
     width: 90%;
@@ -2705,6 +2723,7 @@ h1 {
     justify-content: center;
     align-items: center;
     z-index: 10000;
+    -webkit-backdrop-filter: blur(5px);
     backdrop-filter: blur(5px);
 }
 
