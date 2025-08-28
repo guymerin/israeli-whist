@@ -573,11 +573,21 @@ h1 {
 }
 
 .card:hover {
+    /* Safari-specific transform with vendor prefixes */
+    -webkit-transform: translateY(-15px) rotateY(5deg);
+    -moz-transform: translateY(-15px) rotateY(5deg);
+    -ms-transform: translateY(-15px) rotateY(5deg);
     transform: translateY(-15px) rotateY(5deg);
+    
     box-shadow: 
         0 15px 30px rgba(0, 0, 0, 0.4),
         0 8px 16px rgba(0, 0, 0, 0.3);
     z-index: 100;
+    
+    /* Force Safari to enable hardware acceleration */
+    -webkit-transform-style: preserve-3d;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 
 .card.selected {
@@ -702,84 +712,223 @@ h1 {
 
 .human-cards .card {
     margin: 0 1px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Simplified transition for Safari compatibility */
+    -webkit-transition: -webkit-transform 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+    -moz-transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    
+    /* Safari-specific transform origin */
+    -webkit-transform-origin: center bottom;
+    -moz-transform-origin: center bottom;
     transform-origin: center bottom;
+    
     position: relative;
     width: 70px;
     height: 98px;
+    cursor: pointer;
+    
+    /* Force Safari 3D context */
+    -webkit-transform-style: preserve-3d;
+    transform-style: preserve-3d;
+    -webkit-perspective: 1000px;
+    perspective: 1000px;
+    
+    /* Critical Safari performance fixes */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    
+    /* Safari touch and interaction */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+    touch-action: manipulation;
+    
+    /* Force Safari GPU acceleration with simple transform */
+    -webkit-transform: translate3d(0, 0, 0);
+    -moz-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    
+    /* Additional Safari fixes */
+    will-change: transform;
+    contain: layout style paint;
 }
 
-/* Simple fan layout - just rotation and 3D tilt */
+/* NUCLEAR SAFARI FIX - Complete override for Safari */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+    /* This targets Safari and WebKit browsers */
+    
+    .human-cards .card {
+        /* Reset all transforms for Safari */
+        -webkit-transform: none !important;
+        transform: none !important;
+        
+        /* Force simple positioning */
+        position: relative !important;
+        display: inline-block !important;
+        vertical-align: top !important;
+        
+        /* Make absolutely sure Safari can interact with it */
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        
+        /* Remove all Safari touch interference */
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        -webkit-tap-highlight-color: rgba(255, 215, 0, 0.5) !important;
+        touch-action: manipulation !important;
+        
+        /* Force simple transitions */
+        -webkit-transition: all 0.2s ease !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    /* Safari: Disable fan layout completely */
+    .human-cards .card:nth-child(1),
+    .human-cards .card:nth-child(2),
+    .human-cards .card:nth-child(3),
+    .human-cards .card:nth-child(4),
+    .human-cards .card:nth-child(5),
+    .human-cards .card:nth-child(6),
+    .human-cards .card:nth-child(7),
+    .human-cards .card:nth-child(8),
+    .human-cards .card:nth-child(9),
+    .human-cards .card:nth-child(10),
+    .human-cards .card:nth-child(11),
+    .human-cards .card:nth-child(12),
+    .human-cards .card:nth-child(13) {
+        -webkit-transform: none !important;
+        transform: none !important;
+        position: relative !important;
+        z-index: auto !important;
+    }
+    
+    /* Safari: Simple hover - just move up */
+    .human-cards.player-turn .card:hover {
+        -webkit-transform: translateY(-10px) !important;
+        transform: translateY(-10px) !important;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3) !important;
+        z-index: 10 !important;
+        margin-top: -10px !important;
+    }
+    
+    /* Safari: Simple selection - just highlight */
+    .human-cards .card.selected {
+        -webkit-transform: translateY(-15px) !important;
+        transform: translateY(-15px) !important;
+        background: #fffacd !important;
+        border: 3px solid #FFD700 !important;
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.8) !important;
+        z-index: 20 !important;
+        margin-top: -15px !important;
+    }
+    
+    /* Safari: Force the cards container to be simple */
+    .human-cards {
+        -webkit-perspective: none !important;
+        perspective: none !important;
+        -webkit-transform-style: flat !important;
+        transform-style: flat !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        align-items: flex-end !important;
+        gap: 2px !important;
+    }
+}
+
+/* Safari-optimized fan layout with translate3d */
 .human-cards .card:nth-child(1) { 
     z-index: 1;
-    transform: rotate(-8deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(-8deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(-8deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(2) { 
     z-index: 2;
-    transform: rotate(-4deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(-4deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(-4deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(3) { 
     z-index: 3;
-    transform: rotate(0deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(0deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(0deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(4) { 
     z-index: 4;
-    transform: rotate(4deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(4deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(4deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(5) { 
     z-index: 5;
-    transform: rotate(8deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(8deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(8deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(6) { 
     z-index: 6;
-    transform: rotate(12deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(12deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(12deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(7) { 
     z-index: 7;
-    transform: rotate(16deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(16deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(16deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(8) { 
     z-index: 8;
-    transform: rotate(20deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(20deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(20deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(9) { 
     z-index: 9;
-    transform: rotate(24deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(24deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(24deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(10) { 
     z-index: 10;
-    transform: rotate(28deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(28deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(28deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(11) { 
     z-index: 11;
-    transform: rotate(32deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(32deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(32deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(12) { 
     z-index: 12;
-    transform: rotate(36deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(36deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(36deg) rotateX(15deg);
 }
 .human-cards .card:nth-child(13) { 
     z-index: 13;
-    transform: rotate(40deg) rotateX(15deg);
+    -webkit-transform: translate3d(0, 0, 0) rotate(40deg) rotateX(15deg);
+    transform: translate3d(0, 0, 0) rotate(40deg) rotateX(15deg);
 }
 
-.human-cards.player-turn .card:hover {
-    margin: 0 -10px;
-    transform: translateY(-20px) scale(1.1);
-    z-index: 100;
-    box-shadow: 
-        0 8px 25px rgba(0, 0, 0, 0.4),
-        0 4px 12px rgba(0, 0, 0, 0.3);
-}
+/* REMOVED - Conflicting with later definition */
 
-/* Maintain fan layout during Phase 3 but with reduced hover effects */
+/* Simplified Phase 3 hover effects for Safari */
 .human-cards.phase3.player-turn .card:hover {
     margin: 0 -10px;
-    transform: translateY(-10px) scale(1.05);
-    z-index: 100;
+    
+    /* Simplified Safari-compatible transform */
+    -webkit-transform: translate3d(0, -10px, 1px) scale(1.05) !important;
+    -moz-transform: translate3d(0, -10px, 1px) scale(1.05) !important;
+    transform: translate3d(0, -10px, 1px) scale(1.05) !important;
+    
+    z-index: 100 !important;
     box-shadow: 
         0 4px 15px rgba(0, 0, 0, 0.3),
-        0 2px 8px rgba(0, 0, 0, 0.2);
+        0 2px 8px rgba(0, 0, 0, 0.2) !important;
+        
+    /* Safari performance optimizations */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
 .human-cards .card:first-child {
@@ -985,35 +1134,40 @@ h1 {
 
 
 
-/* Enhanced hover effects for human player cards during Phase 3 */
-.human-cards .card {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    /* Safari-specific touch handling */
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-    -webkit-tap-highlight-color: transparent;
-}
+/* REMOVED - Duplicate definition causing Safari conflicts */
 
 .human-cards.player-turn .card:hover {
-    transform: translateY(-20px) rotateY(15deg) scale(1.05);
+    /* Simplified Safari-compatible transform */
+    -webkit-transform: translate3d(0, -20px, 1px) rotateY(15deg) scale(1.05) !important;
+    -moz-transform: translate3d(0, -20px, 1px) rotateY(15deg) scale(1.05) !important;
+    transform: translate3d(0, -20px, 1px) rotateY(15deg) scale(1.05) !important;
+    
     box-shadow: 
         0 12px 30px rgba(0, 0, 0, 0.5),
-        0 8px 16px rgba(0, 0, 0, 0.3);
-    z-index: 200;
+        0 8px 16px rgba(0, 0, 0, 0.3) !important;
+    z-index: 200 !important;
+    
+    /* Safari performance optimizations */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
 .human-cards .card.selected {
-    transform: translateY(-30px) rotateY(25deg) scale(1.1);
+    /* Simplified Safari-compatible selected transform */
+    -webkit-transform: translate3d(0, -30px, 2px) rotateY(25deg) scale(1.1) !important;
+    -moz-transform: translate3d(0, -30px, 2px) rotateY(25deg) scale(1.1) !important;
+    transform: translate3d(0, -30px, 2px) rotateY(25deg) scale(1.1) !important;
+    
     box-shadow: 
         0 0 30px rgba(255, 215, 0, 0.8),
-        0 0 60px rgba(255, 215, 0, 0.4);
-    z-index: 300;
+        0 0 60px rgba(255, 215, 0, 0.4) !important;
+    z-index: 300 !important;
+    
+    /* Safari performance optimizations */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
 .human-cards .card.played {

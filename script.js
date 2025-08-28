@@ -46,7 +46,8 @@ class IsraeliWhist {
         // Fast mode setting
         this.fastMode = false;
         
-
+        // Safari emergency fix - global click detector
+        this.setupSafariEmergencyFix();
         
         // Phase 1 - Trump bidding
         this.phase1Bids = {
@@ -1518,18 +1519,120 @@ class IsraeliWhist {
                 this.onCardClick(newCard);
             };
             
-            newCard.addEventListener('click', clickHandler);
-            newCard.addEventListener('touchend', clickHandler);
-            
-            // Add visual feedback for touch devices
-            newCard.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                newCard.style.transform = 'translateY(-10px) scale(1.05)';
-            });
-            
-            newCard.addEventListener('touchcancel', () => {
-                newCard.style.transform = '';
-            });
+            // Check if this is Safari and handle accordingly
+            if (navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1) {
+                // SAFARI-ONLY HANDLING
+                console.log('🔥 Applying Safari nuclear fix for card index', index);
+                
+                // Store the card index on the element for Safari
+                newCard.setAttribute('data-card-index', index);
+                newCard.setAttribute('data-safari-card', 'true');
+                
+                // Apply Safari-specific styles
+                newCard.style.position = 'relative';
+                newCard.style.transform = 'none';
+                newCard.style.webkitTransform = 'none';
+                newCard.style.cursor = 'pointer';
+                newCard.style.pointerEvents = 'auto';
+                newCard.style.webkitTouchCallout = 'none';
+                newCard.style.webkitUserSelect = 'none';
+                newCard.style.touchAction = 'manipulation';
+                
+                // Force Safari to recognize the element as clickable
+                newCard.setAttribute('role', 'button');
+                newCard.setAttribute('tabindex', '0');
+                
+                // Safari-specific simple click handler using card index
+                const safariClickHandler = (e) => {
+                    console.log('🔥 Safari click handler triggered for card index', index);
+                    console.log('🔥 Event type:', e.type);
+                    console.log('🔥 Target element:', e.target);
+                    
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    
+                    // Check game state for card play
+                    console.log('🔍 Safari: Checking game state...');
+                    console.log('🔍 Current phase:', this.currentPhase);
+                    console.log('🔍 Player turn class:', document.querySelector('.human-cards')?.classList.contains('player-turn'));
+                    console.log('🔍 Current player index:', this.getCurrentPlayerIndex?.());
+                    
+                    if (!document.querySelector('.human-cards')?.classList.contains('player-turn')) {
+                        console.log('🚫 Safari: Not player turn, ignoring click');
+                        return;
+                    }
+                    
+                    if (this.currentPhase !== 'phase3') {
+                        console.log('🚫 Safari: Not in phase 3 (card play), current phase:', this.currentPhase);
+                        return;
+                    }
+                    
+                    console.log('✅ Safari: Game state OK, attempting to play card at index', index);
+                    
+                    // Add visual feedback immediately
+                    newCard.style.opacity = '0.7';
+                    setTimeout(() => { newCard.style.opacity = '1'; }, 200);
+                    
+                    // Use card index directly instead of parsing DOM
+                    this.playCard('south', index);
+                };
+                
+                // Add ONLY click event for Safari (simpler approach)
+                newCard.addEventListener('click', safariClickHandler, { capture: false });
+                newCard.addEventListener('touchend', safariClickHandler, { capture: false, passive: false });
+                
+                // Keyboard support for Safari
+                newCard.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        console.log('🔥 Safari keyboard: Playing card at index', index);
+                        this.playCard('south', index);
+                    }
+                });
+                
+                console.log('✅ Safari nuclear fix applied to card index', index);
+                
+                // For Safari, skip the remaining standard event handlers for THIS card
+                // But continue with the next card in the forEach loop
+            } else {
+                // NON-SAFARI BROWSERS: Standard event handling
+                console.log('🌐 Applying standard event handlers for card index', index);
+                
+                // Standard event handling for non-Safari browsers
+                newCard.addEventListener('click', clickHandler);
+                newCard.addEventListener('touchend', clickHandler);
+                
+                // Enhanced touch handling
+                newCard.addEventListener('touchstart', (e) => {
+                    newCard.style.transform = 'translate3d(0, -10px, 0) scale(1.05)';
+                    newCard.style.zIndex = '150';
+                }, { passive: true });
+                
+                // Touch timing for fallback
+                let touchStartTime = 0;
+                newCard.addEventListener('touchstart', () => {
+                    touchStartTime = Date.now();
+                }, { passive: true });
+                
+                newCard.addEventListener('touchend', (e) => {
+                    const touchDuration = Date.now() - touchStartTime;
+                    if (touchDuration < 500) {
+                        setTimeout(() => {
+                            this.onCardClick(newCard);
+                        }, 50);
+                    }
+                }, { passive: true });
+                
+                // Additional event types
+                newCard.addEventListener('mousedown', clickHandler);
+                newCard.addEventListener('pointerdown', clickHandler);
+                
+                newCard.addEventListener('touchcancel', () => {
+                    newCard.style.transform = '';
+                    newCard.style.zIndex = '';
+                });
+            }
         });
     }
     
@@ -1546,22 +1649,35 @@ class IsraeliWhist {
         cards.forEach(card => {
             const newCard = card.cloneNode(true);
             card.parentNode.replaceChild(newCard, card);
+            
+            // Safari-specific disable styling
             newCard.style.cursor = 'default';
             newCard.style.pointerEvents = 'none';
+            newCard.style.webkitUserSelect = 'none';
+            newCard.style.userSelect = 'none';
+            newCard.style.webkitTouchCallout = 'none';
             newCard.style.transform = '';
+            
+            // Force Safari to recalculate styles
+            newCard.offsetHeight;
         });
     }
     
     // Card highlighting methods removed
 
     onCardClick(cardElement) {
+        console.log('🎯 onCardClick called with element:', cardElement);
+        console.log('🎯 Browser:', navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1 ? 'Safari' : 'Other');
+        console.log('🎯 Current phase:', this.currentPhase);
+        console.log('🎯 Player turn enabled:', document.querySelector('.human-cards')?.classList.contains('player-turn'));
+        
         // Get the card data from the element's content using correct selectors
         const cardRankElement = cardElement.querySelector('.card-rank');
         const cardSuitElement = cardElement.querySelector('.card-center-suit');
         
         if (!cardRankElement || !cardSuitElement) {
             console.error('Could not find rank or suit elements in clicked card');
-
+            console.log('🔍 Card element structure:', cardElement.innerHTML);
             return;
         }
         
@@ -1595,21 +1711,36 @@ class IsraeliWhist {
     }
 
     playCard(player, cardIndex) {
+        console.log('🎮 playCard called:', { player, cardIndex, handLength: this.hands[player]?.length });
+        console.log('🎮 Current phase:', this.currentPhase);
+        console.log('🎮 Current player index:', this.getCurrentPlayerIndex());
+        
         const hand = this.hands[player];
-        if (cardIndex >= hand.length) return;
+        if (cardIndex >= hand.length) {
+            console.error('🚫 Invalid card index:', cardIndex, 'hand length:', hand.length);
+            return;
+        }
         
         const card = hand[cardIndex];
+        console.log('🃏 Playing card:', card);
         
         // Validate card play according to Israeli Whist rules (before removing from hand)
+        console.log('🔍 Validating card play...');
+        console.log('🔍 isValidCardPlay result:', this.isValidCardPlay(player, card));
+        
         if (!this.isValidCardPlay(player, card)) {
-            console.error(`Invalid card play: ${player} cannot play ${card.rank}${this.getSuitSymbol(card.suit)}`);
+            console.error(`❌ Invalid card play: ${player} cannot play ${card.rank}${this.getSuitSymbol(card.suit)}`);
+            console.log('🔍 Current trick:', this.currentTrick);
+            console.log('🔍 Lead suit:', this.leadSuit);
+            console.log('🔍 Trump suit:', this.trumpSuit);
             if (player === 'south') {
                 this.showGameNotification('You must follow suit if you can!', 'warning');
             }
             return;
         }
         
-
+        console.log('✅ Card play validation passed!');
+        console.log('🎮 Proceeding with card play...');
         
         // Update AI memory with card played
         this.updateCardMemory(card, player);
@@ -1845,7 +1976,7 @@ class IsraeliWhist {
             }
         }, this.getDelay(2000));
     }
-
+    
     updateTrickCount(player) {
         // Update the Take: X display for the winning player
         const trickCountElement = document.querySelector(`.${player}-player .player-tricks`) ||
@@ -2083,8 +2214,8 @@ class IsraeliWhist {
             return this.assessNoTrumpPotential(hand);
         }
         
-        const suitCards = hand.filter(card => card.suit === suit);
-        const suitLength = suitCards.length;
+            const suitCards = hand.filter(card => card.suit === suit);
+            const suitLength = suitCards.length;
         const highCards = suitCards.filter(card => ['A', 'K', 'Q', 'J'].includes(card.rank));
         
         // ADVANCED: Shape-based evaluation - don't just count high cards
@@ -2099,7 +2230,7 @@ class IsraeliWhist {
         let score = shapeBonus;
         
         // GUIDANCE: Look for long suit (5+ cards) - primary factor
-        if (suitLength >= 6) {
+            if (suitLength >= 6) {
             score += 4.0; // Very long suit is excellent for trump
         } else if (suitLength >= 5) {
             score += 3.0; // Long suit is good for trump
@@ -2129,7 +2260,7 @@ class IsraeliWhist {
         }
         
         return {
-            length: suitLength,
+                length: suitLength,
             honors: highCards.length,
             shortSuits: shortSuits,
             totalScore: Math.max(0, score)
@@ -3864,7 +3995,7 @@ class IsraeliWhist {
                     // High trump - be more careful
                     if (trumpCount <= 2 || tricksLeft <= 4) {
                         score += 10; // Use it if we're short on trumps or near endgame
-                    } else {
+            } else {
                         score -= 5; // Save high trumps for later control
                     }
                 }
@@ -6183,8 +6314,8 @@ class IsraeliWhist {
             this.updateTrickCount(player);
         });
         
-                 // Reset deck and ensure it has exactly 52 cards
-         this.shuffleDeck();
+        // Reset deck and ensure it has exactly 52 cards
+        this.shuffleDeck();
          
          // Reset bot memory for new hand
          this.resetBotMemory();
@@ -6300,11 +6431,11 @@ class IsraeliWhist {
          }
      }
      
-         // End hand and calculate scores
-    endHand() {
-                console.log('🏁 HAND COMPLETE - Final Results:');
-       const results = Object.entries(this.tricksWon).map(([p, t]) => `${this.getPlayerDisplayName(p)}: ${t} tricks`).join(', ');
-       console.log(`   Tricks Won: ${results}`);
+     // End hand and calculate scores
+     endHand() {
+                 console.log('🏁 HAND COMPLETE - Final Results:');
+        const results = Object.entries(this.tricksWon).map(([p, t]) => `${this.getPlayerDisplayName(p)}: ${t} tricks`).join(', ');
+        console.log(`   Tricks Won: ${results}`);
         
         // Check if all players failed their bids - if so, cancel the gamlet
         const allPlayersFailed = this.players.every(player => {
@@ -6330,11 +6461,11 @@ class IsraeliWhist {
             }, this.getDelay(4000));
             return;
         }
-        
-        // Calculate scores for each player and collect score changes
-        const scoreChanges = {};
+         
+         // Calculate scores for each player and collect score changes
+         const scoreChanges = {};
         const gamletScores = {};
-        this.players.forEach(player => {
+         this.players.forEach(player => {
              const bid = this.phase2Bids[player];
              const tricks = this.tricksWon[player];
              
@@ -6963,15 +7094,15 @@ class IsraeliWhist {
              if (biddingOptions.length === 0) {
                  if (currentBid) {
                      hint += `(can't compete with ${currentBid.minTakes}${this.getSuitSymbol(currentBid.trumpSuit)})`;
-                 } else {
+         } else {
                      hint += '(hand too weak)';
                  }
              } else {
                  const topOption = biddingOptions[0];
                  hint += `(${topOption.minTakes}${this.getSuitSymbol(topOption.trumpSuit)} only ${topOption.successRate}% - risky)`;
-             }
-             hint += `</div>`;
-             
+         }
+         hint += `</div>`;
+         
              // Show compact risky alternatives
              if (biddingOptions.length > 0) {
                  hint += '<div class="hint-alternatives"><strong>Risky:</strong> ';
@@ -7698,6 +7829,104 @@ class IsraeliWhist {
     // Get delay time adjusted for fast mode (10x faster when enabled)
     getDelay(normalDelay) {
         return this.fastMode ? Math.max(normalDelay / 10, 50) : normalDelay; // Minimum 50ms even in fast mode
+    }
+
+    setupSafariEmergencyFix() {
+        // Only apply for Safari
+        if (navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1) {
+            console.log('🚨 Setting up Safari EMERGENCY fix - global click detector');
+            
+            // Add global document click listener that captures ALL clicks
+            document.addEventListener('click', (e) => {
+                console.log('🚨 Safari: Global click detected on:', e.target);
+                
+                // Check if click was on a card in human hand
+                let cardElement = e.target;
+                
+                // Walk up the DOM tree to find a card element
+                while (cardElement && !cardElement.classList.contains('card')) {
+                    cardElement = cardElement.parentElement;
+                    if (!cardElement || cardElement === document.body) {
+                        return; // Not a card click
+                    }
+                }
+                
+                // Check if this card is in the human hand
+                const humanCardsContainer = document.getElementById('south-cards');
+                if (!humanCardsContainer || !humanCardsContainer.contains(cardElement)) {
+                    console.log('🚨 Safari: Not a human card, ignoring');
+                    return;
+                }
+                
+                // Check if it's the player's turn
+                if (!humanCardsContainer.classList.contains('player-turn')) {
+                    console.log('🚨 Safari: Not player turn, ignoring');
+                    return;
+                }
+                
+                // Check if we're in the right phase
+                if (this.currentPhase !== 'phase3') {
+                    console.log('🚨 Safari: Not in phase3, ignoring');
+                    return;
+                }
+                
+                console.log('🚨 Safari: Valid card click detected!');
+                
+                // Find the card index by its position in the container
+                const allCards = Array.from(humanCardsContainer.querySelectorAll('.card'));
+                const cardIndex = allCards.indexOf(cardElement);
+                
+                if (cardIndex === -1) {
+                    console.log('🚨 Safari: Could not determine card index');
+                    return;
+                }
+                
+                // Debug: Show detailed card information
+                console.log('🚨 Safari: Card details:');
+                console.log('  - Visual position in DOM:', cardIndex);
+                console.log('  - Total cards in DOM:', allCards.length);
+                console.log('  - Total cards in hand:', this.hands.south ? this.hands.south.length : 'undefined');
+                console.log('  - Clicked card element:', cardElement);
+                
+                // Try to get the actual card data from the element
+                const cardRank = cardElement.querySelector('.card-rank')?.textContent;
+                const cardSuit = cardElement.querySelector('.card-center-suit')?.textContent;
+                console.log('  - Card visual: rank =', cardRank, ', suit =', cardSuit);
+                
+                // Find the matching card in the hand array
+                let actualCardIndex = -1;
+                if (this.hands.south && cardRank && cardSuit) {
+                    actualCardIndex = this.hands.south.findIndex(card => {
+                        const suitSymbols = { clubs: '♣', diamonds: '♦', hearts: '♥', spades: '♠' };
+                        return card.rank === cardRank && suitSymbols[card.suit] === cardSuit;
+                    });
+                }
+                
+                console.log('  - Actual card index in hand:', actualCardIndex);
+                
+                const finalIndex = actualCardIndex !== -1 ? actualCardIndex : cardIndex;
+                console.log('🚨 Safari: Using final index', finalIndex, 'to play card');
+                
+                // Add immediate visual feedback
+                cardElement.style.opacity = '0.6';
+                cardElement.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    cardElement.style.opacity = '';
+                    cardElement.style.transform = '';
+                }, 300);
+                
+                // Prevent any other event handling
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                // Play the card directly
+                this.playCard('south', finalIndex);
+                
+            }, { capture: true, passive: false });
+            
+            console.log('✅ Safari emergency fix installed');
+        }
     }
 
 }
