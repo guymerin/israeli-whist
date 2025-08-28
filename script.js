@@ -1500,16 +1500,14 @@ class IsraeliWhist {
         }
         
         // Remove any existing click handlers and add new ones
-        cards.forEach(card => {
+        cards.forEach((card, index) => {
             // Remove existing listeners by cloning the element
             const newCard = card.cloneNode(true);
             card.parentNode.replaceChild(newCard, card);
             
-            // Safari-specific fixes
+            // Basic card setup
             newCard.style.cursor = 'pointer';
-            newCard.style.webkitUserSelect = 'none';
             newCard.style.userSelect = 'none';
-            newCard.style.webkitTouchCallout = 'none';
             newCard.style.pointerEvents = 'auto';
             
             // Add multiple event handlers for Safari compatibility
@@ -1519,82 +1517,20 @@ class IsraeliWhist {
                 this.onCardClick(newCard);
             };
             
-            // Check if this is Safari and handle accordingly
-            if (navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1) {
-                // SAFARI-ONLY HANDLING
-                console.log('🔥 Applying Safari nuclear fix for card index', index);
+            // Check if this is Safari (exclude Chrome and Edge) and handle accordingly
+            const isSafari = navigator.userAgent.indexOf('Safari') > -1 && 
+                           navigator.userAgent.indexOf('Chrome') === -1 && 
+                           navigator.userAgent.indexOf('Edg') === -1;
+            
+            if (isSafari) {
+                // SAFARI: Minimal setup - let the global emergency fix handle clicks
+                console.log('🔥 Safari detected: Using emergency fix, minimal card setup');
                 
-                // Store the card index on the element for Safari
-                newCard.setAttribute('data-card-index', index);
-                newCard.setAttribute('data-safari-card', 'true');
-                
-                // Apply Safari-specific styles
-                newCard.style.position = 'relative';
-                newCard.style.transform = 'none';
-                newCard.style.webkitTransform = 'none';
-                newCard.style.cursor = 'pointer';
-                newCard.style.pointerEvents = 'auto';
+                // Just ensure the card is clickable for the global listener
                 newCard.style.webkitTouchCallout = 'none';
                 newCard.style.webkitUserSelect = 'none';
                 newCard.style.touchAction = 'manipulation';
                 
-                // Force Safari to recognize the element as clickable
-                newCard.setAttribute('role', 'button');
-                newCard.setAttribute('tabindex', '0');
-                
-                // Safari-specific simple click handler using card index
-                const safariClickHandler = (e) => {
-                    console.log('🔥 Safari click handler triggered for card index', index);
-                    console.log('🔥 Event type:', e.type);
-                    console.log('🔥 Target element:', e.target);
-                    
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    
-                    // Check game state for card play
-                    console.log('🔍 Safari: Checking game state...');
-                    console.log('🔍 Current phase:', this.currentPhase);
-                    console.log('🔍 Player turn class:', document.querySelector('.human-cards')?.classList.contains('player-turn'));
-                    console.log('🔍 Current player index:', this.getCurrentPlayerIndex?.());
-                    
-                    if (!document.querySelector('.human-cards')?.classList.contains('player-turn')) {
-                        console.log('🚫 Safari: Not player turn, ignoring click');
-                        return;
-                    }
-                    
-                    if (this.currentPhase !== 'phase3') {
-                        console.log('🚫 Safari: Not in phase 3 (card play), current phase:', this.currentPhase);
-                        return;
-                    }
-                    
-                    console.log('✅ Safari: Game state OK, attempting to play card at index', index);
-                    
-                    // Add visual feedback immediately
-                    newCard.style.opacity = '0.7';
-                    setTimeout(() => { newCard.style.opacity = '1'; }, 200);
-                    
-                    // Use card index directly instead of parsing DOM
-                    this.playCard('south', index);
-                };
-                
-                // Add ONLY click event for Safari (simpler approach)
-                newCard.addEventListener('click', safariClickHandler, { capture: false });
-                newCard.addEventListener('touchend', safariClickHandler, { capture: false, passive: false });
-                
-                // Keyboard support for Safari
-                newCard.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        console.log('🔥 Safari keyboard: Playing card at index', index);
-                        this.playCard('south', index);
-                    }
-                });
-                
-                console.log('✅ Safari nuclear fix applied to card index', index);
-                
-                // For Safari, skip the remaining standard event handlers for THIS card
-                // But continue with the next card in the forEach loop
             } else {
                 // NON-SAFARI BROWSERS: Standard event handling
                 console.log('🌐 Applying standard event handlers for card index', index);
@@ -7832,8 +7768,12 @@ class IsraeliWhist {
     }
 
     setupSafariEmergencyFix() {
-        // Only apply for Safari
-        if (navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1) {
+        // Only apply for Safari (not Chrome, not Edge)
+        const isSafari = navigator.userAgent.indexOf('Safari') > -1 && 
+                         navigator.userAgent.indexOf('Chrome') === -1 && 
+                         navigator.userAgent.indexOf('Edg') === -1;
+        
+        if (isSafari) {
             console.log('🚨 Setting up Safari EMERGENCY fix - global click detector');
             
             // Add global document click listener that captures ALL clicks
