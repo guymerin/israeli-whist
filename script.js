@@ -551,6 +551,7 @@ class IsraeliWhist {
         
         this.populateBiddingButtons();
         this.updatePassButtonState();
+        this.updateBidButtonState();
     }
 
     hideBiddingInterface() {
@@ -610,12 +611,14 @@ class IsraeliWhist {
         this.selectedTricks = tricks;
         this.updateButtonSelection('tricks', tricks);
         this.updatePassButtonState();
+        this.updateBidButtonState();
     }
 
     selectSuit(suit) {
         this.selectedSuit = suit;
         this.updateButtonSelection('suit', suit);
         this.updatePassButtonState();
+        this.updateBidButtonState();
     }
 
     updateButtonSelection(type, value) {
@@ -638,6 +641,20 @@ class IsraeliWhist {
         }
     }
 
+    updateBidButtonState() {
+        // Update bid button appearance based on selection state
+        const bidBtn = document.getElementById('bid-btn');
+        if (bidBtn) {
+            if (this.selectedTricks && this.selectedSuit) {
+                // Both number and trump are selected - make button green
+                bidBtn.classList.add('ready');
+            } else {
+                // Not both selected - remove green state
+                bidBtn.classList.remove('ready');
+            }
+        }
+    }
+
     resetPassButtonState() {
         // Reset pass button to enabled state and clear any selections
         const passBtn = document.getElementById('pass-btn');
@@ -653,6 +670,9 @@ class IsraeliWhist {
         // Clear button selections
         document.querySelectorAll('.trick-button').forEach(btn => btn.classList.remove('selected'));
         document.querySelectorAll('.suit-button').forEach(btn => btn.classList.remove('selected'));
+        
+        // Reset bid button state
+        this.updateBidButtonState();
     }
 
     clearBidSelections() {
@@ -664,8 +684,9 @@ class IsraeliWhist {
         document.querySelectorAll('.trick-button').forEach(btn => btn.classList.remove('selected'));
         document.querySelectorAll('.suit-button').forEach(btn => btn.classList.remove('selected'));
         
-        // Re-enable pass button
+        // Re-enable pass button and update bid button state
         this.updatePassButtonState();
+        this.updateBidButtonState();
         
         // Show feedback to user
         this.showGameNotification('Bid selections cleared. You can now pass or make a new selection.', 'info');
@@ -6881,7 +6902,7 @@ class IsraeliWhist {
         // Update player name in phase 2 predictions
         const southPredictionLabel = document.getElementById('south-prediction-label');
         if (southPredictionLabel) {
-            southPredictionLabel.textContent = 'S:';
+            southPredictionLabel.textContent = `${this.playerName}:`;
         }
     }
 

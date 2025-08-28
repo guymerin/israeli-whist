@@ -1582,7 +1582,7 @@ h1 {
 
 /* Specific styling for pass button to ensure it's never inadvertently grayed */
 #pass-btn {
-    background: linear-gradient(135deg, #FF6B6B, #E53E3E) !important;
+    background: linear-gradient(135deg, #666, #555) !important;
     color: white !important;
     border: none !important;
     cursor: pointer !important;
@@ -1599,7 +1599,7 @@ h1 {
 }
 
 #pass-btn:hover {
-    background: linear-gradient(135deg, #E53E3E, #C53030) !important;
+    background: linear-gradient(135deg, #555, #444) !important;
     transform: translateY(-2px) !important;
     box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
 }
@@ -1712,20 +1712,20 @@ h1 {
 
 /* Skip button styling - now in normal flow with other buttons */
 #skip-btn.action-btn {
-    background: linear-gradient(135deg, #FF5722, #D84315);
+    background: linear-gradient(135deg, #666, #555);
     color: white;
-    border: 2px solid rgba(255, 87, 34, 0.6);
+    border: 2px solid rgba(102, 102, 102, 0.6);
     transition: all 0.3s ease;
     flex: 1;
     max-width: 120px;
 }
 
 #skip-btn.action-btn:hover {
-    background: linear-gradient(135deg, #D84315, #BF360C);
+    background: linear-gradient(135deg, #555, #444);
     transform: translateY(-3px);
     box-shadow: 
-        0 8px 16px rgba(255, 87, 34, 0.5),
-        0 4px 8px rgba(255, 87, 34, 0.4);
+        0 8px 16px rgba(102, 102, 102, 0.5),
+        0 4px 8px rgba(102, 102, 102, 0.4);
 }
 
 
