@@ -6791,6 +6791,7 @@ class IsraeliWhist {
             font-weight: bold;
             text-align: center;
             border: 3px solid rgba(255, 255, 255, 0.3);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             animation: notificationSlideIn 0.3s ease-out;
         `;
@@ -6880,7 +6881,9 @@ class IsraeliWhist {
     }
 
      getPlayerDisplayName(player) {
-         return this.botNames[player] || player;
+         const fullName = this.botNames[player] || player;
+         // Remove position indicator in parentheses (e.g., "(N)", "(E)", "(S)", "(W)")
+         return fullName.replace(/\s*\([NESW]\)$/, '');
      }
 
          updatePlayerNameDisplay() {
