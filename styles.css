@@ -2598,6 +2598,21 @@ h1 {
         margin-top: -10px !important;
         margin-bottom: -80px !important;
     }
+
+    /* Move bidding higher so it doesn't cover the south cards.
+       With scale(0.88), south cards top is around y=535. Position
+       bidding at top:90 (~below the compressed status bar) so its
+       bottom (~355) leaves a healthy gap above the cards. */
+    .bidding-interface,
+    .second-phase-bidding {
+        position: fixed !important;
+        top: 90px !important;
+        left: 50% !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: translateX(-50%) !important;
+        z-index: 1000 !important;
+    }
 }
 
 /* ============================================================
@@ -2745,9 +2760,9 @@ h1 {
     }
 
     .human-cards .card {
-        width: 42px !important;
-        height: 58px !important;
-        margin: 0 -4px !important;
+        width: 48px !important;
+        height: 68px !important;
+        margin: 0 -3px !important;
         flex-shrink: 0 !important;
         -webkit-transform: none !important;
         transform: none !important;
@@ -2755,16 +2770,18 @@ h1 {
     }
 
     .human-cards .card .card-rank {
-        font-size: 11px !important;
+        font-size: 16px !important;
+        font-weight: 900 !important;
+        line-height: 1 !important;
     }
 
     .human-cards .card .card-center-suit {
-        font-size: 18px !important;
+        font-size: 22px !important;
     }
 
     .human-cards .card .card-top-section {
         top: 2px !important;
-        left: 2px !important;
+        left: 3px !important;
     }
 
     .human-cards .card:nth-child(1),
@@ -2791,20 +2808,22 @@ h1 {
         z-index: 100 !important;
     }
 
-    /* Bidding interface: center of viewport as compact modal,
-       so it doesn't cover the east player or south cards */
+    /* Bidding interface: positioned in upper area below north player, so it
+       NEVER overlaps the south cards (player needs to see card ranks while
+       choosing bids). max-height ensures it stops above the cards. */
     .bidding-interface,
     .second-phase-bidding {
         position: fixed !important;
         left: 50% !important;
-        top: 50% !important;
+        top: 55px !important;
         right: auto !important;
         bottom: auto !important;
-        transform: translate(-50%, -50%) !important;
+        transform: translateX(-50%) !important;
         max-width: 95vw !important;
         min-width: 0 !important;
         width: auto !important;
-        max-height: 75vh !important;
+        max-height: calc(100vh - 145px) !important;
+        max-height: calc(100dvh - 145px) !important;
         font-size: 0.7em !important;
         padding: 4px 8px !important;
         z-index: 1000 !important;
