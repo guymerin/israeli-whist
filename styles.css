@@ -2552,6 +2552,18 @@ h1 {
     z-index: 3;
 }
 
+/* Played cards in the trick area must always render above the player-info
+   name boxes. .player elements have z-index:10, so center-area (which
+   contains .played-card) needs to be higher. */
+.center-area {
+    z-index: 50;
+}
+
+.played-card,
+.played-card .card {
+    z-index: 60 !important;
+}
+
 /* ============================================================
    COMPACT TABLET LANDSCAPE
    Targets: iPad Mini/Air/Pro 11 in landscape with Safari URL bar
@@ -2623,6 +2635,63 @@ h1 {
     /* Hide won-tricks face-down stacks on tiny phones — redundant with .player-stats counts */
     .won-tricks-display {
         display: none !important;
+    }
+
+    /* Position trick area in the upper-middle of the board so it doesn't
+       overlap the south player name above the cards. */
+    .center-area {
+        top: 90px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+    }
+
+    .trick-area {
+        width: 160px !important;
+        height: 150px !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Tight south-player name so it doesn't push into the trick area */
+    .south-player .player-info {
+        margin-bottom: 0 !important;
+    }
+
+    .played-card {
+        width: 48px !important;
+        height: 68px !important;
+        min-width: 48px !important;
+        min-height: 68px !important;
+    }
+
+    .played-card .card {
+        width: 48px !important;
+        height: 68px !important;
+    }
+
+    .played-card .card .card-rank {
+        font-size: 14px !important;
+        font-weight: 900 !important;
+        line-height: 1 !important;
+    }
+
+    .played-card .card .card-center-suit {
+        font-size: 20px !important;
+    }
+
+    .north-played {
+        top: 2px !important;
+    }
+
+    .south-played {
+        bottom: 2px !important;
+    }
+
+    .west-played {
+        left: 2px !important;
+    }
+
+    .east-played {
+        right: 2px !important;
     }
 
     /* Hide non-essential UI on tiny screens */
@@ -2822,8 +2891,8 @@ h1 {
         max-width: 95vw !important;
         min-width: 0 !important;
         width: auto !important;
-        max-height: calc(100vh - 145px) !important;
-        max-height: calc(100dvh - 145px) !important;
+        max-height: calc(100vh - 130px) !important;
+        max-height: calc(100dvh - 130px) !important;
         font-size: 0.7em !important;
         padding: 4px 8px !important;
         z-index: 1000 !important;
