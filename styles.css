@@ -2493,9 +2493,11 @@ h1 {
     }
 }
 
-/* Mobile: force landscape orientation for playable card sizes */
+/* ============================================================
+   MOBILE / TABLET RESPONSIVE LAYOUT
+   ============================================================ */
 
-/* Landscape overlay - shown only in portrait on mobile */
+/* Landscape overlay - shown only in portrait on small phones */
 #rotate-device-overlay {
     display: none;
     position: fixed;
@@ -2525,26 +2527,215 @@ h1 {
     50% { transform: rotate(90deg); }
 }
 
-/* Show overlay in portrait on small devices */
-@media (max-width: 768px) and (orientation: portrait) {
+/* Show overlay in portrait only on phones (not tablets) */
+@media (orientation: portrait) and (max-width: 500px) {
     #rotate-device-overlay {
         display: flex !important;
     }
 }
 
-/* Mobile landscape: scale cards to fit */
-@media (max-width: 932px) and (orientation: landscape) {
+/* === Z-INDEX HIERARCHY: cards always above player names === */
+.player-info {
+    position: relative;
+    z-index: 1;
+}
+
+.player-cards,
+.bot-cards,
+.human-cards {
+    position: relative;
+    z-index: 2;
+}
+
+.bot-cards .card-back,
+.human-cards .card {
+    z-index: 3;
+}
+
+/* ============================================================
+   COMPACT TABLET LANDSCAPE
+   Targets: iPad Mini/Air/Pro 11 in landscape with Safari URL bar
+   Height range: ~668-760px in landscape, width >= 1000px
+   ============================================================ */
+@media (orientation: landscape) and (max-height: 760px) and (min-width: 1000px) {
+    /* Compress top UI to make room for the 650px game-board */
+    h1 {
+        font-size: 1.4em !important;
+        margin-top: 0 !important;
+        margin-bottom: 6px !important;
+    }
+
+    .game-container {
+        padding: 6px 20px !important;
+    }
+
+    .game-status {
+        padding: 4px 15px !important;
+        margin: 4px auto !important;
+        font-size: 0.85em !important;
+    }
+
+    .fast-mode-container {
+        transform: scale(0.85);
+        transform-origin: top left;
+    }
+
+    .game-control-buttons {
+        transform: scale(0.85);
+        transform-origin: top right;
+    }
+
+    .total-score-box {
+        font-size: 0.85em !important;
+    }
+
+    /* Scale the board down slightly so it fits with chrome.
+       transform: scale() doesn't shrink the layout box, so reclaim the
+       lost (650 * 0.12 = 78px) with negative margin-bottom. */
+    .game-board {
+        transform: scale(0.88);
+        transform-origin: top center;
+        margin-top: -10px !important;
+        margin-bottom: -80px !important;
+    }
+}
+
+/* ============================================================
+   PHONE LANDSCAPE
+   Targets: any phone in landscape (height < 500px)
+   ============================================================ */
+@media (orientation: landscape) and (max-height: 500px) {
+    /* Hide won-tricks face-down stacks on tiny phones — redundant with .player-stats counts */
+    .won-tricks-display {
+        display: none !important;
+    }
+
+    /* Hide non-essential UI on tiny screens */
+    h1 {
+        display: none !important;
+    }
+
+    .fast-mode-container {
+        display: none !important;
+    }
+
+    .total-score-box {
+        display: none !important;
+    }
+
+    /* Game container fills viewport */
+    .game-container {
+        padding: 0 !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+
+    /* Status bar fixed at top - compact pill */
+    .game-status {
+        position: fixed !important;
+        top: 0 !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        padding: 1px 8px !important;
+        margin: 0 !important;
+        font-size: 0.6em !important;
+        z-index: 100 !important;
+        max-width: 60vw !important;
+        min-height: 0 !important;
+        border-radius: 0 0 8px 8px !important;
+        border-width: 1px !important;
+        gap: 6px !important;
+    }
+
+    .game-status > * {
+        font-size: inherit !important;
+    }
+
+    /* Game controls fixed in top-right corner */
+    .game-control-buttons {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        transform: scale(0.6) !important;
+        transform-origin: top right !important;
+        z-index: 100 !important;
+        gap: 4px !important;
+    }
+
+    /* Game-board uses fixed positioning to fill the viewport exactly */
+    .game-board {
+        position: fixed !important;
+        top: 22px !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: calc(100vh - 22px) !important;
+        height: calc(100dvh - 22px) !important;
+        min-height: unset !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        border-width: 1px !important;
+        transform: none !important;
+    }
+
+    /* Shrink player labels */
+    .player-info {
+        padding: 2px 5px !important;
+        font-size: 0.6em !important;
+        gap: 2px !important;
+    }
+
+    .player-name {
+        font-size: 0.95em !important;
+    }
+
+    .player-stats {
+        gap: 5px !important;
+        font-size: 0.85em !important;
+    }
+
+    /* North player: push below the fixed status bar */
+    .north-player {
+        top: 20px !important;
+        gap: 4px !important;
+    }
+
+    /* East/West: closer to edges */
+    .east-player {
+        right: 4px !important;
+    }
+
+    .west-player {
+        left: 4px !important;
+    }
+
+    .south-player {
+        bottom: 0 !important;
+    }
+
+    /* Smaller face-down bot card stacks */
+    .bot-cards {
+        width: 32px !important;
+        height: 44px !important;
+    }
+
+    .bot-cards .card-back {
+        width: 32px !important;
+        height: 44px !important;
+    }
+
+    /* Human cards: small but readable */
     .human-cards {
-        padding: 5px 10px !important;
+        padding: 4px 6px !important;
         max-width: 100vw !important;
         overflow-x: visible !important;
         flex-wrap: nowrap !important;
         justify-content: center !important;
         align-items: flex-end !important;
         gap: 0 !important;
-        margin-bottom: 5px !important;
-        margin-top: -5px !important;
-        min-height: 70px !important;
+        margin-bottom: 2px !important;
+        margin-top: -2px !important;
+        min-height: 60px !important;
         -webkit-perspective: none !important;
         perspective: none !important;
         -webkit-transform-style: flat !important;
@@ -2554,9 +2745,9 @@ h1 {
     }
 
     .human-cards .card {
-        width: 50px !important;
-        height: 70px !important;
-        margin: 0 -3px !important;
+        width: 42px !important;
+        height: 58px !important;
+        margin: 0 -4px !important;
         flex-shrink: 0 !important;
         -webkit-transform: none !important;
         transform: none !important;
@@ -2564,16 +2755,16 @@ h1 {
     }
 
     .human-cards .card .card-rank {
-        font-size: 14px !important;
+        font-size: 11px !important;
     }
 
     .human-cards .card .card-center-suit {
-        font-size: 24px !important;
+        font-size: 18px !important;
     }
 
     .human-cards .card .card-top-section {
-        top: 4px !important;
-        left: 4px !important;
+        top: 2px !important;
+        left: 2px !important;
     }
 
     .human-cards .card:nth-child(1),
@@ -2600,20 +2791,72 @@ h1 {
         z-index: 100 !important;
     }
 
-    .game-board {
-        width: 100vw !important;
-        height: 100vh !important;
-        height: 100dvh !important;
+    /* Bidding interface: center of viewport as compact modal,
+       so it doesn't cover the east player or south cards */
+    .bidding-interface,
+    .second-phase-bidding {
+        position: fixed !important;
+        left: 50% !important;
+        top: 50% !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: translate(-50%, -50%) !important;
+        max-width: 95vw !important;
+        min-width: 0 !important;
+        width: auto !important;
+        max-height: 75vh !important;
+        font-size: 0.7em !important;
+        padding: 4px 8px !important;
+        z-index: 1000 !important;
+        background: rgba(0, 0, 0, 0.92) !important;
+        border: 2px solid rgba(255, 215, 0, 0.6) !important;
+        border-radius: 8px !important;
+        overflow: auto !important;
+    }
+
+    .trump-announcement {
+        position: fixed !important;
+        left: 50% !important;
+        right: auto !important;
+        top: 50% !important;
+        bottom: auto !important;
+        transform: translate(-50%, -50%) scale(0.5) !important;
+        z-index: 1000 !important;
+    }
+
+    /* Compact bidding controls */
+    .bidding-interface .tricks-buttons,
+    .bidding-interface .suit-buttons {
+        gap: 2px !important;
+    }
+
+    .bidding-interface .trick-btn,
+    .bidding-interface .suit-btn,
+    .second-phase-bidding .trick-btn {
+        font-size: 0.85em !important;
+        padding: 2px 4px !important;
+        min-width: unset !important;
         min-height: unset !important;
-        padding: 5px !important;
     }
 
-    .game-container {
-        padding: 5px !important;
+    .bidding-interface h3,
+    .second-phase-bidding h3,
+    .second-phase-bidding h4 {
+        font-size: 0.9em !important;
+        margin: 2px 0 !important;
     }
 
-    h1 {
-        font-size: 1.5em !important;
+    .bidding-interface .input-row {
+        gap: 4px !important;
+    }
+
+    .bidding-interface .button-row {
+        gap: 4px !important;
+    }
+
+    .bidding-interface .action-btn {
+        padding: 4px 8px !important;
+        font-size: 0.85em !important;
     }
 }
 
