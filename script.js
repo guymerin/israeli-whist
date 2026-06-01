@@ -4487,6 +4487,7 @@ class IsraeliWhist {
         
         // Top-left corner
         const topSection = document.createElement('div');
+        topSection.className = 'card-top-section';
         topSection.style.position = 'absolute';
         topSection.style.top = '8px';
         topSection.style.left = '8px';
