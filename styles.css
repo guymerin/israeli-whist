@@ -2912,19 +2912,48 @@ h1 {
         z-index: 1000 !important;
     }
 
-    /* Compact bidding controls */
+    /* Compact bidding controls. The first-phase bidding renders buttons
+       with class .trick-button / .suit-button (created by script.js).
+       The second-phase uses .trick-btn (in HTML directly). Cover both. */
     .bidding-interface .tricks-buttons,
     .bidding-interface .suit-buttons {
-        gap: 2px !important;
+        gap: 3px !important;
+        margin-top: 2px !important;
     }
 
+    /* Force all 9 trick buttons (5-13) onto a single row */
+    .bidding-interface .tricks-buttons {
+        grid-template-columns: repeat(9, 1fr) !important;
+    }
+
+    /* Lay tricks + suits side by side so the layout is wider rather than taller */
+    .bidding-interface .input-row {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 8px !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .bidding-interface .trick-button,
+    .bidding-interface .suit-button,
     .bidding-interface .trick-btn,
     .bidding-interface .suit-btn,
     .second-phase-bidding .trick-btn {
-        font-size: 0.85em !important;
+        font-size: 13px !important;
         padding: 2px 4px !important;
-        min-width: unset !important;
-        min-height: unset !important;
+        min-width: 26px !important;
+        min-height: 26px !important;
+        width: 26px !important;
+        height: 26px !important;
+    }
+
+    .bidding-interface .suit-button {
+        font-size: 18px !important;
+    }
+
+    .bidding-interface .suit-button[data-value="notrump"] {
+        font-size: 11px !important;
     }
 
     .bidding-interface h3,
