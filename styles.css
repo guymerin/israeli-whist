@@ -2320,11 +2320,13 @@ h1 {
     padding: 8px 4px;
 }
 
+/* Original unscoped :hover removed — the real hover styles live in the
+   @media (hover: hover) block farther down. The unscoped version caused
+   suit/trick buttons to look "stuck" as selected after a tap on iOS,
+   because mobile browsers leave the :hover state applied until the user
+   taps somewhere else. */
 .trick-button:hover, .suit-button:hover {
-    background: #4CAF50;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+    /* intentionally empty */
 }
 
 .trick-button.selected, .suit-button.selected {
@@ -2564,6 +2566,49 @@ h1 {
     z-index: 60 !important;
 }
 
+/* === Suggested-card hint (best card according to bot AI) === */
+@keyframes suggestedCardPulse {
+    0%, 100% {
+        box-shadow:
+            0 0 14px 4px rgba(255, 215, 0, 0.95),
+            0 0 28px 8px rgba(255, 215, 0, 0.55),
+            0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+    50% {
+        box-shadow:
+            0 0 22px 6px rgba(255, 215, 0, 1),
+            0 0 40px 14px rgba(255, 215, 0, 0.7),
+            0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+}
+
+.human-cards .card.suggested-card {
+    outline: 2px solid #FFD700;
+    outline-offset: -2px;
+    animation: suggestedCardPulse 1.6s ease-in-out infinite;
+    z-index: 4;
+}
+
+/* === Fix: suit/trick button :hover persists after tap on touch screens,
+   making it look like multiple suits are selected. Only apply :hover
+   styles on devices that actually support hover (mouse pointer). === */
+@media (hover: hover) and (pointer: fine) {
+    .trick-button:hover, .suit-button:hover {
+        background: #4CAF50;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+    }
+}
+@media (hover: none), (pointer: coarse) {
+    .trick-button:hover, .suit-button:hover {
+        background: inherit;
+        color: inherit;
+        transform: none;
+        box-shadow: none;
+    }
+}
+
 /* ============================================================
    COMPACT TABLET LANDSCAPE
    Targets: iPad Mini/Air/Pro 11 in landscape with Safari URL bar
@@ -2623,7 +2668,54 @@ h1 {
         right: auto !important;
         bottom: auto !important;
         transform: translateX(-50%) !important;
+        max-width: 90vw !important;
         z-index: 1000 !important;
+    }
+
+    /* Main strip (0-7) — only force grid layout when JS has it visible.
+       After "More" is clicked JS sets style="display: none" inline; we
+       must not override that or both strips would be visible at once. */
+    .second-phase-bidding .tricks-buttons-main:not([style*="display: none"]) {
+        display: grid !important;
+        grid-template-columns: repeat(8, 1fr) !important;
+        gap: 6px !important;
+        min-height: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Force the expanded tricks strip (0-13) onto a single row when JS has
+       made it visible. We must NOT override the initial display:none from
+       the inline style or the extra would always be visible. The selector
+       below matches only when the inline style does not set display:none
+       (i.e., JS has switched it to grid). */
+    .second-phase-bidding .tricks-buttons-extra:not([style*="display: none"]) {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        min-height: 0 !important;
+        margin-bottom: 0 !important;
+        justify-content: center !important;
+    }
+
+    .second-phase-bidding .tricks-row,
+    .second-phase-bidding .tricks-row-final {
+        display: contents !important;
+    }
+
+    .second-phase-bidding .tricks-prediction {
+        min-height: 0 !important;
+        gap: 6px !important;
+    }
+
+    /* Shrink trick buttons so 14 fit on one line within the modal width */
+    .second-phase-bidding .trick-btn {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        font-size: 16px !important;
+        padding: 2px 4px !important;
     }
 }
 
@@ -2974,6 +3066,56 @@ h1 {
     .bidding-interface .action-btn {
         padding: 4px 8px !important;
         font-size: 0.85em !important;
+    }
+
+    /* === Second-phase bidding: keep all numbers on a single line === */
+    /* Main strip (0-7). Only override when JS has it visible. */
+    .second-phase-bidding .tricks-buttons-main:not([style*="display: none"]) {
+        display: grid !important;
+        grid-template-columns: repeat(8, 1fr) !important;
+        gap: 3px !important;
+        min-height: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Expanded strip (0-13). Only override when JS makes it visible. */
+    .second-phase-bidding .tricks-buttons-extra:not([style*="display: none"]) {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 3px !important;
+        min-height: 0 !important;
+        margin-bottom: 0 !important;
+        justify-content: center !important;
+    }
+
+    .second-phase-bidding .tricks-row,
+    .second-phase-bidding .tricks-row-final {
+        display: contents !important;
+    }
+
+    /* Tighter trick buttons in the takes phase + smaller more/less */
+    .second-phase-bidding .trick-btn {
+        font-size: 13px !important;
+        padding: 2px 4px !important;
+        min-width: 26px !important;
+        min-height: 26px !important;
+        width: 26px !important;
+        height: 26px !important;
+    }
+
+    .second-phase-bidding .more-btn,
+    .second-phase-bidding .less-btn {
+        padding: 2px 8px !important;
+        font-size: 11px !important;
+        min-height: 0 !important;
+        margin: 4px auto 0 auto !important;
+        width: auto !important;
+    }
+
+    .second-phase-bidding .tricks-prediction {
+        min-height: 0 !important;
+        gap: 4px !important;
     }
 }
 

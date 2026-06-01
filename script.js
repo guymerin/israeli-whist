@@ -1498,7 +1498,6 @@ class IsraeliWhist {
         if (humanCardsContainer) {
             humanCardsContainer.classList.add('player-turn');
         }
-        
         // Remove any existing click handlers and add new ones
         cards.forEach((card, index) => {
             // Remove existing listeners by cloning the element
@@ -1570,6 +1569,57 @@ class IsraeliWhist {
                 });
             }
         });
+
+        // After click handlers are wired, highlight the suggested best card
+        // for the human player using the same AI used by bots.
+        this.suggestBestCard();
+    }
+
+    suggestBestCard() {
+        // Always clear any previous suggestion first
+        this.clearSuggestedCard();
+
+        // Only suggest during the play phase, when it is south's turn, and
+        // when south has more than one card to choose from.
+        const southHand = this.hands && this.hands['south'];
+        if (!southHand || southHand.length <= 1) return;
+        if (typeof this.selectValidBotCard !== 'function') return;
+
+        let bestIndex;
+        try {
+            bestIndex = this.selectValidBotCard('south');
+        } catch (e) {
+            console.warn('suggestBestCard: AI failed, no suggestion shown', e);
+            return;
+        }
+        if (typeof bestIndex !== 'number' || bestIndex < 0 || bestIndex >= southHand.length) return;
+
+        const bestCard = southHand[bestIndex];
+        if (!bestCard) return;
+
+        // Map by suit+rank because click handlers replace card nodes which
+        // can desync DOM order from hand-array order. Always pick the first
+        // matching DOM card that hasn't already been marked.
+        const cards = document.querySelectorAll('#south-cards .card');
+        for (const cardEl of cards) {
+            const rankEl = cardEl.querySelector('.card-rank');
+            const suitEl = cardEl.querySelector('.card-center-suit');
+            if (!rankEl || !suitEl) continue;
+            const rankText = (rankEl.textContent || '').trim();
+            const suitText = (suitEl.textContent || '').trim();
+            const suitMap = { '♣': 'clubs', '♦': 'diamonds', '♥': 'hearts', '♠': 'spades' };
+            const suit = suitMap[suitText];
+            if (rankText === String(bestCard.rank) && suit === bestCard.suit) {
+                cardEl.classList.add('suggested-card');
+                break;
+            }
+        }
+    }
+
+    clearSuggestedCard() {
+        document.querySelectorAll('#south-cards .card.suggested-card').forEach(el => {
+            el.classList.remove('suggested-card');
+        });
     }
     
     disableCardSelection() {
@@ -1580,6 +1630,8 @@ class IsraeliWhist {
         if (humanCardsContainer) {
             humanCardsContainer.classList.remove('player-turn');
         }
+        // Clear any best-card suggestion
+        this.clearSuggestedCard();
         
         // Remove click handlers and pointer cursor
         cards.forEach(card => {
