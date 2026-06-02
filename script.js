@@ -26,6 +26,13 @@ class IsraeliWhist {
             south: 0,
             west: 0
         };
+        // `scores` accumulates across gamlets within ONE full game (200
+        // points or 10 gamlets ends a game). It is NOT a per-gamlet delta —
+        // resetForNewHand intentionally leaves it untouched (see comment at
+        // resetForNewGamlet `DON'T reset scores for new gamlet`).
+        // `cumulativeScores` aggregates across multiple full games (a
+        // session-long grand total) and only ticks at full-game-end.
+        // Per-gamlet deltas are recoverable via `gamletHistory`.
         this.cumulativeScores = {
             north: 0,
             east: 0,
@@ -146,6 +153,7 @@ class IsraeliWhist {
         };
         
         this.bindEvents();
+        this._initModalA11y();
         this.initializeGame();
     }
 
@@ -5349,6 +5357,122 @@ class IsraeliWhist {
         }
     }
 
+    /**
+     * Wire keyboard accessibility for the four modals (`#name-modal`,
+     * `#rules-modal`, `#hint-modal`, `#last-trick-modal`).
+     *
+     * Specifically:
+     *   - Escape closes whichever dismissible modal is on top (name-modal
+     *     intentionally doesn't dismiss — it's the entry gate).
+     *   - On open, focus moves to the first interactive element in the
+     *     modal so keyboard users land in the right place.
+     *   - Tab cycles only within the modal (focus trap) so keyboard users
+     *     can't accidentally tab back into the disabled game board behind
+     *     the modal scrim.
+     *   - On close, focus returns to whatever element had focus before
+     *     the modal opened (per WAI-ARIA APG guidance).
+     *
+     * The modal open/close pattern in the existing code is just
+     * `el.style.display = 'block' | 'none'`, so we watch the style
+     * attribute via MutationObserver rather than wrapping every show/hide
+     * call site.
+     */
+    _initModalA11y() {
+        const modals = [
+            { id: 'name-modal',       dismissible: false, closeSelector: null },
+            { id: 'rules-modal',      dismissible: true,  closeSelector: '#close-rules-btn' },
+            { id: 'hint-modal',       dismissible: true,  closeSelector: '#hint-close' },
+            { id: 'last-trick-modal', dismissible: true,  closeSelector: '#last-trick-close' },
+        ];
+
+        this._modalA11yState = new WeakMap();
+        const isOpen = (el) => el && getComputedStyle(el).display !== 'none';
+
+        modals.forEach((cfg) => {
+            const el = document.getElementById(cfg.id);
+            if (!el) return;
+            let wasOpen = isOpen(el);
+            if (wasOpen) this._onModalOpen(el);
+            const obs = new MutationObserver(() => {
+                const now = isOpen(el);
+                if (now && !wasOpen) this._onModalOpen(el);
+                else if (!now && wasOpen) this._onModalClose(el);
+                wasOpen = now;
+            });
+            obs.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            // Close the topmost dismissible modal (iterate in HTML order
+            // reversed so later-declared modals win when stacked).
+            for (let i = modals.length - 1; i >= 0; i--) {
+                const cfg = modals[i];
+                if (!cfg.dismissible) continue;
+                const el = document.getElementById(cfg.id);
+                if (!isOpen(el)) continue;
+                const btn = el.querySelector(cfg.closeSelector);
+                if (btn) {
+                    btn.click();
+                    e.preventDefault();
+                }
+                return;
+            }
+        });
+    }
+
+    _modalFocusables(modalEl) {
+        return Array.from(modalEl.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter((el) => {
+            // Skip hidden elements. offsetParent is null for `display:none`
+            // ancestors (sufficient because modal content isn't position:fixed).
+            return el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement;
+        });
+    }
+
+    _onModalOpen(modalEl) {
+        const state = { lastFocus: document.activeElement };
+        this._modalA11yState.set(modalEl, state);
+
+        // Focus first interactive element on the next frame so any
+        // display transition can settle first.
+        requestAnimationFrame(() => {
+            const focusables = this._modalFocusables(modalEl);
+            if (focusables.length) {
+                try { focusables[0].focus(); } catch (_) {}
+            }
+        });
+
+        // Trap Tab cycling inside the modal.
+        const trap = (e) => {
+            if (e.key !== 'Tab') return;
+            const cur = this._modalFocusables(modalEl);
+            if (!cur.length) return;
+            const first = cur[0];
+            const last = cur[cur.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+        modalEl.addEventListener('keydown', trap);
+        state.trap = trap;
+    }
+
+    _onModalClose(modalEl) {
+        const state = this._modalA11yState.get(modalEl);
+        if (!state) return;
+        if (state.trap) modalEl.removeEventListener('keydown', state.trap);
+        if (state.lastFocus && document.contains(state.lastFocus)) {
+            try { state.lastFocus.focus(); } catch (_) {}
+        }
+        this._modalA11yState.delete(modalEl);
+    }
+
     bindEvents() {
         // Name modal events
         const startGameBtn = document.getElementById('start-game-btn');
@@ -5466,11 +5590,23 @@ class IsraeliWhist {
             button.addEventListener('click', () => {
                 const takes = parseInt(button.getAttribute('data-value'), 10);
                 if (!isNaN(takes)) {
-                    // Check if this would make total exactly 13
-                    const currentTotal = Object.values(this.phase2Bids).reduce((sum, bid) => sum + (bid || 0), 0);
-                    if (currentTotal + takes === 13) {
-                        this.showGameNotification('The total of all bids cannot be exactly 13. Please choose a different number.', 'warning');
-                        return;
+                    // Over/under-13 rule: only the LAST bidder is constrained
+                    // (their bid is what could make the four-player total
+                    // exactly 13). Earlier bidders can legally pick any value
+                    // — the last bidder will pick something that avoids 13.
+                    // Without the `allOthersBid` guard, this check used to
+                    // wrongly reject legal bids from earlier seats (e.g.
+                    // south's opening 13 bid when south won trump with 13).
+                    const otherSeats = this.players.filter(p => p !== 'south');
+                    const allOthersBid = otherSeats.every(p =>
+                        this.phase2Bids[p] !== null && this.phase2Bids[p] !== undefined);
+                    if (allOthersBid) {
+                        const othersTotal = otherSeats.reduce(
+                            (sum, p) => sum + this.phase2Bids[p], 0);
+                        if (othersTotal + takes === 13) {
+                            this.showGameNotification('The total of all bids cannot be exactly 13. Please choose a different number.', 'warning');
+                            return;
+                        }
                     }
                     this.makePhase2Bid('south', takes);
                 }
@@ -5548,6 +5684,15 @@ class IsraeliWhist {
     }
 
     passPhase1() {
+        // Idempotency guard: a duplicate click (e.g. a queued/synthetic
+        // double-tap, or an accessibility tool dispatching two click events
+        // on the same frame) used to corrupt state by incrementing
+        // passCount twice while only `playersPassed.south` was flipped, and
+        // by scheduling two competing `nextPhase1Bidder()` timers. Once
+        // south is marked passed, ignore further calls until a new hand.
+        if (this.playersPassed.south) {
+            return;
+        }
         this.logPlayer(`${this.getPlayerDisplayName('south')} passed`, 'south');
         this.playersPassed.south = true;
         this.passCount++;
@@ -7274,28 +7419,34 @@ class IsraeliWhist {
         `;
         
         // Add styles
+        // Position the toast in a reserved bottom-right lane so it never
+        // covers cards, played-card area, or bid/prediction controls.
+        // (Designer feedback: the previous centered toast hid the Deal
+        // button after Turbo was enabled, hid played cards mid-trick, and
+        // covered the Phase 2 prediction panel.)
         notification.style.cssText = `
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            bottom: 20px;
+            right: 20px;
+            max-width: min(360px, calc(100vw - 40px));
             background: ${type === 'warning' ? 'linear-gradient(135deg, #ff6b6b, #ff5722)' : 
                        type === 'error' ? 'linear-gradient(135deg, #f44336, #d32f2f)' : 
                        type === 'success' ? 'linear-gradient(135deg, #4caf50, #388e3c)' : 
                        'linear-gradient(135deg, #2196f3, #1976d2)'};
             color: white;
-            padding: 20px 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
             z-index: 10000;
             font-family: 'Arial', sans-serif;
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
-            text-align: center;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            text-align: left;
+            border: 2px solid rgba(255, 255, 255, 0.25);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             animation: notificationSlideIn 0.3s ease-out;
+            pointer-events: none;
         `;
         
         // Add CSS animation if not already added
@@ -7305,22 +7456,22 @@ class IsraeliWhist {
             style.textContent = `
                 @keyframes notificationSlideIn {
                     0% { 
-                        transform: translate(-50%, -50%) scale(0.7); 
+                        transform: translateX(120%); 
                         opacity: 0; 
                     }
                     100% { 
-                        transform: translate(-50%, -50%) scale(1); 
+                        transform: translateX(0); 
                         opacity: 1; 
                     }
                 }
                 
                 @keyframes notificationSlideOut {
                     0% { 
-                        transform: translate(-50%, -50%) scale(1); 
+                        transform: translateX(0); 
                         opacity: 1; 
                     }
                     100% { 
-                        transform: translate(-50%, -50%) scale(0.7); 
+                        transform: translateX(120%); 
                         opacity: 0; 
                     }
                 }
@@ -7332,11 +7483,12 @@ class IsraeliWhist {
                 }
                 
                 .notification-icon {
-                    font-size: 24px;
+                    font-size: 20px;
                 }
                 
                 .notification-message {
-                    font-size: 18px;
+                    font-size: 15px;
+                    line-height: 1.3;
                 }
             `;
             document.head.appendChild(style);

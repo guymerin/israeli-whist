@@ -158,9 +158,11 @@ Key invariants and conventions when touching this code:
   When a phase advances and `this.currentBidder === 2` (south), the UI controls are
   shown; otherwise the corresponding `botMake…` / `botPlayCard` method runs on a
   timer. Preserve this branching when adding new interactive steps.
-- **Score is tracked at two granularities:** `this.scores` is the current gamlet,
-  `this.cumulativeScores` is the running total across the full game (200 points or
-  10 gamlets ends a full game). `this.gamletHistory` feeds the extended scorecard view.
+- **Score is tracked at multiple granularities.** `this.scores` accumulates
+  across gamlets within **one full game** (the 200-pt / 10-gamlet game-end check
+  reads `scores`). `this.cumulativeScores` aggregates across **multiple full
+  games** (it only ticks at full-game-end). Per-gamlet deltas live in
+  `this.gamletHistory` and feed the extended scorecard view.
 - **Don't break Safari / mobile.** `index.html` carries explicit Safari and mobile
   meta tags, there is a landscape-orientation overlay (`#rotate-device-overlay`), and
   `script.js` has a `setupSafariEmergencyFix()` global click detector. Avoid

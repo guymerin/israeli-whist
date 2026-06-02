@@ -35,6 +35,6 @@ Tap the **📖 Rules** button in-game. Quick summary:
 ## Development notes
 
 - **No tests.** Verify changes by exercising the game in the browser and watching the DevTools console — most state transitions emit color-coded `logPlayer` events. The `.mcp.json` registers Playwright MCP for agent-driven smoke tests against `window.game`.
-- **State is on `window.game`.** Useful fields: `currentPhase`, `phase1Bids`, `phase2Bids`, `trumpSuit`, `trumpWinner`, `minimumTakes`, `tricksWon`, `scores`, `cumulativeScores`, `hands`, `currentTrick`.
+- **State is on `window.game`.** Useful fields: `currentPhase`, `phase1Bids`, `phase2Bids`, `trumpSuit`, `trumpWinner`, `minimumTakes`, `tricksWon`, `hands`, `currentTrick`. Note the score-field naming is slightly confusing: `scores` accumulates within one full game (200 pts / 10 gamlets ends a game); `cumulativeScores` aggregates across multiple full games. Per-gamlet deltas live in `gamletHistory`.
 - **Mobile.** Designed for landscape on small screens; portrait shows a rotate overlay. Don't introduce APIs that break iOS Safari — there is an explicit `setupSafariEmergencyFix()`.
 - **Conventions.** See `.github/copilot-instructions.md` for required helpers (`getDelay`, `getSuitSymbol`, `getPlayerDisplayName`, `logPlayer`, `refreshAllPhase2Displays`) and the per-phase state-machine contract.

@@ -282,10 +282,10 @@
         </div>
         
         <!-- Player Name Modal -->
-        <div class="name-modal" id="name-modal" style="display: block;">
+        <div class="name-modal" id="name-modal" role="dialog" aria-modal="true" aria-labelledby="name-modal-title" style="display: block;">
             <div class="name-content">
                 <div class="name-header">
-                    <h2>🎮 Welcome to Israeli Whist!</h2>
+                    <h2 id="name-modal-title">🎮 Welcome to Israeli Whist!</h2>
                 </div>
                 <div class="name-body">
                     <p>Please enter your name to begin:</p>
@@ -296,11 +296,11 @@
         </div>
 
         <!-- Rules Modal -->
-        <div class="rules-modal" id="rules-modal" style="display: none;">
+        <div class="rules-modal" id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title" style="display: none;">
             <div class="rules-content">
                 <div class="rules-header">
-                    <h2>📖 Israeli Whist Rules</h2>
-                    <button id="close-rules-btn" class="close-btn">×</button>
+                    <h2 id="rules-modal-title">📖 Israeli Whist Rules</h2>
+                    <button id="close-rules-btn" class="close-btn" aria-label="Close rules">×</button>
                 </div>
                 <div class="rules-body">
                     <div class="rules-section">
@@ -363,11 +363,11 @@
     </div>
 
     <!-- Hint Modal -->
-    <div id="hint-modal" class="hint-modal" style="display: none;">
+    <div id="hint-modal" class="hint-modal" role="dialog" aria-modal="true" aria-labelledby="hint-modal-title" style="display: none;">
         <div class="hint-content">
             <div class="hint-header">
-                <h3>💡 Strategic Hint</h3>
-                <button class="hint-close" id="hint-close">&times;</button>
+                <h3 id="hint-modal-title">💡 Strategic Hint</h3>
+                <button class="hint-close" id="hint-close" aria-label="Close hint">&times;</button>
             </div>
             <div class="hint-body" id="hint-body">
                 <!-- Hint content will be populated by JavaScript -->
@@ -379,10 +379,10 @@
     </div>
 
     <!-- Last Trick Modal -->
-    <div id="last-trick-modal" class="last-trick-modal" style="display: none;">
+    <div id="last-trick-modal" class="last-trick-modal" role="dialog" aria-modal="true" aria-labelledby="last-trick-modal-title" style="display: none;">
         <div class="last-trick-content">
             <div class="last-trick-header">
-                <h3>🔁 Last Trick <span id="last-trick-number"></span></h3>
+                <h3 id="last-trick-modal-title">🔁 Last Trick <span id="last-trick-number"></span></h3>
                 <button class="last-trick-close" id="last-trick-close" aria-label="Close">&times;</button>
             </div>
             <div class="last-trick-body">
