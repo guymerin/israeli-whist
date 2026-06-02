@@ -2927,6 +2927,45 @@ h1 {
 }
 
 /* ============================================================
+   TABLET LANDSCAPE / TOUCHSCREEN (iPad-class)
+   Targets touchscreen devices ~700px–1400px wide where the desktop
+   layout puts the score box left-anchored and risks covering the
+   compass-west (Chati) nameplate. Restricted via `(hover: none)`
+   so it does not catch laptop displays that happen to fit the size.
+   ============================================================ */
+@media (min-width: 700px) and (max-width: 1400px) and (hover: none) {
+    .total-score-box {
+        /* Default layout placed the score box at top:165px with no height
+           cap; on iPad landscape its 233px height ran from y=165 to y=398,
+           and the compass-west (Chati) nameplate at y≈380 was partially
+           hidden behind its bottom edge. Capping height + adding scroll
+           keeps the score box clear of the west player slot. */
+        max-height: 200px !important;
+        overflow-y: auto !important;
+    }
+
+    .total-score-box.expanded {
+        /* The expanded scorecard previously ballooned to 650px wide and
+           grew tall enough to float across the trick area. Constrain both
+           dimensions to the viewport and let it scroll internally. */
+        max-height: calc(100vh - 200px) !important;
+        max-width: calc(100vw - 40px) !important;
+        overflow-y: auto !important;
+    }
+
+    h1 {
+        /* The game-control-buttons cluster on iPad-class viewports occupies
+           more than half the available width, leaving no room for a
+           centered title without overlap. The h1 ("Israeli Whist") is
+           branding, not functional — the score box and status bar already
+           convey context — so we hide it but preserve the vertical spacer
+           it provides (otherwise `.game-status` slides up and overlaps the
+           fixed top-corner buttons). */
+        visibility: hidden !important;
+    }
+}
+
+/* ============================================================
    PHONE LANDSCAPE
    Targets: any phone in landscape (height < 500px)
    ============================================================ */
@@ -2998,10 +3037,24 @@ h1 {
         display: none !important;
     }
 
+    /* Turbo is still essential on iPhone landscape — the previous
+       `display: none` made it unreachable. Mirror the game-control-buttons
+       treatment: scaled to 0.6 and pinned to the top-left corner. The
+       status bar's max-width is tightened below so the three regions
+       (Turbo / status / controls) coexist on the same row without
+       overlap on viewports as small as 667x375. */
     .fast-mode-container {
-        display: none !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        transform: scale(0.6) !important;
+        transform-origin: top left !important;
+        z-index: 100 !important;
     }
 
+    /* Total-score box stays hidden on iPhone landscape — too tall for the
+       available vertical space. South/east/west bid+takes counters still
+       carry the per-player score updates. */
     .total-score-box {
         display: none !important;
     }
@@ -3023,7 +3076,10 @@ h1 {
         margin: 0 !important;
         font-size: 0.6em !important;
         z-index: 100 !important;
-        max-width: 60vw !important;
+        /* Tightened from 60vw so the centered pill clears the scaled-0.6
+           Turbo (left, ~80px wide) and game-control-buttons (right, ~282px
+           wide) on viewports as small as 667x375. */
+        max-width: 38vw !important;
         min-height: 0 !important;
         border-radius: 0 0 8px 8px !important;
         border-width: 1px !important;
@@ -3034,10 +3090,13 @@ h1 {
         font-size: inherit !important;
     }
 
-    /* Game controls fixed in top-right corner */
+    /* Game controls fixed in top-right corner — pushed below the status
+       bar (which spans the top center) so the New Game button doesn't get
+       partially hidden under the status pill on viewports as narrow as
+       667×375 (iPhone SE landscape). */
     .game-control-buttons {
         position: fixed !important;
-        top: 0 !important;
+        top: 45px !important;
         right: 0 !important;
         transform: scale(0.6) !important;
         transform-origin: top right !important;
