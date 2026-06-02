@@ -45,6 +45,15 @@ class IsraeliWhist {
         
         // Fast mode setting
         this.fastMode = false;
+
+        // Card-hint toggle. Default OFF so the hint glow only appears when
+        // the player explicitly turns it on via the Hint button.
+        this.hintsEnabled = false;
+
+        // Snapshot of the most recently completed trick, populated by
+        // completeTrick() so players can re-open it via the "Last Trick"
+        // button if they missed it.
+        this.lastCompletedTrick = null;
         
         // Safari emergency fix - global click detector
         this.setupSafariEmergencyFix();
@@ -169,6 +178,8 @@ class IsraeliWhist {
         
         // Initialize hint system
         this.initializeHintSystem();
+        // Initialize the Last Trick viewer button + modal
+        this.initializeLastTrickViewer();
     }
 
     startGameWithName(playerName) {
@@ -1590,8 +1601,14 @@ class IsraeliWhist {
     }
 
     suggestBestCard() {
-        // Clear any previous suggestion (and its auto-hide timer).
+        // ALWAYS clear any prior suggestion (and its timer) before any
+        // early-return, so stale `.suggested-card` classes don't survive
+        // odd state transitions.
         this.clearSuggestedCard();
+
+        // The hint glow only appears when the player has explicitly toggled
+        // hints ON via the Hint button.
+        if (!this.hintsEnabled) return;
 
         // Only suggest during the play phase, when it is south's turn, and
         // when south has more than one card to choose from.
@@ -1629,12 +1646,9 @@ class IsraeliWhist {
                 break;
             }
         }
-
-        // Flash the hint for at most 2 seconds, then clear it so the player
-        // can choose for themselves without a persistent pulse.
-        this._suggestHideTimer = setTimeout(() => {
-            this.clearSuggestedCard();
-        }, 2000);
+        // No auto-hide timer: the hint stays visible while the toggle is
+        // ON and it remains south's turn. disableCardSelection() clears it
+        // when the turn ends, and toggleHints(false) clears it on demand.
     }
 
     clearSuggestedCard() {
@@ -2083,6 +2097,20 @@ class IsraeliWhist {
         const winner = this.determineTrickWinner();
         this.tricksWon[winner]++;
         this.tricksPlayed++;
+
+        // Snapshot the trick BEFORE any early-return (e.g. the 13th-trick
+        // branch below), so the Last Trick viewer can still show the final
+        // trick during scoring. Deep-copy the card objects defensively in
+        // case animation/display code mutates them later.
+        this.lastCompletedTrick = {
+            plays: this.currentTrick.map(p => ({
+                player: p.player,
+                card: { rank: p.card.rank, suit: p.card.suit }
+            })),
+            winner: winner,
+            trickNumber: this.tricksPlayed
+        };
+        this._updateLastTrickButton();
         
         // Log the complete trick
         const trickCards = this.currentTrick.map(play => 
@@ -5427,18 +5455,7 @@ class IsraeliWhist {
             });
         }
         
-        // Hint button - refresh Phase 2 displays
-        const hintBtn = document.getElementById('hint-btn');
-        if (hintBtn) {
-            hintBtn.addEventListener('click', () => {
-                if (this.currentPhase === 'phase2') {
-                    this.refreshAllPhase2Displays();
-
-                } else {
-                    console.log('Hint button: Not in Phase 2, current phase:', this.currentPhase);
-                }
-            });
-        }
+        // (The #hint-btn click is wired in initializeHintSystem(); see there.)
 
         // Rules button - show game rules
         const rulesBtn = document.getElementById('rules-btn');
@@ -6494,6 +6511,10 @@ class IsraeliWhist {
         this.selectedSuit = null;
         this.phase2BiddingExpanded = false; // Reset to collapsed view for new hand
          this.handType = null;
+
+        // Forget the previous hand's last trick — the new hand has none yet.
+        this.lastCompletedTrick = null;
+        this._updateLastTrickButton();
          
         // Reset pass button state for new hand
         this.resetPassButtonState();
@@ -7006,24 +7027,30 @@ class IsraeliWhist {
      }
      
      initializeHintSystem() {
-         // Set up hint button click handler
+         // The Hint button is now a TOGGLE: when ON, the suggested card glows
+         // during south's turn; when OFF, no card hint is shown. The legacy
+         // strategic-text modal (#hint-modal) is no longer opened from the
+         // button — its close handlers stay wired in case other code triggers
+         // showHint() programmatically.
          const hintBtn = document.getElementById('hint-btn');
          const hintModal = document.getElementById('hint-modal');
          const hintClose = document.getElementById('hint-close');
          const hintBtnClose = document.getElementById('hint-btn-close');
-         
+
          if (hintBtn) {
-             hintBtn.addEventListener('click', () => this.showHint());
+             hintBtn.addEventListener('click', () => this.toggleHints());
+             // Reflect the initial state on the button.
+             this._updateHintButton();
          }
-         
+
          if (hintClose) {
              hintClose.addEventListener('click', () => this.hideHint());
          }
-         
+
          if (hintBtnClose) {
              hintBtnClose.addEventListener('click', () => this.hideHint());
          }
-         
+
          // Close hint when clicking outside modal
          if (hintModal) {
              hintModal.addEventListener('click', (e) => {
@@ -7033,7 +7060,116 @@ class IsraeliWhist {
              });
          }
      }
-     
+
+     toggleHints() {
+         this.hintsEnabled = !this.hintsEnabled;
+         this._updateHintButton();
+         if (this.hintsEnabled) {
+             // Immediately mark the best card if it's south's turn to play.
+             this.suggestBestCard();
+         } else {
+             // Immediately clear any visible suggestion.
+             this.clearSuggestedCard();
+         }
+     }
+
+     _updateHintButton() {
+         const btn = document.getElementById('hint-btn');
+         if (!btn) return;
+         btn.classList.toggle('active', !!this.hintsEnabled);
+         btn.textContent = this.hintsEnabled ? '💡 Hint ✓' : '💡 Hint';
+         btn.setAttribute('aria-pressed', this.hintsEnabled ? 'true' : 'false');
+         btn.title = this.hintsEnabled
+             ? 'Card hints are ON — click to turn off'
+             : 'Card hints are OFF — click to highlight the best card on your turn';
+     }
+
+     initializeLastTrickViewer() {
+         const btn = document.getElementById('last-trick-btn');
+         const modal = document.getElementById('last-trick-modal');
+         const closeBtn = document.getElementById('last-trick-close');
+
+         if (btn) {
+             btn.addEventListener('click', () => this.showLastTrick());
+         }
+         if (closeBtn) {
+             closeBtn.addEventListener('click', () => this.hideLastTrick());
+         }
+         if (modal) {
+             modal.addEventListener('click', (e) => {
+                 if (e.target === modal) this.hideLastTrick();
+             });
+         }
+         this._updateLastTrickButton();
+     }
+
+     _updateLastTrickButton() {
+         const btn = document.getElementById('last-trick-btn');
+         if (!btn) return;
+         btn.disabled = !this.lastCompletedTrick;
+     }
+
+     showLastTrick() {
+         const modal = document.getElementById('last-trick-modal');
+         const grid = document.getElementById('last-trick-grid');
+         const winnerEl = document.getElementById('last-trick-winner-name');
+         const numberEl = document.getElementById('last-trick-number');
+         if (!modal || !grid || !this.lastCompletedTrick) return;
+
+         const t = this.lastCompletedTrick;
+         const redSuits = { hearts: true, diamonds: true };
+         const suitSymbols = { clubs: '♣', diamonds: '♦', hearts: '♥', spades: '♠' };
+
+         grid.innerHTML = '';
+         ['north', 'east', 'south', 'west'].forEach(player => {
+             const play = t.plays.find(p => p.player === player);
+             const cell = document.createElement('div');
+             cell.className = `ltc-cell ltc-${player}`;
+
+             const name = document.createElement('div');
+             name.className = 'ltc-player';
+             name.textContent = this.getPlayerDisplayName
+                 ? this.getPlayerDisplayName(player)
+                 : player;
+             cell.appendChild(name);
+
+             const card = document.createElement('div');
+             const suitClass = play ? (redSuits[play.card.suit] ? 'suit-red' : 'suit-black') : '';
+             const winnerClass = (play && player === t.winner) ? ' winner' : '';
+             card.className = `ltc-card ${suitClass}${winnerClass}`;
+             if (play) {
+                 const rank = document.createElement('span');
+                 rank.className = 'ltc-rank';
+                 rank.textContent = play.card.rank;
+                 const suit = document.createElement('span');
+                 suit.className = 'ltc-suit';
+                 suit.textContent = suitSymbols[play.card.suit] || '';
+                 card.appendChild(rank);
+                 card.appendChild(suit);
+             } else {
+                 card.textContent = '–';
+             }
+             cell.appendChild(card);
+             grid.appendChild(cell);
+         });
+
+         if (winnerEl) {
+             winnerEl.textContent = this.getPlayerDisplayName
+                 ? this.getPlayerDisplayName(t.winner)
+                 : t.winner;
+         }
+         if (numberEl) {
+             numberEl.textContent = t.trickNumber ? `(#${t.trickNumber})` : '';
+         }
+
+         modal.style.display = 'flex';
+     }
+
+     hideLastTrick() {
+         const modal = document.getElementById('last-trick-modal');
+         if (modal) modal.style.display = 'none';
+     }
+
      showHint() {
          const hintBody = document.getElementById('hint-body');
          const hintModal = document.getElementById('hint-modal');

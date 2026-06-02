@@ -1732,6 +1732,149 @@ h1 {
     transform: translateY(0);
 }
 
+/* Hint toggle — ON state */
+.hint-btn.active {
+    background: linear-gradient(135deg, #FFB300, #FB8C00);
+    box-shadow: 0 0 0 2px #FFD700, 0 4px 8px rgba(0,0,0,0.25);
+}
+
+.hint-btn.active:hover {
+    background: linear-gradient(135deg, #FB8C00, #EF6C00);
+}
+
+/* Last Trick button — matches hint-btn shape */
+.last-trick-btn {
+    background: linear-gradient(135deg, #7E57C2, #5E35B1);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    font-weight: bold;
+    display: block;
+}
+
+.last-trick-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    background: linear-gradient(135deg, #5E35B1, #4527A0);
+}
+
+.last-trick-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.last-trick-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(50%);
+}
+
+/* Last Trick modal */
+.last-trick-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.last-trick-content {
+    background: #fff;
+    color: #222;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    max-width: 360px;
+    width: 92%;
+    padding: 16px 18px 18px;
+}
+
+.last-trick-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.last-trick-header h3 {
+    margin: 0;
+    font-size: 1.15em;
+}
+
+.last-trick-close {
+    background: transparent;
+    border: none;
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    color: #555;
+    padding: 0 6px;
+}
+
+.last-trick-close:hover {
+    color: #000;
+}
+
+.last-trick-body {
+    text-align: center;
+}
+
+.last-trick-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 8px;
+    width: 260px;
+    margin: 0 auto 12px;
+}
+
+.ltc-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ltc-north { grid-column: 2; grid-row: 1; }
+.ltc-east  { grid-column: 3; grid-row: 2; }
+.ltc-south { grid-column: 2; grid-row: 3; }
+.ltc-west  { grid-column: 1; grid-row: 2; }
+
+.ltc-player {
+    font-size: 0.8em;
+    color: #555;
+    font-weight: bold;
+}
+
+.ltc-card {
+    width: 56px;
+    height: 78px;
+    border-radius: 6px;
+    background: #fff;
+    border: 1.5px solid #888;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.ltc-card .ltc-rank { font-size: 1.4em; line-height: 1; }
+.ltc-card .ltc-suit { font-size: 1.4em; line-height: 1; margin-top: 2px; }
+
+.ltc-card.suit-red { color: #d32f2f; }
+.ltc-card.suit-black { color: #222; }
+
+.ltc-card.winner {
+    border: 2.5px solid #FFD700;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.7), 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.last-trick-winner {
+    font-size: 1em;
+    margin-top: 6px;
+}
+
 
 
 /* Special styling for Phase 1 bidding buttons */
