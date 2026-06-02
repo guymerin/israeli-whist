@@ -1082,6 +1082,10 @@ h1 {
     height: 100px;
     transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: center center;
+    /* Empty played-card placeholders must not intercept taps on underlying
+       buttons (notably #deal-btn on mobile landscape, where the trick
+       area overlaps the action-button row). */
+    pointer-events: none;
 }
 
 /* Position played cards around the trick area */
@@ -1871,23 +1875,8 @@ h1 {
         0 4px 8px rgba(76, 175, 80, 0.4) !important;
 }
 
-/* Skip button styling - now in normal flow with other buttons */
-#skip-btn.action-btn {
-    background: linear-gradient(135deg, #666, #555);
-    color: white;
-    border: 2px solid rgba(102, 102, 102, 0.6);
-    transition: all 0.3s ease;
-    flex: 1;
-    max-width: 120px;
-}
-
-#skip-btn.action-btn:hover {
-    background: linear-gradient(135deg, #555, #444);
-    transform: translateY(-3px);
-    box-shadow: 
-        0 8px 16px rgba(102, 102, 102, 0.5),
-        0 4px 8px rgba(102, 102, 102, 0.4);
-}
+/* Skip button styling removed — the button was a dead UI element
+   (no JS handler) and has been removed from the markup. */
 
 
 

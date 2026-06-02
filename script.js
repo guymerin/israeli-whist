@@ -1590,20 +1590,21 @@ class IsraeliWhist {
     }
 
     suggestBestCard() {
-        // Always clear any previous suggestion first
+        // Clear any previous suggestion (and its auto-hide timer).
         this.clearSuggestedCard();
 
         // Only suggest during the play phase, when it is south's turn, and
         // when south has more than one card to choose from.
         const southHand = this.hands && this.hands['south'];
         if (!southHand || southHand.length <= 1) return;
-        if (typeof this.selectValidBotCard !== 'function') return;
+        if (this.currentPhase !== 'phase3') return;
+        if (this.getCurrentPlayerIndex() !== 2) return;
 
         let bestIndex;
         try {
-            bestIndex = this.selectValidBotCard('south');
+            bestIndex = this.getHumanHintCardIndex();
         } catch (e) {
-            console.warn('suggestBestCard: AI failed, no suggestion shown', e);
+            console.warn('suggestBestCard: hint failed, no suggestion shown', e);
             return;
         }
         if (typeof bestIndex !== 'number' || bestIndex < 0 || bestIndex >= southHand.length) return;
@@ -1628,12 +1629,166 @@ class IsraeliWhist {
                 break;
             }
         }
+
+        // Flash the hint for at most 2 seconds, then clear it so the player
+        // can choose for themselves without a persistent pulse.
+        this._suggestHideTimer = setTimeout(() => {
+            this.clearSuggestedCard();
+        }, 2000);
     }
 
     clearSuggestedCard() {
+        if (this._suggestHideTimer) {
+            clearTimeout(this._suggestHideTimer);
+            this._suggestHideTimer = null;
+        }
         document.querySelectorAll('#south-cards .card.suggested-card').forEach(el => {
             el.classList.remove('suggested-card');
         });
+    }
+
+    // Returns the index in this.hands.south of the card that the hint should
+    // highlight. Unlike the bot AI this method is intentionally simple and
+    // takes the human player's CURRENT contract state into account:
+    //   needed = phase2Bids.south - tricksWon.south
+    //   needed > 0  → wants to win more tricks → favour cheap wins
+    //   needed <= 0 → already at/over the bid → AVOID winning, DUMP high cards
+    //                  (covers the bid-0 case the user called out explicitly).
+    getHumanHintCardIndex() {
+        const hand = this.hands.south;
+        if (!hand || hand.length === 0) return -1;
+
+        const bid = (this.phase2Bids && this.phase2Bids.south) || 0;
+        const taken = (this.tricksWon && this.tricksWon.south) || 0;
+        const needed = bid - taken;
+        const wantsToWin = needed > 0;
+        const wantsToLose = !wantsToWin;
+
+        const trump = this.trumpSuit;
+        const isTrumpGame = trump && trump !== 'notrump';
+        const highRanks = { 'A': true, 'K': true, 'Q': true };
+
+        // Legal cards: must follow lead suit if able; otherwise any card.
+        const leadSuit = this.currentTrick.length > 0
+            ? this.currentTrick[0].card.suit
+            : null;
+        const inSuit = leadSuit
+            ? hand.map((c, i) => ({ c, i })).filter(x => x.c.suit === leadSuit)
+            : [];
+        const legal = (leadSuit && inSuit.length > 0)
+            ? inSuit
+            : hand.map((c, i) => ({ c, i }));
+
+        // -------- LEADING --------
+        if (this.currentTrick.length === 0) {
+            if (wantsToWin) {
+                // Lead high; prefer trump in a trump game.
+                return this._pickByScore(legal, ({ c }) => {
+                    let s = this.getCardValue(c);
+                    if (isTrumpGame && c.suit === trump) s += 20;
+                    return s;
+                });
+            }
+            // wantsToLose — lead lowest, avoid trump, penalise A/K/Q heavily
+            // (high non-trump leads still tend to win). Small bonus for
+            // dumping a LOW singleton so we stop adding future winners.
+            return this._pickByScore(legal, ({ c }) => {
+                const suitLen = hand.filter(x => x.suit === c.suit).length;
+                let s = -this.getCardValue(c);
+                if (isTrumpGame && c.suit === trump) s -= 25;
+                if (highRanks[c.rank]) s -= 15;
+                if (suitLen === 1 && !highRanks[c.rank]) s += 5;
+                return s;
+            });
+        }
+
+        // -------- FOLLOWING --------
+        const winners = [];
+        const losers = [];
+        for (const x of legal) {
+            if (this._wouldCardWinNow(x.c)) winners.push(x);
+            else losers.push(x);
+        }
+
+        if (wantsToWin) {
+            // Cheapest win first; otherwise dump the lowest losing card so
+            // we keep our high cards for tricks we still need.
+            if (winners.length > 0) {
+                return this._pickByScore(winners, ({ c }) => -this.getCardValue(c));
+            }
+            return this._pickByScore(losers, ({ c }) => -this.getCardValue(c));
+        }
+
+        // wantsToLose — discard the HIGHEST card we can without winning.
+        if (losers.length > 0) {
+            return this._pickByScore(losers, ({ c }) => this.getCardValue(c));
+        }
+        // Forced to win the trick; pick the lowest forced winner so we
+        // don't waste a strong card we may still need control of.
+        return this._pickByScore(winners, ({ c }) => -this.getCardValue(c));
+    }
+
+    _pickByScore(items, scoreFn) {
+        let bestI = items[0].i;
+        let bestScore = -Infinity;
+        for (const x of items) {
+            const s = scoreFn(x);
+            if (s > bestScore) {
+                bestScore = s;
+                bestI = x.i;
+            }
+        }
+        return bestI;
+    }
+
+    _currentlyWinningPlay() {
+        if (this.currentTrick.length === 0) return null;
+        const lead = this.currentTrick[0];
+        const leadSuit = lead.card.suit;
+        const trump = this.trumpSuit;
+        const noTrump = !trump || trump === 'notrump';
+        let winner = lead;
+        for (let i = 1; i < this.currentTrick.length; i++) {
+            winner = this._compareWinningPlay(
+                winner, this.currentTrick[i], leadSuit, trump, noTrump
+            );
+        }
+        return winner;
+    }
+
+    _compareWinningPlay(current, candidate, leadSuit, trump, noTrump) {
+        const a = current.card, b = candidate.card;
+        if (!noTrump) {
+            const aT = a.suit === trump;
+            const bT = b.suit === trump;
+            if (bT && !aT) return candidate;
+            if (aT && !bT) return current;
+            if (aT && bT) {
+                return this.getCardValue(b) > this.getCardValue(a) ? candidate : current;
+            }
+        }
+        const aLS = a.suit === leadSuit;
+        const bLS = b.suit === leadSuit;
+        if (bLS && !aLS) return candidate;
+        if (aLS && !bLS) return current;
+        if (aLS && bLS) {
+            return this.getCardValue(b) > this.getCardValue(a) ? candidate : current;
+        }
+        return current;
+    }
+
+    _wouldCardWinNow(card) {
+        if (this.currentTrick.length === 0) return true;
+        const lead = this.currentTrick[0];
+        const winner = this._currentlyWinningPlay();
+        const fakePlay = { player: 'south', card };
+        const leadSuit = lead.card.suit;
+        const trump = this.trumpSuit;
+        const noTrump = !trump || trump === 'notrump';
+        const result = this._compareWinningPlay(
+            winner, fakePlay, leadSuit, trump, noTrump
+        );
+        return result === fakePlay;
     }
     
     disableCardSelection() {
@@ -1672,7 +1827,24 @@ class IsraeliWhist {
         console.log('🎯 Browser:', navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1 ? 'Safari' : 'Other');
         console.log('🎯 Current phase:', this.currentPhase);
         console.log('🎯 Player turn enabled:', document.querySelector('.human-cards')?.classList.contains('player-turn'));
-        
+
+        // Guard against stale / duplicate clicks (e.g., mobile double-tap, or
+        // a click that arrives after the card was already removed from the
+        // hand). Without these checks the game logs noisy errors and can
+        // race with completeTrick() leaving currentTrick.length > 4.
+        if (this.currentPhase !== 'phase3') {
+            return;
+        }
+        if (this.currentTrick.length >= 4) {
+            // Trick is already complete and waiting to be resolved.
+            return;
+        }
+        if (this.getCurrentPlayerIndex() !== 2) {
+            // Not south's turn — ignore stale clicks left over from the
+            // previous player-turn window.
+            return;
+        }
+
         // Get the card data from the element's content using correct selectors
         const cardRankElement = cardElement.querySelector('.card-rank');
         const cardSuitElement = cardElement.querySelector('.card-center-suit');
@@ -1893,6 +2065,20 @@ class IsraeliWhist {
     }
      
     completeTrick() {
+        // Defensive guard: completeTrick is scheduled via setTimeout from
+        // playCard, so by the time it fires the trick may have already been
+        // cleared by a re-entrant call, or a stray click could have left the
+        // trick in an unexpected state. Bail out cleanly rather than calling
+        // determineTrickWinner() on an incomplete trick (which used to log
+        // "Cannot determine winner of incomplete trick" and silently invent
+        // a winner — or worse, crash on an empty array).
+        if (!Array.isArray(this.currentTrick) || this.currentTrick.length !== 4) {
+            console.warn(
+                'completeTrick skipped: currentTrick length is',
+                this.currentTrick ? this.currentTrick.length : 'null'
+            );
+            return;
+        }
         // Determine trick winner according to Israeli Whist rules
         const winner = this.determineTrickWinner();
         this.tricksWon[winner]++;
@@ -1942,7 +2128,7 @@ class IsraeliWhist {
                 this.disableCardSelection();
                 this.botPlayCard();
             }
-        }, 3000);
+        }, this.getDelay(3000));
     }
     
     showPlusOneAnimation(winner) {
