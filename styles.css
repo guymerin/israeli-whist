@@ -1,3 +1,12 @@
+/*
+ * Stylesheet map:
+ * - Base page chrome, total-score/status bars, and compass game board.
+ * - Card rendering, Safari/mobile touch fixes, and trick/animation layers.
+ * - Phase 1/Phase 2 bidding panels, hint/rules/name/last-trick modals.
+ * - Responsive sections at the end cover tablet landscape and phone layouts.
+ * - Extended scorecard styles close the file with the notebook-paper theme.
+ */
+
 * {
     margin: 0;
     padding: 0;

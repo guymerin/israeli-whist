@@ -1,8 +1,40 @@
-// Israeli Whist Game Implementation - Complete Rebuild
-// Following proper Israeli Whist rules with 3 phases
+/**
+ * Israeli Whist browser game architecture
+ * ---------------------------------------
+ * This file owns the entire game: one IsraeliWhist instance is created on
+ * DOMContentLoaded and assigned to window.game for smoke tests and debug helpers.
+ *
+ * The game is a single state machine on this.currentPhase:
+ *   dealing -> phase1 -> phase2 -> phase3 -> scoring
+ * A completed hand/gamlet resets back to dealing, while full-game resets also
+ * clear the 200-point/10-gamlet score state.
+ *
+ * Seats are always addressed by compass keys in clockwise order:
+ *   north -> east -> south -> west
+ * south is always the human player. The other seats are bots named Botti (N),
+ * Droidi (E), and Chati (W). DOM ids follow the same convention
+ * (for example: north-bid, south-cards, west-played), so UI code can mutate
+ * specific elements without a renderer.
+ *
+ * Rendering is intentionally imperative: script.js writes textContent/innerHTML,
+ * toggles style.display, and adds/removes classes on the static elements from
+ * index.html. There is no virtual DOM, template layer, module system, build step,
+ * or package dependency.
+ *
+ * Timing should flow through getDelay(normalDelay). The Turbo checkbox flips
+ * fastMode, and getDelay() compresses bot/animation delays while keeping a small
+ * floor so state transitions remain observable.
+ *
+ * Bot intelligence and card memory live in this.botMemory. Its field comments in
+ * the constructor distinguish session-scoped learning (playerPatterns,
+ * behaviorProfiles, gameHistory, cardsSeen) from hand-scoped trackers
+ * (cardsPlayed, trumpsPlayed, suitDistribution, suitVoids, highCardsPlayed, and
+ * probabilityModel estimates) that reset between gamlets.
+ */
 
 class IsraeliWhist {
     constructor() {
+        // Seat identity and clockwise turn order.
         this.players = ['north', 'east', 'south', 'west'];
         this.playerName = 'Player'; // Human player's name (default)
         this.botNames = {
@@ -13,6 +45,7 @@ class IsraeliWhist {
         };
         this.currentDealer = 0; // North starts as dealer
         this.currentRound = 1; // Track current round
+        // Deck and current-gamlet hands.
         this.deck = [];
         this.hands = {
             north: [],
@@ -20,6 +53,7 @@ class IsraeliWhist {
             south: [],
             west: []
         };
+        // Score state and scorecard history.
         this.scores = {
             north: 0,
             east: 0,
@@ -62,10 +96,11 @@ class IsraeliWhist {
         // button if they missed it.
         this.lastCompletedTrick = null;
         
+        // Browser integration that must exist before event binding.
         // Safari emergency fix - global click detector
         this.setupSafariEmergencyFix();
         
-        // Phase 1 - Trump bidding
+        // Phase 1 state: trump bidding.
         this.phase1Bids = {
             north: null,
             east: null,
@@ -76,7 +111,7 @@ class IsraeliWhist {
         this.trumpSuit = null;
         this.minimumTakes = 0;
         
-        // Phase 2 - Takes bidding 
+        // Phase 2 state: takes prediction.
         this.phase2Bids = {
             north: null,
             east: null,
@@ -84,7 +119,7 @@ class IsraeliWhist {
             west: null
         };
         
-        // Phase 3 - Playing
+        // Phase 3 state: trick play.
         this.tricksWon = {
             north: 0,
             east: 0,
@@ -95,7 +130,7 @@ class IsraeliWhist {
         this.trickLeader = 2;
         this.tricksPlayed = 0;
         
-        // Game state
+        // Cross-phase state machine and shared controls.
         this.currentPhase = 'dealing'; // dealing, phase1, phase2, phase3, scoring
         this.currentBidder = null;
         this.passCount = 0;
@@ -108,21 +143,23 @@ class IsraeliWhist {
         this.cardsDisplayed = false; // Flag to prevent redrawing cards
          this.handType = null; // 'over' or 'under' based on Phase 2 total
         
-        // Button selection state
+        // Human bidding-control selection state.
         this.selectedTricks = null;
         this.selectedSuit = null;
         this.phase2BiddingExpanded = false; // Track if user has expanded Phase 2 bidding view
         
-        // Advanced AI System - Enhanced card tracking and prediction
+        // Advanced AI / memory state. Session-scoped learning survives full hands;
+        // hand-scoped trackers are cleared by resetBotMemory().
         this.botMemory = {
-            cardsSeen: [], // All cards seen during play
+            // Session-scoped observations and bidding personalities.
+            cardsSeen: [], // Append-only observed-card log for the session
             playerPatterns: {
                 north: { biddingStyle: 'conservative', accuracy: 0.8, riskTolerance: 0.2, learningData: [] }, // Botti is very conservative
                 east: { biddingStyle: 'balanced', accuracy: 0.75, riskTolerance: 0.4, learningData: [] }, // Droidi is more balanced
                 south: { biddingStyle: 'human', accuracy: 0.6, riskTolerance: 0.5, learningData: [] },
                 west: { biddingStyle: 'conservative', accuracy: 0.75, riskTolerance: 0.25, learningData: [] } // Chati is conservative too
             },
-            // ADVANCED: Player behavior profiling
+            // Session-scoped dynamic behavior profiles built from observed play.
             behaviorProfiles: {
                 north: { phase1History: [], phase2History: [], playingStyle: 'unknown', confidence: 0 },
                 east: { phase1History: [], phase2History: [], playingStyle: 'unknown', confidence: 0 },
@@ -130,15 +167,17 @@ class IsraeliWhist {
                 west: { phase1History: [], phase2History: [], playingStyle: 'unknown', confidence: 0 }
             },
             gameHistory: [], // Historical data for learning
+            // Hand-scoped card trackers; resetBotMemory() clears these.
             cardsPlayed: { north: [], east: [], south: [], west: [] },
             suitDistribution: { clubs: 13, diamonds: 13, hearts: 13, spades: 13 },
             trumpsPlayed: [], // Track all trump cards played
-            suitVoids: { // Track which players are void in which suits
+            suitVoids: { // Authoritative once a player fails to follow suit
                 north: { clubs: false, diamonds: false, hearts: false, spades: false },
                 east: { clubs: false, diamonds: false, hearts: false, spades: false },
                 south: { clubs: false, diamonds: false, hearts: false, spades: false },
                 west: { clubs: false, diamonds: false, hearts: false, spades: false }
             },
+            // Derived estimates refreshed from the card trackers, not set by hand.
             probabilityModel: {
                 remainingCards: {},
                 playerLikelyHoldings: { north: {}, east: {}, south: {}, west: {} },
@@ -168,7 +207,12 @@ class IsraeliWhist {
         return colors[player] || '#ffffff';
     }
 
-    // Colored console logging for players
+    /**
+     * Logs a game event using the player's console color when a seat is known.
+     * Use instead of console.log for per-player state transitions.
+     * @param {string} message Message to log.
+     * @param {string|null} player Optional compass key for color selection.
+     */
     logPlayer(message, player = null) {
         if (player && this.getPlayerColor(player)) {
             console.log(`%c${message}`, `color: ${this.getPlayerColor(player)}; font-weight: bold;`);
@@ -439,6 +483,10 @@ class IsraeliWhist {
         return true;
     }
 
+    /**
+     * Deals a fresh 13-card hand to each compass seat and enters Phase 1 bidding.
+     * Side effects: hides Deal, resets hands/currentBidder, renders cards, disables play selection, and prompts south.
+     */
     dealCards() {
           
           // Hide the deal button after it's clicked
@@ -889,6 +937,12 @@ class IsraeliWhist {
         extendedContent.innerHTML = tableHTML;
     }
 
+    /**
+     * Records south's selected Phase 1 trump bid.
+     * @param {number} minTakes Minimum tricks promised; official bids must be at least 5.
+     * @param {string} trumpSuit Suit key or "notrump"; selected UI state must match before calling.
+     * Side effects: updates phase1Bids, hides bidding UI, and schedules the next bidder.
+     */
     makePhase1Bid(minTakes, trumpSuit) {
         if (!this.selectedTricks || !this.selectedSuit) {
             this.showGameNotification('Please select both tricks and trump suit before bidding!', 'warning');
@@ -921,12 +975,17 @@ class IsraeliWhist {
         // Hide bidding interface after bid
         this.hideBiddingInterface();
         
-        // Move to next player after animation
+        // Legacy 1500ms pacing matches the bid animation duration; most newer timers
+        // go through getDelay(), but changing this would alter Phase 1 feel.
         setTimeout(() => {
             this.nextPhase1Bidder();
         }, 1500);
     }
 
+    /**
+     * Transitions from trump bidding to takes prediction.
+     * Invariant: trumpWinner/trumpSuit/minimumTakes are already set; bidding starts at trumpWinner and moves clockwise.
+     */
     startPhase2() {
 
         this.currentPhase = 'phase2';
@@ -1045,6 +1104,12 @@ class IsraeliWhist {
         }
     }
 
+    /**
+     * Records one player's Phase 2 trick prediction and advances the bidding order.
+     * @param {string} player Compass player key.
+     * @param {number} takes Predicted trick count; trumpWinner must meet minimumTakes.
+     * Side effects: refreshes displays and starts Phase 3 once all four bids exist.
+     */
     makePhase2Bid(player, takes) {
         // Validate minimum bid for trump winner
         if (player === this.trumpWinner && takes < this.minimumTakes) {
@@ -1090,6 +1155,10 @@ class IsraeliWhist {
         }
     }
 
+    /**
+     * Chooses and submits a legal Phase 2 prediction for the current bot bidder.
+     * Side effects: uses hand-strength/opponent models and avoids the forbidden total of exactly 13.
+     */
     botMakePhase2Bid() {
         const player = this.players[this.currentBidder];
         
@@ -1478,6 +1547,10 @@ class IsraeliWhist {
         return Math.min(sequenceValue, 0.8); // Cap sequence bonus
     }
     
+    /**
+     * Summarizes recent bid-vs-result learning data across playerPatterns.
+     * @returns {{averageOverbid:number,sampleSize:number}} Table tendency used to adjust bot bids.
+     */
     analyzeOpponentBids() {
         // Analyze patterns in opponent bidding for strategic adjustment
         let totalOverbid = 0;
@@ -1503,6 +1576,10 @@ class IsraeliWhist {
         };
     }
 
+    /**
+     * Transitions from Phase 2 predictions into trick play.
+     * Sets handType from total bids, logs all hands for debugging, and starts the first trick.
+     */
     startPhase3() {
 
         this.currentPhase = 'phase3';
@@ -1567,7 +1644,8 @@ class IsraeliWhist {
                 this.onCardClick(newCard);
             };
             
-            // Check if this is Safari (exclude Chrome and Edge) and handle accordingly
+            // Safari can swallow direct listeners on transformed touch cards, so it
+            // takes the document-level emergency path while other browsers use normal handlers.
             const isSafari = navigator.userAgent.indexOf('Safari') > -1 && 
                            navigator.userAgent.indexOf('Chrome') === -1 && 
                            navigator.userAgent.indexOf('Edg') === -1;
@@ -1862,6 +1940,11 @@ class IsraeliWhist {
     
     // Card highlighting methods removed
 
+    /**
+     * Translates a clicked south-hand DOM card into a hand index and calls playCard().
+     * Side effects: ignores stale/out-of-turn clicks before touching game state.
+     * @param {HTMLElement} cardElement Rendered card element from #south-cards.
+     */
     onCardClick(cardElement) {
         console.log('🎯 onCardClick called with element:', cardElement);
         console.log('🎯 Browser:', navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1 ? 'Safari' : 'Other');
@@ -1924,6 +2007,12 @@ class IsraeliWhist {
         this.playCard('south', cardIndex);
     }
 
+    /**
+     * Plays a card for the current seat if turn ownership and follow-suit rules allow it.
+     * @param {string} player Compass player key.
+     * @param {number} cardIndex Index in that player's current hand.
+     * Side effects: updates memory, removes/renders the card, and schedules the next step.
+     */
     playCard(player, cardIndex) {
         // Turn-ownership guard (D2.1): playCard is reachable from onCardClick,
         // botPlayCard, and the Safari emergency global click listener. Without
@@ -2024,6 +2113,12 @@ class IsraeliWhist {
         }
     }
     
+    /**
+     * Checks follow-suit legality for a proposed card in the current trick.
+     * @param {string} player Compass player key.
+     * @param {{rank:string,suit:string}} card Card object from the player's hand.
+     * @returns {boolean} True when led suit is followed, unavailable, or no card has been led.
+     */
     isValidCardPlay(player, card) {
         // If this is the first card of the trick, any card is valid
         if (this.currentTrick.length === 0) {
@@ -2076,6 +2171,12 @@ class IsraeliWhist {
         this.trackPlayedCard(player, card);
     }
     
+    /**
+     * Updates hand-scoped card trackers after a played card is rendered on the table.
+     * @param {string} player Compass player key.
+     * @param {{rank:string,suit:string}} card Card that was played.
+     * Side effects: tracks trumps, suit distribution, voids, and trump estimates.
+     */
     trackPlayedCard(player, card) {
         // Add to cards played by this player
         this.botMemory.cardsPlayed[player].push(card);
@@ -2102,6 +2203,10 @@ class IsraeliWhist {
         this.updateTrumpEstimates();
     }
     
+    /**
+     * Refreshes botMemory.probabilityModel.trumpEstimates from played trumps and visible hands.
+     * Side effect: writes per-player estimates; current implementation can inspect this.hands directly.
+     */
     updateTrumpEstimates() {
         const totalTrumpsPlayed = this.botMemory.trumpsPlayed.length;
         const trumpsRemaining = 13 - totalTrumpsPlayed;
@@ -2124,6 +2229,10 @@ class IsraeliWhist {
         });
     }
      
+    /**
+     * Resolves a full four-card trick and schedules either the next trick or scoring.
+     * Side effects: increments trick totals, snapshots lastCompletedTrick, animates the win, and updates leader.
+     */
     completeTrick() {
         // Defensive guard: completeTrick is scheduled via setTimeout from
         // playCard, so by the time it fires the trick may have already been
@@ -2305,6 +2414,10 @@ class IsraeliWhist {
         }, 2000);
     }
     
+    /**
+     * Determines who won the current four-card trick under trump/lead-suit rules.
+     * @returns {string} Compass player key for the winning play.
+     */
     determineTrickWinner() {
         if (this.currentTrick.length !== 4) {
             console.error('Cannot determine winner of incomplete trick');
@@ -2631,6 +2744,10 @@ class IsraeliWhist {
         return strength;
     }
 
+    /**
+     * Advances trick play to the next clockwise seat after the last played card.
+     * Side effects: enables south card selection or schedules the next bot play.
+     */
     nextPlayerInTrick() {
          // Move to next player in clockwise order
          const lastPlayer = this.currentTrick[this.currentTrick.length - 1].player;
@@ -2652,6 +2769,10 @@ class IsraeliWhist {
         }
     }
 
+    /**
+     * Plays one card for the active bot seat, choosing lead/follow strategy as needed.
+     * @param {string|null} playerName Optional compass key; defaults to getCurrentPlayerIndex().
+     */
     botPlayCard(playerName = null) {
         if (!playerName) {
             const currentPlayerIndex = this.getCurrentPlayerIndex();
@@ -2681,6 +2802,11 @@ class IsraeliWhist {
         }
     }
     
+    /**
+     * Scores every legal lead card for a bot and returns the best hand index.
+     * @param {string} player Compass player key.
+     * @returns {number} Index in the bot's hand to lead.
+     */
     selectLeadCard(player) {
         const hand = this.hands[player];
         const handAnalysis = this.evaluateHandStrength(player);
@@ -2728,6 +2854,11 @@ class IsraeliWhist {
         return bestCardIndex;
     }
     
+    /**
+     * Scores legal follow cards for a bot while enforcing follow-suit selection.
+     * @param {string} player Compass player key.
+     * @returns {number} Index in the bot's hand to play.
+     */
     selectFollowCard(player) {
         const hand = this.hands[player];
         const leadSuit = this.currentTrick[0].card.suit;
@@ -4740,6 +4871,10 @@ class IsraeliWhist {
         return highest;
     }
 
+    /**
+     * Returns the index of the seat whose turn it is to play in the current trick.
+     * @returns {number} trickLeader when no card has been led; otherwise the seat after the last play.
+     */
     getCurrentPlayerIndex() {
         if (this.currentTrick.length === 0) {
             return this.trickLeader;
@@ -4859,6 +4994,11 @@ class IsraeliWhist {
         return cardDiv;
     }
 
+    /**
+     * Formats suit keys for UI/log output; prefer this over hard-coded symbols.
+     * @param {string} suit Suit key including "notrump".
+     * @returns {string} Display symbol or the original value for unknown keys.
+     */
     getSuitSymbol(suit) {
         const symbols = {
             clubs: '♣',
@@ -4870,6 +5010,11 @@ class IsraeliWhist {
         return symbols[suit] || suit;
     }
 
+    /**
+     * Formats suit keys as CSS colors; prefer this over hard-coded red/black checks.
+     * @param {string} suit Suit key.
+     * @returns {string} CSS color used when rendering card symbols.
+     */
     getSuitColor(suit) {
         const colors = {
             clubs: '#000000',      // Black
@@ -5683,6 +5828,10 @@ class IsraeliWhist {
         });
     }
 
+    /**
+     * Records south's Phase 1 pass and advances or resolves trump bidding.
+     * Side effects: marks south passed, hides controls, animates "Pass", and can trigger a redeal or Phase 2.
+     */
     passPhase1() {
         // Idempotency guard: a duplicate click (e.g. a queued/synthetic
         // double-tap, or an accessibility tool dispatching two click events
@@ -5726,7 +5875,8 @@ class IsraeliWhist {
             }
         }
         
-        // Move to next player after animation
+        // Legacy 1500ms pacing matches the pass animation duration; most newer timers
+        // go through getDelay(), but changing this would alter Phase 1 feel.
         setTimeout(() => {
             this.nextPhase1Bidder();
         }, 1500);
@@ -5780,6 +5930,10 @@ class IsraeliWhist {
         });
     }
 
+    /**
+     * Advances Phase 1 bidding clockwise to the next player who has not passed.
+     * May end Phase 1 when only one active bidder remains; keeps bots and human on the same path.
+     */
     nextPhase1Bidder() {
          // Guard: handle the "everyone passed" redeal BEFORE the do/while
          // below. Without this check, if every player has passed, the loop
@@ -5823,6 +5977,10 @@ class IsraeliWhist {
         }
     }
 
+    /**
+     * Runs the Phase 1 bidding heuristic for the current bot bidder.
+     * Side effects: may set phase1Bids, mark the bot passed, analyze hand strength, and schedule the next bidder.
+     */
     botMakePhase1Bid() {
         const player = this.players[this.currentBidder];
         
@@ -5949,6 +6107,10 @@ class IsraeliWhist {
         this.showBiddingInterface();
     }
 
+    /**
+     * Finds the highest non-passed Phase 1 bid using official suit ordering.
+     * @returns {{minTakes:number,trumpSuit:string}|null} Current live high bid.
+     */
     getCurrentHighestBid() {
         let highestBid = null;
 
@@ -5965,7 +6127,12 @@ class IsraeliWhist {
         return highestBid;
     }
 
-    // New function to validate if a bid is higher than the current highest bid
+    /**
+     * Compares a candidate Phase 1 bid against the current highest bid.
+     * @param {{minTakes:number,trumpSuit:string}} newBid Candidate bid.
+     * @param {{minTakes:number,trumpSuit:string}|null} currentHighestBid Current leader or null.
+     * @returns {boolean} True when newBid wins by tricks or same-tricks suit rank.
+     */
     isBidHigher(newBid, currentHighestBid) {
         if (!currentHighestBid) return true; // No current bid, so any bid is higher
         
@@ -6106,6 +6273,11 @@ class IsraeliWhist {
     }
 
     // Smart bot bidding functions
+    /**
+     * Builds the bot hand-analysis object used by bidding and card play.
+     * @param {string} player Compass player key.
+     * @returns {object} Strength, suit counts/qualities, distribution, and trick estimates.
+     */
     evaluateHandStrength(player) {
         const hand = this.hands[player];
         
@@ -6287,6 +6459,12 @@ class IsraeliWhist {
     }
     
     // Card counting and memory methods
+    /**
+     * Records a played card in botMemory's observation stream and derived models.
+     * @param {{rank:string,suit:string}} card Card that was played.
+     * @param {string} player Compass player key that played it.
+     * Side effects: updates cardsSeen/cardsPlayed/suitDistribution/high-card/probability data.
+     */
     updateCardMemory(card, player) {
         this.botMemory.cardsSeen.push({card, player, round: this.currentRound});
         this.botMemory.cardsPlayed[player].push(card);
@@ -6301,7 +6479,11 @@ class IsraeliWhist {
         this.updateProbabilityModel(card, player);
     }
     
-    // GUIDANCE: Track high cards for better prediction
+    /**
+     * Lazily initializes and updates rank-specific high-card memory for A/K/Q/J.
+     * @param {{rank:string,suit:string}} card Card that was played.
+     * @param {string} player Compass player key.
+     */
     trackHighCardPlayed(card, player) {
         // Initialize high card tracking if not exists
         if (!this.botMemory.highCardsPlayed) {
@@ -6367,6 +6549,11 @@ class IsraeliWhist {
         };
     }
     
+    /**
+     * Removes a newly seen card from other players' likely-holding buckets.
+     * @param {{rank:string,suit:string}} card Card that was played.
+     * @param {string} player Compass player key that played it.
+     */
     updateProbabilityModel(card, player) {
         // Remove card from possible holdings of other players
         Object.keys(this.botMemory.probabilityModel.playerLikelyHoldings).forEach(p => {
@@ -6616,6 +6803,11 @@ class IsraeliWhist {
         return Math.min(1.0, fit);
     }
 
+    /**
+     * Converts Phase 1 trump ordering to a numeric rank.
+     * @param {string} suit Suit key including "notrump".
+     * @returns {number} 1..5 for known suits, 0 for unknown values.
+     */
     getSuitRank(suit) {
         const suitRanks = {
             'clubs': 1,
@@ -6627,6 +6819,10 @@ class IsraeliWhist {
         return suitRanks[suit] || 0;
     }
 
+    /**
+     * Finalizes trump bidding by selecting the highest live bid or redealing if nobody bid.
+     * Side effects: sets trumpWinner/trumpSuit/minimumTakes and immediately starts Phase 2.
+     */
     endPhase1() {
         // Find highest bid (only from players who didn't pass).
         // Use isBidHigher so same-tricks-higher-trump bids correctly outrank
@@ -6668,6 +6864,10 @@ class IsraeliWhist {
         }
     }
 
+    /**
+     * Returns the UI/state machine to a fresh "dealing" hand without clearing full-game scores.
+     * Side effects: clears hands/bids/tricks, shuffles a deck, and resets hand-scoped bot memory.
+     */
     resetForNewHand() {
         this.currentPhase = 'dealing';
         
@@ -6804,12 +7004,13 @@ class IsraeliWhist {
         });
     }
      
-     // Scoring according to the in-game Rules Modal:
-     //   +10 per trick taken
-     //   +10 bonus if tricks == bid (exact)
-     //   -10 per trick over/under bid
-     // Net formula: tricks*10 + (exact ? +10 : -|bid - tricks|*10).
-     // Zero-bid hands take a different path through calculateZeroBidScore.
+     /**
+      * Calculates regular non-zero-bid scoring from the Rules modal.
+      * @param {string} player Compass key (kept for call-site symmetry).
+      * @param {number} bid Non-zero Phase 2 prediction.
+      * @param {number} tricksWon Actual tricks taken.
+      * @returns {number} 10/trick plus exact bonus or miss penalty.
+      */
      calculateScore(player, bid, tricksWon) {
          const base = tricksWon * 10;
          if (bid === tricksWon) {
@@ -6818,7 +7019,12 @@ class IsraeliWhist {
          return base - (Math.abs(bid - tricksWon) * 10);
      }
      
-     // Special scoring for zero bids according to official rules
+     /**
+      * Calculates the special scoring branch for a zero Phase 2 bid.
+      * @param {string} player Compass key (kept for call-site symmetry).
+      * @param {number} tricksWon Actual tricks taken.
+      * @returns {number} Hand-type-sensitive score delta for zero bids.
+      */
      calculateZeroBidScore(player, tricksWon) {
          if (tricksWon === 0) {
              // Zero bid, zero tricks: 50 points for Under, 25 for Over
@@ -6832,7 +7038,10 @@ class IsraeliWhist {
          }
      }
      
-     // End hand and calculate scores
+     /**
+      * Scores a completed gamlet and decides whether to continue or reset the full game.
+      * Side effects: updates scores/gamletHistory/AI learning, and may add to cumulativeScores.
+      */
      endHand() {
                  console.log('🏁 HAND COMPLETE - Final Results:');
         const results = Object.entries(this.tricksWon).map(([p, t]) => `${this.getPlayerDisplayName(p)}: ${t} tricks`).join(', ');
@@ -6944,6 +7153,7 @@ class IsraeliWhist {
                     finalScore: this.scores[player],
                     totalBids: this.getTotalBidsForPlayer(player)
                 };
+                // Add the completed full-game total to the session grand total.
                 this.cumulativeScores[player] += this.scores[player];
             });
             
@@ -7038,6 +7248,10 @@ class IsraeliWhist {
          }
      }
      
+     /**
+      * Advances to the next gamlet within the current full game.
+      * Preserves this.scores, refreshes displays/name state, and delegates hand cleanup to resetForNewHand().
+      */
      resetForNewGamlet() {
          console.log('=== RESETTING FOR NEW GAMLET ===');
          
@@ -7103,6 +7317,10 @@ class IsraeliWhist {
         console.log('New gamlet started fresh!');
      }
      
+     /**
+      * Starts a new full game after the 200-point/10-gamlet condition or New Game button.
+      * Resets full-game scores and gamlet number but leaves cumulativeScores as the session grand total.
+      */
      resetForNewFullGame() {
          console.log('=== RESETTING FOR NEW FULL GAME ===');
          
@@ -7168,6 +7386,10 @@ class IsraeliWhist {
          console.log('New full game started fresh!');
      }
      
+     /**
+      * Clears hand-scoped botMemory trackers for a fresh hand.
+      * Preserves session-scoped learning such as playerPatterns, behaviorProfiles, gameHistory, and cardsSeen.
+      */
      resetBotMemory() {
          // Reset all tracking for new hand
          this.botMemory.cardsPlayed = { north: [], east: [], south: [], west: [] };
@@ -7382,6 +7604,12 @@ class IsraeliWhist {
          }
          }
     
+    /**
+     * Shows a bottom-right toast and replaces any existing toast.
+     * @param {string} message Text/HTML-safe message content.
+     * @param {'info'|'warning'|'error'|'success'} type Visual style and icon.
+     * @param {number} duration Milliseconds before auto-dismiss.
+     */
     showGameNotification(message, type = 'info', duration = 3000) {
         // Remove any existing notifications
         const existingNotification = document.querySelector('.game-notification');
@@ -7534,6 +7762,11 @@ class IsraeliWhist {
         }
     }
 
+     /**
+      * Formats a compass player key as a display name without seat suffixes.
+      * @param {string} player Compass player key.
+      * @returns {string} Human-readable name, using botNames and stripping "(N/E/S/W)".
+      */
      getPlayerDisplayName(player) {
          const fullName = this.botNames[player] || player;
          // Remove position indicator in parentheses (e.g., "(N)", "(E)", "(S)", "(W)")
@@ -8349,11 +8582,19 @@ class IsraeliWhist {
         return colors[Math.floor(Math.random() * colors.length)];
     }
     
-    // Get delay time adjusted for fast mode (10x faster when enabled)
+    /**
+     * Single source of truth for Turbo pacing.
+     * @param {number} normalDelay Delay in ms at normal speed.
+     * @returns {number} Compressed delay when fastMode is on, with a 50ms floor.
+     */
     getDelay(normalDelay) {
         return this.fastMode ? Math.max(normalDelay / 10, 50) : normalDelay; // Minimum 50ms even in fast mode
     }
 
+    /**
+     * Installs Safari-only document-level card-click handling.
+     * Safari can drop direct listeners on transformed/touch cards, so this captures clicks globally and revalidates turn/phase.
+     */
     setupSafariEmergencyFix() {
         // Only apply for Safari (not Chrome, not Edge)
         const isSafari = navigator.userAgent.indexOf('Safari') > -1 && 

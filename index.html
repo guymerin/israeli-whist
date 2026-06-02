@@ -1,4 +1,12 @@
 <!DOCTYPE html>
+<!--
+Israeli Whist DOM map:
+- Top chrome contains Turbo, controls, status, and the generated score box.
+- .game-board is the compass table: north/east/west bots, south human, center trick/won piles.
+- Phase 1 and Phase 2 panels are present in the DOM and toggled by script.js.
+- Name/rules/hint/last-trick modals live after the board for JS show/hide flows.
+- Inline polyfills and the root script tag keep the app dependency-free.
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
