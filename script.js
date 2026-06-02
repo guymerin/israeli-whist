@@ -1899,6 +1899,26 @@ class IsraeliWhist {
     }
 
     playCard(player, cardIndex) {
+        // Turn-ownership guard (D2.1): playCard is reachable from onCardClick,
+        // botPlayCard, and the Safari emergency global click listener. Without
+        // these checks a stale timer, a duplicate Safari tap before
+        // nextPlayerInTrick() clears the .player-turn class, or a direct test
+        // call can play a card out of turn. Centralizing the guard here makes
+        // playCard itself the source of truth instead of relying on every
+        // caller to remember.
+        if (this.currentPhase !== 'phase3') {
+            return;
+        }
+        if (this.currentTrick.length >= 4) {
+            // Trick is full and waiting for completeTrick() to resolve it.
+            return;
+        }
+        const expectedPlayer = this.players[this.getCurrentPlayerIndex()];
+        if (player !== expectedPlayer) {
+            console.warn(`🚫 playCard rejected: not ${player}'s turn (expected ${expectedPlayer})`);
+            return;
+        }
+
         console.log('🎮 playCard called:', { player, cardIndex, handLength: this.hands[player]?.length });
         console.log('🎮 Current phase:', this.currentPhase);
         console.log('🎮 Current player index:', this.getCurrentPlayerIndex());
@@ -8204,7 +8224,21 @@ class IsraeliWhist {
                     console.log('🚨 Safari: Not in phase3, ignoring');
                     return;
                 }
-                
+
+                // Defense in depth for D6.1: even though playCard now enforces
+                // turn ownership, also guard here to avoid the visual feedback
+                // flash and the preventDefault/stopPropagation side effects on
+                // taps that should be ignored (e.g., a second quick tap before
+                // .player-turn is removed by nextPlayerInTrick()).
+                if (this.currentTrick.length >= 4) {
+                    console.log('🚨 Safari: Trick already full, ignoring');
+                    return;
+                }
+                if (this.getCurrentPlayerIndex() !== this.players.indexOf('south')) {
+                    console.log('🚨 Safari: Not south\'s turn, ignoring');
+                    return;
+                }
+
                 console.log('🚨 Safari: Valid card click detected!');
                 
                 // Find the card index by its position in the container
