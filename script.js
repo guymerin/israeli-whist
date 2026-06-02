@@ -951,6 +951,20 @@ class IsraeliWhist {
             if (trumpReminder) {
                 trumpReminder.textContent = this.getSuitSymbol(this.trumpSuit);
             }
+
+            // Update center trump indicator inside the predictions compass
+            const predictionTrump = document.getElementById('prediction-trump');
+            if (predictionTrump) {
+                predictionTrump.textContent = this.getSuitSymbol(this.trumpSuit);
+                predictionTrump.classList.remove('suit-red', 'suit-black', 'suit-nt');
+                if (this.trumpSuit === 'hearts' || this.trumpSuit === 'diamonds') {
+                    predictionTrump.classList.add('suit-red');
+                } else if (this.trumpSuit === 'spades' || this.trumpSuit === 'clubs') {
+                    predictionTrump.classList.add('suit-black');
+                } else if (this.trumpSuit === 'notrump') {
+                    predictionTrump.classList.add('suit-nt');
+                }
+            }
             
              // Refresh all Phase 2 displays
              this.refreshAllPhase2Displays();
