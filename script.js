@@ -5766,11 +5766,13 @@ class IsraeliWhist {
 
     getCurrentHighestBid() {
         let highestBid = null;
-        
+
+        // Use isBidHigher so same-tricks-higher-trump bids correctly outrank
+        // earlier same-tricks bids (e.g., 5NT outranks an earlier 5♣).
         for (const player of this.players) {
             const bid = this.phase1Bids[player];
             if (bid && !this.playersPassed[player]) {
-                if (!highestBid || bid.minTakes > highestBid.minTakes) {
+                if (this.isBidHigher(bid, highestBid)) {
                     highestBid = bid;
                 }
             }
@@ -6441,14 +6443,16 @@ class IsraeliWhist {
     }
 
     endPhase1() {
-        // Find highest bid (only from players who didn't pass)
+        // Find highest bid (only from players who didn't pass).
+        // Use isBidHigher so same-tricks-higher-trump bids correctly outrank
+        // earlier same-tricks bids.
         let highestBid = null;
         let trumpWinner = null;
-        
+
         for (const player of this.players) {
             const bid = this.phase1Bids[player];
             if (bid && !this.playersPassed[player]) {
-                if (!highestBid || bid.minTakes > highestBid.minTakes) {
+                if (this.isBidHigher(bid, highestBid)) {
                     highestBid = bid;
                     trumpWinner = player;
                 }
@@ -6615,16 +6619,18 @@ class IsraeliWhist {
         });
     }
      
-     // Scoring according to official Israeli Whist rules
+     // Scoring according to the in-game Rules Modal:
+     //   +10 per trick taken
+     //   +10 bonus if tricks == bid (exact)
+     //   -10 per trick over/under bid
+     // Net formula: tricks*10 + (exact ? +10 : -|bid - tricks|*10).
+     // Zero-bid hands take a different path through calculateZeroBidScore.
      calculateScore(player, bid, tricksWon) {
+         const base = tricksWon * 10;
          if (bid === tricksWon) {
-             // Exact bid: points = tricks² + 10
-             return (tricksWon * tricksWon) + 10;
-         } else {
-             // Failed bid: lose 10 points per trick over/under
-             const difference = Math.abs(bid - tricksWon);
-             return -(difference * 10);
+             return base + 10;
          }
+         return base - (Math.abs(bid - tricksWon) * 10);
      }
      
      // Special scoring for zero bids according to official rules
