@@ -2175,19 +2175,21 @@ class IsraeliWhist {
      * Updates hand-scoped card trackers after a played card is rendered on the table.
      * @param {string} player Compass player key.
      * @param {{rank:string,suit:string}} card Card that was played.
-     * Side effects: tracks trumps, suit distribution, voids, and trump estimates.
+     * Side effects: tracks trumps, void inference, and trump estimates.
+     *
+     * NOTE: cardsPlayed and suitDistribution are intentionally NOT mutated here.
+     * `updateCardMemory()` is the single source of truth for those two fields
+     * and is called from playCard() before this. Adding the writes here too
+     * (previous behavior) caused every played card to be double-counted in
+     * cardsPlayed, decremented suitDistribution twice, and poisoned
+     * updateTrumpEstimates' handSize math (13 - cardsPlayed.length) from trick
+     * 1 onward.
      */
     trackPlayedCard(player, card) {
-        // Add to cards played by this player
-        this.botMemory.cardsPlayed[player].push(card);
-        
         // Track if it's a trump
         if (card.suit === this.trumpSuit) {
             this.botMemory.trumpsPlayed.push({player, card});
         }
-        
-        // Update suit distribution
-        this.botMemory.suitDistribution[card.suit]--;
         
         // If this is the first trick and they don't follow suit, mark them as void
         if (this.currentTrick.length > 1) {
@@ -7142,22 +7144,17 @@ class IsraeliWhist {
             
             this.showGameNotification(`🎉 ${winnerDisplayName} WINS THE FULL GAME ${winReason}`, 'success', 5000);
              
-             // Save current full game data to history
-            const gameData = {
-                 gameNumber: this.gamletsPlayed + 1,
-                players: {}
-            };
-            
-            this.players.forEach(player => {
-                gameData.players[player] = {
-                    finalScore: this.scores[player],
-                    totalBids: this.getTotalBidsForPlayer(player)
-                };
-                // Add the completed full-game total to the session grand total.
-                this.cumulativeScores[player] += this.scores[player];
-            });
-            
-             this.gamletHistory.push(gameData);
+             // Update the session-long grand total. The per-gamlet record is
+             // already in gamletHistory (saveGamletToHistory ran a few lines
+             // above for this final gamlet) and consumed by
+             // updateExtendedScorecard, so we DON'T push a separate full-game
+             // record here — its shape differs from the per-gamlet shape and
+             // used to crash the scorecard render (see gameHistory shape
+             // mismatch bug found by code review).
+             this.players.forEach(player => {
+                 this.cumulativeScores[player] += this.scores[player];
+             });
+
              this.gamletsPlayed++;
              
              // Show full game completion and start new full game
