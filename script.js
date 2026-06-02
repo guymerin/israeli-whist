@@ -1010,7 +1010,25 @@ class IsraeliWhist {
                 button.disabled = false;
             });
         }
-        
+
+        // Over/under-13 rule: if south is the last bidder, the value that
+        // would make all four predictions sum to exactly 13 is illegal
+        // (see makePhase2Bid validation). Disable that button preemptively
+        // so the user sees what's allowed instead of getting a toast after
+        // clicking. (The trump winner bids first in Phase 2, so this only
+        // matters when south isn't the trump winner.)
+        const otherSeats = this.players.filter(p => p !== 'south');
+        const allOthersBid = otherSeats.every(p =>
+            this.phase2Bids[p] !== null && this.phase2Bids[p] !== undefined);
+        if (allOthersBid) {
+            const othersTotal = otherSeats.reduce((sum, p) => sum + this.phase2Bids[p], 0);
+            const forbidden = 13 - othersTotal;
+            if (forbidden >= 0 && forbidden <= 13) {
+                document.querySelectorAll(`.trick-btn[data-value="${forbidden}"]`)
+                    .forEach(btn => { btn.disabled = true; });
+            }
+        }
+
         // Show a message indicating it's the human player's turn
         const turnMessage = document.getElementById('turn-message');
         if (turnMessage) {
@@ -5514,6 +5532,21 @@ class IsraeliWhist {
 
     }
 
+    /**
+     * Shared handler for the "all four players passed" redeal. Hoisted out of
+     * passPhase1 / nextPhase1Bidder / botMakePhase1Bid (where it used to be
+     * copy-pasted) so a future change only has to happen in one place.
+     */
+    handleAllPassed() {
+        console.log('All players passed. Starting new hand.');
+        this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
+
+        // Animate human player cards to center and remove them, then redeal.
+        this.animateCardsToCenter(() => {
+            setTimeout(() => this.resetForNewHand(), this.getDelay(500));
+        });
+    }
+
     passPhase1() {
         this.logPlayer(`${this.getPlayerDisplayName('south')} passed`, 'south');
         this.playersPassed.south = true;
@@ -5530,13 +5563,7 @@ class IsraeliWhist {
         
         // Check if all 4 players have passed
         if (this.passCount >= 4) {
-            console.log('All players passed. Starting new hand.');
-            this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
-            
-            // Animate human player cards to center and remove them
-            this.animateCardsToCenter(() => {
-                setTimeout(() => this.resetForNewHand(), this.getDelay(500));
-            });
+            this.handleAllPassed();
             return;
         }
         
@@ -5609,24 +5636,23 @@ class IsraeliWhist {
     }
 
     nextPhase1Bidder() {
+         // Guard: handle the "everyone passed" redeal BEFORE the do/while
+         // below. Without this check, if every player has passed, the loop
+         // looking for an un-passed player would never terminate (latent
+         // infinite loop). All current callers already guard for this, but
+         // the safety net belongs here so future callers can't accidentally
+         // hang the tab.
+         if (this.passCount >= 4) {
+             this.handleAllPassed();
+             return;
+         }
+
          // Move to next player in clockwise order, skipping those who have passed
         do {
             this.currentBidder = (this.currentBidder + 1) % 4;
         } while (this.playersPassed[this.players[this.currentBidder]]);
         
         const player = this.players[this.currentBidder];
-        
-        // Check if all 4 players have passed
-        if (this.passCount >= 4) {
-            console.log('All players passed. Starting new hand.');
-            this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
-            
-            // Animate human player cards to center and remove them
-            this.animateCardsToCenter(() => {
-                setTimeout(() => this.resetForNewHand(), this.getDelay(500));
-            });
-            return;
-        }
         
         // Check if 3 players have passed
         if (this.passCount >= 3) {
@@ -5747,13 +5773,7 @@ class IsraeliWhist {
             
             // Check if all 4 players have passed
             if (this.passCount >= 4) {
-                console.log('All players passed. Starting new hand.');
-                this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
-                
-                // Animate human player cards to center and remove them
-                this.animateCardsToCenter(() => {
-                    setTimeout(() => this.resetForNewHand(), this.getDelay(500));
-                });
+                this.handleAllPassed();
                 return;
             }
             
