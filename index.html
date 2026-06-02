@@ -53,7 +53,8 @@
         <div class="game-control-buttons">
             <button id="new-game-btn" class="new-game-btn">🔄 New Game</button>
             <button id="rules-btn" class="rules-btn">📖 Rules</button>
-            <button id="hint-btn" class="hint-btn">💡 Hint</button>
+            <button id="hint-btn" class="hint-btn" aria-pressed="false">💡 Hint</button>
+            <button id="last-trick-btn" class="last-trick-btn" disabled title="View the last completed trick">🔁 Last Trick</button>
 
         </div>
         
@@ -183,7 +184,6 @@
                 <div class="button-row">
                     <button id="bid-btn" class="action-btn">Bid</button>
                     <button id="pass-btn" class="action-btn">Pass</button>
-                    <button id="skip-btn" class="action-btn">Skip</button>
                 </div>
             </div>
         </div>
@@ -218,6 +218,7 @@
                         <span class="player-name">Chati:</span>
                         <span id="west-prediction" class="prediction-value">-</span>
                     </div>
+                    <div class="prediction-trump" id="prediction-trump" title="Trump suit"></div>
                 </div>
                 <div class="prediction-total" style="display: none;">
                     <span id="prediction-total">0</span> 
@@ -369,6 +370,24 @@
             </div>
             <div class="hint-footer">
                 <button class="hint-btn-close" id="hint-btn-close">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Last Trick Modal -->
+    <div id="last-trick-modal" class="last-trick-modal" style="display: none;">
+        <div class="last-trick-content">
+            <div class="last-trick-header">
+                <h3>🔁 Last Trick <span id="last-trick-number"></span></h3>
+                <button class="last-trick-close" id="last-trick-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="last-trick-body">
+                <div class="last-trick-grid" id="last-trick-grid">
+                    <!-- Populated by JavaScript -->
+                </div>
+                <div class="last-trick-winner">
+                    Winner: <strong id="last-trick-winner-name">-</strong>
+                </div>
             </div>
         </div>
     </div>
