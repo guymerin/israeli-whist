@@ -628,11 +628,19 @@ h1 {
     pointer-events: none;
 }
 
+.card-top-section {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
 .card-rank {
-    font-size: 28px;
+    font-size: 20px;
     font-weight: 900;
     line-height: 1;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
     pointer-events: none;
 }
 
@@ -645,13 +653,14 @@ h1 {
 }
 
 .card-center-suit {
-    font-size: 52px;
+    font-size: 42px;
     text-align: center;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.7;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    opacity: 0.8;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
     pointer-events: none;
 }

@@ -36,6 +36,7 @@ class IsraeliWhist {
     constructor() {
         // Seat identity and clockwise turn order.
         this.players = ['north', 'east', 'south', 'west'];
+        this.southIndex = this.players.indexOf('south'); // always 2; named to avoid magic number
         this.playerName = 'Player'; // Human player's name (default)
         this.botNames = {
             north: 'Botti (N)',
@@ -1030,7 +1031,7 @@ class IsraeliWhist {
     }
 
     promptPhase2Bidder() {
-        if (this.currentBidder === 2) { // South (human)
+        if (this.currentBidder === this.southIndex) { // South (human)
             this.showPhase2Interface();
              // Show human player's prediction controls
              this.showHumanPhase2Controls();
@@ -1209,7 +1210,7 @@ class IsraeliWhist {
         this.currentBidder = (this.currentBidder + 1) % 4;
 
         
-          if (this.currentBidder === 2) { // Back to South (human player)
+          if (this.currentBidder === this.southIndex) { // Back to South (human player)
               // Human player's turn to bid
               this.promptPhase2Bidder();
         } else {
@@ -1676,7 +1677,7 @@ class IsraeliWhist {
          // According to official rules, trump winner leads first trick
          this.trickLeader = this.players.indexOf(this.trumpWinner);
         
-         if (this.trickLeader === 2) { // South (human player)
+         if (this.trickLeader === this.southIndex) { // South (human player)
             this.enableCardSelection();
         } else {
             this.disableCardSelection();
@@ -1785,7 +1786,7 @@ class IsraeliWhist {
         const southHand = this.hands && this.hands['south'];
         if (!southHand || southHand.length <= 1) return;
         if (this.currentPhase !== 'phase3') return;
-        if (this.getCurrentPlayerIndex() !== 2) return;
+        if (this.getCurrentPlayerIndex() !== this.southIndex) return;
 
         let bestIndex;
         try {
@@ -2028,7 +2029,7 @@ class IsraeliWhist {
             // Trick is already complete and waiting to be resolved.
             return;
         }
-        if (this.getCurrentPlayerIndex() !== 2) {
+        if (this.getCurrentPlayerIndex() !== this.southIndex) {
             // Not south's turn — ignore stale clicks left over from the
             // previous player-turn window.
             return;
@@ -2373,7 +2374,7 @@ class IsraeliWhist {
         
         // Start next trick after animation completes
         setTimeout(() => {
-            if (this.trickLeader === 2) { // South (human player)
+            if (this.trickLeader === this.southIndex) { // South (human player)
                 this.enableCardSelection();
             } else {
                 this.disableCardSelection();
@@ -2547,11 +2548,11 @@ class IsraeliWhist {
     }
     
     clearPlayedCards() {
-        // Clear all played card areas
-        ['north', 'east', 'south', 'west'].forEach(player => {
-            const playedCardDiv = document.getElementById(`${player}-played`);
-            if (playedCardDiv) {
-                playedCardDiv.innerHTML = '';
+        this.players.forEach(player => {
+            const el = document.getElementById(`${player}-played`);
+            if (el) {
+                el.innerHTML = '';
+                el.className = `played-card ${player}-played`;
             }
         });
     }
@@ -2570,31 +2571,13 @@ class IsraeliWhist {
     }
     
     clearTrickArea() {
-        // Clear the trick area and reset trick display
-        const trickArea = document.getElementById('trick-area');
-        if (trickArea) {
-            // Clear any trick animations or indicators
-            ['north', 'east', 'south', 'west'].forEach(player => {
-                const playedCardDiv = document.getElementById(`${player}-played`);
-                if (playedCardDiv) {
-                    playedCardDiv.innerHTML = '';
-                    playedCardDiv.className = `played-card ${player}-played`;
-                }
-            });
-        }
-        
-        // Clear won tricks display
-        ['north', 'east', 'south', 'west'].forEach(player => {
+        this.clearPlayedCards();
+
+        this.players.forEach(player => {
             const wonTricksDiv = document.getElementById(`${player}-won`);
-            if (wonTricksDiv) {
-                wonTricksDiv.innerHTML = '';
-            }
-            
-            // Reset trick counters
+            if (wonTricksDiv) wonTricksDiv.innerHTML = '';
             const trickCounter = document.getElementById(`${player}-tricks`);
-            if (trickCounter) {
-                trickCounter.innerHTML = '';
-            }
+            if (trickCounter) trickCounter.innerHTML = '';
         });
     }
     
@@ -2617,14 +2600,14 @@ class IsraeliWhist {
             if (this.currentPhase === 'phase3' && this.currentTrick.length < 4) {
                 setTimeout(() => {
                     const nextPlayerIndex = this.getCurrentPlayerIndex();
-                    if (nextPlayerIndex === 2) { // South (human player)
+                    if (nextPlayerIndex === this.southIndex) { // South (human player)
                         this.enableCardSelection();
                     }
                 }, 100);
             }
         }
     }
-    
+
     allPhase2BidsComplete() {
         // Check if all players have made their Phase 2 bids
         return this.players.every(player => 
@@ -2823,7 +2806,7 @@ class IsraeliWhist {
          const nextPlayerIndex = (lastPlayerIndex + 1) % 4; // Clockwise progression
         const nextPlayerName = this.players[nextPlayerIndex];
         
-        if (nextPlayerIndex === 2) {
+        if (nextPlayerIndex === this.southIndex) {
             // Human player's turn - add small delay to ensure trick state is updated
             setTimeout(() => {
             this.enableCardSelection();
@@ -5002,57 +4985,35 @@ class IsraeliWhist {
     }
 
     createCardElement(card) {
-        // Add null check for card parameter
         if (!card || typeof card !== 'object') {
             console.warn('createCardElement called with invalid card:', card);
-            return this.createCardBack(); // Return a card back instead of crashing
+            return this.createCardBack();
         }
-        
+
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card';
-        
+
         const cardFace = document.createElement('div');
         cardFace.className = 'card-face';
-        
-        // Top-left corner
+
         const topSection = document.createElement('div');
         topSection.className = 'card-top-section';
-        topSection.style.position = 'absolute';
-        topSection.style.top = '8px';
-        topSection.style.left = '8px';
-        topSection.style.display = 'flex';
-        topSection.style.flexDirection = 'column';
-        topSection.style.alignItems = 'flex-start';
-        
+
         const rank = document.createElement('div');
         rank.className = 'card-rank';
-        rank.style.fontSize = '20px';
-        rank.style.fontWeight = '900';
-        rank.style.lineHeight = '1';
         rank.textContent = card.rank || '?';
-        rank.style.color = this.getSuitColor(card.suit);
-        
+        rank.style.color = this.getSuitColor(card.suit); // dynamic
         topSection.appendChild(rank);
-        
-        // Large center suit symbol
+
         const centerSuit = document.createElement('div');
         centerSuit.className = 'card-center-suit';
-        centerSuit.style.fontSize = '42px';
-        centerSuit.style.textAlign = 'center';
-        centerSuit.style.position = 'absolute';
-        centerSuit.style.top = '50%';
-        centerSuit.style.left = '50%';
-        centerSuit.style.transform = 'translate(-50%, -50%)';
-        centerSuit.style.fontWeight = 'bold';
-        centerSuit.style.opacity = '0.8';
-        centerSuit.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.3)';
         centerSuit.textContent = this.getSuitSymbol(card.suit);
-        centerSuit.style.color = this.getSuitColor(card.suit);
-        
+        centerSuit.style.color = this.getSuitColor(card.suit); // dynamic
+
         cardFace.appendChild(topSection);
         cardFace.appendChild(centerSuit);
         cardDiv.appendChild(cardFace);
-        
+
         return cardDiv;
     }
 
@@ -8710,7 +8671,7 @@ class IsraeliWhist {
                     console.log('🚨 Safari: Trick already full, ignoring');
                     return;
                 }
-                if (this.getCurrentPlayerIndex() !== this.players.indexOf('south')) {
+                if (this.getCurrentPlayerIndex() !== this.southIndex) {
                     console.log('🚨 Safari: Not south\'s turn, ignoring');
                     return;
                 }
