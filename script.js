@@ -813,6 +813,11 @@ class IsraeliWhist {
         const extendedContent = document.getElementById('extended-score-content');
         const viewTitle = document.getElementById('score-view-title');
         const toggleBtn = document.getElementById('extended-view-btn');
+        // The .expanded class on .total-score-box is what unlocks the wider
+        // layout in styles.css (~lines 93 and 2947). Without toggling it the
+        // 650px-wide extended scorecard renders inside a 180px container and
+        // overflows visibly.
+        const scoreBox = document.querySelector('.total-score-box');
         
         if (this.extendedViewActive) {
             // Show extended view
@@ -821,6 +826,7 @@ class IsraeliWhist {
             viewTitle.textContent = 'Game History';
             toggleBtn.textContent = '−';
             toggleBtn.title = 'Show current scores';
+            if (scoreBox) scoreBox.classList.add('expanded');
             this.generateExtendedScorecard();
         } else {
             // Show normal view
@@ -829,6 +835,7 @@ class IsraeliWhist {
             viewTitle.textContent = 'Total Score';
             toggleBtn.textContent = '+';
             toggleBtn.title = 'Show extended scorecard';
+            if (scoreBox) scoreBox.classList.remove('expanded');
         }
     }
 
@@ -954,8 +961,21 @@ class IsraeliWhist {
              console.error('Minimum bid must be 5 or higher');
             return;
         }
-        
 
+        // Defense-in-depth: also enforce strict-raise here, matching the UI
+        // guard in setupGameEventListeners (~line 5689). The UI already
+        // prevents this for normal clicks, but a direct/test/Safari-fallback
+        // call to makePhase1Bid would otherwise accept a non-raising bid.
+        const currentHighest = this.getCurrentHighestBid();
+        if (currentHighest && !this.isBidHigher({ minTakes, trumpSuit }, currentHighest)) {
+            this.showGameNotification(
+                `Your bid must be higher than ${currentHighest.minTakes} ${currentHighest.trumpSuit}.`,
+                'warning'
+            );
+            return;
+        }
+        
+        
         
         // Record the bid
         this.phase1Bids.south = {
@@ -1117,7 +1137,49 @@ class IsraeliWhist {
             console.error(`${playerDisplayName} must bid at least ${this.minimumTakes} as trump winner`);
             return;
         }
-        
+
+        // Defense-in-depth for the over/under rule: the four-player Phase 2
+        // total must not equal exactly 13. The south button handler at
+        // ~line 5734 already guards this for human clicks, but core
+        // makePhase2Bid is also called by bots and test paths, so enforce
+        // here too. Only the final bidder can actually make the total land
+        // on 13, so the check is conditional on being the last seat to bid.
+        const otherSeats = this.players.filter(p => p !== player);
+        const allOthersBid = otherSeats.every(p =>
+            this.phase2Bids[p] !== null && this.phase2Bids[p] !== undefined);
+        if (allOthersBid) {
+            const othersTotal = otherSeats.reduce(
+                (sum, p) => sum + this.phase2Bids[p], 0);
+            if (othersTotal + takes === 13) {
+                const playerDisplayName = this.getPlayerDisplayName(player);
+                console.error(`🚫 ${playerDisplayName} bid ${takes} would make Phase 2 total exactly 13 (forbidden)`);
+                if (player === 'south') {
+                    this.showGameNotification('The total of all bids cannot be exactly 13. Please choose a different number.', 'warning');
+                    return;
+                }
+                // For bots, auto-correct to the closest legal value rather
+                // than deadlocking. Prefer one higher; fall back to one lower
+                // when bumping would exceed 13 or violate the trump-winner
+                // minimum.
+                let corrected = takes + 1;
+                if (corrected > 13 ||
+                    (player === this.trumpWinner && corrected < this.minimumTakes)) {
+                    corrected = takes - 1;
+                }
+                if (corrected < 0 ||
+                    (player === this.trumpWinner && corrected < this.minimumTakes)) {
+                    // No legal corrected value exists with this seat order.
+                    // Leave the original (illegal) bid in place rather than
+                    // hard-crashing; the over/under-13 rule will be visibly
+                    // violated for this gamlet but the game continues.
+                    console.error(`🚫 No legal Phase 2 correction for ${playerDisplayName}; keeping ${takes}`);
+                } else {
+                    console.warn(`↩️ Auto-correcting ${playerDisplayName}'s Phase 2 bid from ${takes} to ${corrected} to avoid total=13`);
+                    takes = corrected;
+                }
+            }
+        }
+
                 this.phase2Bids[player] = takes;
         this.logPlayer(`🎯 PHASE 2: ${this.getPlayerDisplayName(player)} predicts ${takes} tricks`, player);
            
@@ -1167,7 +1229,11 @@ class IsraeliWhist {
         
          // Determine valid bid range - always allow bidding
         let minBid = 0;
-         let maxBid = 7; // Hard cap for bots - never allow bidding above 7
+         // Bots may legally predict up to 13 tricks. The previous cap of 7
+         // prevented strong hands (high HCP, long trump suit) from ever being
+         // bid honestly, which both hurt AI strength and made high-prediction
+         // gamlets impossible to assemble.
+         let maxBid = 13;
         
         // Trump winner must bid at least their Phase 1 minimum
         if (player === this.trumpWinner) {
