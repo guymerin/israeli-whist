@@ -1240,33 +1240,20 @@ class IsraeliWhist {
         if (player === this.trumpWinner) {
             minBid = this.minimumTakes;
         }
-        
-         // Handle the case where total would be exactly 13
-         // Instead of preventing bidding, adjust the bid to avoid exactly 13
-            if (currentTotal + minBid === 13) {
-             // If minimum bid would make total exactly 13, allow bidding 1 higher
-                minBid = Math.min(13, minBid + 1);
-        }
-        
+
+        // NOTE: the over/under rule (total ≠ 13) only constrains the LAST seat
+        // to bid — only it can actually land the running total on exactly 13.
+        // We intentionally do NOT push earlier bidders off a 13 subtotal here;
+        // makePhase2Bid() enforces the real constraint (with auto-correction)
+        // once all other seats have bid.
+
         // Smart bidding based on hand strength and current situation
         const handStrength = this.evaluateHandStrength(player);
         let takes = this.calculateSmartPhase2Bid(player, handStrength, currentTotal, minBid, maxBid);
-        
+
         // Ensure bid is within valid range
         takes = Math.max(minBid, Math.min(maxBid, takes));
-         
-         // Final check: if this bid would make total exactly 13, adjust it
-         if (currentTotal + takes === 13) {
-             if (takes < 13) {
-                 takes = takes + 1; // Bid one higher
-             } else {
-                 takes = takes - 1; // Bid one lower
-             }
 
-         }
-        
-
-        
         // Analyze bidding pattern for learning
         this.analyzeOpponentPattern(player, {
             type: 'bid',
@@ -2121,7 +2108,7 @@ class IsraeliWhist {
         if (!this.isValidCardPlay(player, card)) {
             console.error(`❌ Invalid card play: ${player} cannot play ${card.rank}${this.getSuitSymbol(card.suit)}`);
             console.log('🔍 Current trick:', this.currentTrick);
-            console.log('🔍 Lead suit:', this.leadSuit);
+            console.log('🔍 Lead suit:', this.currentTrick[0] ? this.currentTrick[0].card.suit : 'none');
             console.log('🔍 Trump suit:', this.trumpSuit);
             if (player === 'south') {
                 this.showGameNotification('You must follow suit if you can!', 'warning');
@@ -2277,24 +2264,38 @@ class IsraeliWhist {
      * Side effect: writes per-player estimates; current implementation can inspect this.hands directly.
      */
     updateTrumpEstimates() {
-        const totalTrumpsPlayed = this.botMemory.trumpsPlayed.length;
-        const trumpsRemaining = 13 - totalTrumpsPlayed;
-        
-        // Count known trump cards for each player
+        const trumpEstimates = this.botMemory.probabilityModel.trumpEstimates;
+
+        // A notrump contract has no trumps to estimate.
+        if (!this.trumpSuit || this.trumpSuit === 'notrump') {
+            this.players.forEach(player => { trumpEstimates[player] = 0; });
+            return;
+        }
+
+        const trumpsRemaining = Math.max(0, 13 - this.botMemory.trumpsPlayed.length);
+
+        // Estimate each seat's concealed trumps from PUBLIC information only —
+        // cards played and shown voids. We deliberately do NOT read any seat's
+        // actual hand (this.hands[player]); doing so let bots see opponents'
+        // exact trump counts, which both cheated and left the statistical
+        // branch dead. Seats known void in trump are excluded.
+        const handSizes = {};
+        let distributableCards = 0;
         this.players.forEach(player => {
-            const playerTrumpsPlayed = this.botMemory.trumpsPlayed.filter(t => t.player === player).length;
-            const knownHand = this.hands[player];
-            
-            if (knownHand) {
-                // For the current bot, count actual trump cards
-                const actualTrumps = knownHand.filter(card => card.suit === this.trumpSuit).length;
-                this.botMemory.probabilityModel.trumpEstimates[player] = actualTrumps;
-            } else {
-                // For other players, estimate based on cards played and statistical distribution
-                const handSize = 13 - this.botMemory.cardsPlayed[player].length;
-                const estimatedTrumps = Math.max(0, Math.round((trumpsRemaining / (handSize || 1)) * 0.8));
-                this.botMemory.probabilityModel.trumpEstimates[player] = estimatedTrumps;
-            }
+            const isVoid = this.botMemory.suitVoids[player] &&
+                this.botMemory.suitVoids[player][this.trumpSuit];
+            const handSize = isVoid ? 0 : 13 - this.botMemory.cardsPlayed[player].length;
+            handSizes[player] = handSize;
+            distributableCards += handSize;
+        });
+
+        // Spread the outstanding trumps across non-void hands in proportion to
+        // how many cards each seat still holds (hypergeometric expectation).
+        this.players.forEach(player => {
+            const expected = distributableCards > 0
+                ? (trumpsRemaining * handSizes[player]) / distributableCards
+                : 0;
+            trumpEstimates[player] = Math.round(expected);
         });
     }
      
@@ -2477,10 +2478,11 @@ class IsraeliWhist {
             }
         });
         
-        // Clear the cards after animation completes
+        // Clear the cards after animation completes (respect Turbo via getDelay
+        // so the next trick doesn't start before stale cards are cleared).
         setTimeout(() => {
             this.clearPlayedCards();
-        }, 2000);
+        }, this.getDelay(2000));
     }
     
     /**
@@ -3735,9 +3737,10 @@ class IsraeliWhist {
         const remaining = { clubs: [], diamonds: [], hearts: [], spades: [] };
         
         if (this.botMemory && this.botMemory.highCardsPlayed) {
+            const rankKeyMap = { A: 'aces', K: 'kings', Q: 'queens', J: 'jacks' };
             ['clubs', 'diamonds', 'hearts', 'spades'].forEach(suit => {
                 ['A', 'K', 'Q', 'J'].forEach(rank => {
-                    const rankKey = rank.toLowerCase() + 's';
+                    const rankKey = rankKeyMap[rank];
                     const rankArray = this.botMemory.highCardsPlayed[rankKey];
                     
                     let wasPlayed = false;
@@ -3915,8 +3918,9 @@ class IsraeliWhist {
     countRemainingHighCardsInSuit(suit) {
         let count = 0;
         if (this.botMemory && this.botMemory.highCardsPlayed) {
+            const rankKeyMap = { A: 'aces', K: 'kings', Q: 'queens', J: 'jacks' };
             ['A', 'K', 'Q', 'J'].forEach(rank => {
-                const rankKey = rank.toLowerCase() + 's';
+                const rankKey = rankKeyMap[rank];
                 const rankArray = this.botMemory.highCardsPlayed[rankKey];
                 
                 let wasPlayed = false;
@@ -7303,7 +7307,10 @@ class IsraeliWhist {
          
          // DON'T reset scores for new gamlet - scores carry over until full game ends
          // this.scores = { north: 0, east: 0, south: 0, west: 0 }; // Keep current scores!
-         this.currentRound = 1;
+         // Advance the round counter so per-gamlet learning data (cardsSeen,
+         // opponent patterns, the round filter in updateAILearning) is keyed to
+         // a unique value per gamlet instead of collapsing every gamlet to 1.
+         this.currentRound++;
          
          // Reset game state completely
          this.currentPhase = 'dealing';
