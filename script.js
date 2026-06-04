@@ -7115,17 +7115,18 @@ class IsraeliWhist {
      
      /**
       * Calculates regular non-zero-bid scoring from the Rules modal.
+      * Meeting the bid scores bid² + 10; missing it (over or under) loses 10
+      * for every trick of difference.
       * @param {string} player Compass key (kept for call-site symmetry).
       * @param {number} bid Non-zero Phase 2 prediction.
       * @param {number} tricksWon Actual tricks taken.
-      * @returns {number} 10/trick plus exact bonus or miss penalty.
+      * @returns {number} bid² + 10 on an exact hit, else −10 per trick of miss.
       */
      calculateScore(player, bid, tricksWon) {
-         const base = tricksWon * 10;
          if (bid === tricksWon) {
-             return base + 10;
+             return bid * bid + 10;
          }
-         return base - (Math.abs(bid - tricksWon) * 10);
+         return -10 * Math.abs(bid - tricksWon);
      }
      
      /**
