@@ -191,7 +191,30 @@ class IsraeliWhist {
                 }
             }
         };
-        
+
+        // ── Monte Carlo (PIMC) engine config ────────────────────────────────
+        // Bots reach world-class strength by sampling the unseen cards into
+        // consistent opponent hands and simulating playouts (see the mc* block
+        // after getCardValue). Card int codec: id = suitIndex*13 + rankIndex.
+        this._mcSuitIdx = { clubs: 0, diamonds: 1, hearts: 2, spades: 3 };
+        this._mcRankIdx = { '2': 0, '3': 1, '4': 2, '5': 3, '6': 4, '7': 5, '8': 6, '9': 7, '10': 8, 'J': 9, 'Q': 10, 'K': 11, 'A': 12 };
+        this._mcSuits = ['clubs', 'diamonds', 'hearts', 'spades'];
+        this._mcRanks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        this.mcEnabled = true; // master switch (benchmarks/tests can toggle)
+        this.mcConfig = {
+            // "Balanced" budget: strong but snappy. Phase 3 samples scale up as
+            // tricks remaining shrink (cheaper rollouts, precision matters more).
+            phase3SamplesEarly: 30, // >= 10 tricks left
+            phase3SamplesMid: 40,   // 5..9 tricks left
+            phase3SamplesLate: 50,  // <= 4 tricks left
+            phase3MinSamples: 8,    // below this, fall back to heuristic
+            phase2Deals: 200,
+            phase1Deals: 80,
+            maxMs: 200,             // per-decision wall-clock cap (normal)
+            maxMsTurbo: 80          // per-decision cap under Turbo (fastMode)
+        };
+        this._mcCache = {}; // per-(player, gamlet) phase1/phase2 results
+
         this.bindEvents();
         this._initModalA11y();
         this.initializeGame();
@@ -1293,12 +1316,19 @@ class IsraeliWhist {
         // more than nudging your own bid to massage the table total.
         const mean = Math.max(0, Math.min(13, trickEstimate));
 
-        // Uncertainty band around the estimate. Bolder bots (higher
-        // riskTolerance) accept a wider spread, which nudges them toward
-        // higher-variance, higher-ceiling bids; cautious bots tighten in.
+        // PREFERRED: an EMPIRICAL trick distribution from Monte Carlo — sample
+        // full deals consistent with this hand and the fixed trump, simulate the
+        // play, and histogram how many tricks we actually take. This is far more
+        // accurate than a hand-tuned point estimate. Falls back to the Gaussian
+        // band below when MC is disabled or sampling fails.
         const riskTolerance = playerPattern.riskTolerance;
-        const sigma = Math.max(0.6, 1.1 + (riskTolerance - 0.5) * 0.6);
-        const trickDist = this.buildTrickDistribution(mean, sigma);
+        let trickDist = this.mcTrickDistributionPhase2(player);
+        if (!trickDist) {
+            // Gaussian fallback: bolder bots (higher riskTolerance) accept a
+            // wider spread; cautious bots tighten in.
+            const sigma = Math.max(0.6, 1.1 + (riskTolerance - 0.5) * 0.6);
+            trickDist = this.buildTrickDistribution(mean, sigma);
+        }
 
         // Only the final seat to bid can push the four-seat total to exactly 13
         // (forbidden by the over/under rule); earlier seats are unconstrained.
@@ -2542,7 +2572,443 @@ class IsraeliWhist {
         };
         return rankValues[card.rank] || 0;
     }
-    
+
+    // ════════════════════════════════════════════════════════════════════
+    // MONTE CARLO (PIMC) ENGINE
+    //
+    // Determinized Monte Carlo: sample the unseen cards into consistent
+    // opponent hands, simulate playouts, average, pick the best action.
+    // Everything here works on plain SimState copies and integer card ids
+    // (id = suitIndex*13 + rankIndex). FAIRNESS: an MC decision for the acting
+    // seat reads only this.hands[acting] (its own cards) plus PUBLIC state
+    // (cardsPlayed, suitVoids, currentTrick, trumpSuit, bids). It must never
+    // read another seat's real hand — opponent hands are always sampled.
+    // ════════════════════════════════════════════════════════════════════
+
+    mcEncode(card) { return this._mcSuitIdx[card.suit] * 13 + this._mcRankIdx[card.rank]; }
+    mcDecode(id) { return { suit: this._mcSuits[(id / 13) | 0], rank: this._mcRanks[id % 13] }; }
+    mcSuitOf(id) { return (id / 13) | 0; }
+    mcRankOf(id) { return id % 13; } // 0..12 (ordering == face value)
+
+    /**
+     * Power of a card for winning the current trick. Higher wins. Mirrors the
+     * precedence in determineTrickWinner: trump > lead suit > off-suit.
+     */
+    mcCardPower(id, leadSuit, trumpIdx) {
+        const suit = (id / 13) | 0;
+        const rank = id % 13;
+        if (trumpIdx >= 0 && suit === trumpIdx) return 200 + rank;
+        if (suit === leadSuit) return 100 + rank;
+        return rank;
+    }
+
+    /**
+     * Winning seat of a complete-or-partial trick (array of {seat, card:int}).
+     * Integer mirror of determineTrickWinner — verified by tests/mc-parity.mjs.
+     */
+    mcTrickWinner(trick, trumpIdx) {
+        const leadSuit = (trick[0].card / 13) | 0;
+        let winSeat = trick[0].seat;
+        let winPow = this.mcCardPower(trick[0].card, leadSuit, trumpIdx);
+        for (let i = 1; i < trick.length; i++) {
+            const p = this.mcCardPower(trick[i].card, leadSuit, trumpIdx);
+            if (p > winPow) { winPow = p; winSeat = trick[i].seat; }
+        }
+        return winSeat;
+    }
+
+    /** In-place Fisher-Yates shuffle of an int array. */
+    _mcShuffle(a) {
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = (Math.random() * (i + 1)) | 0;
+            const t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+    }
+
+    /**
+     * Gather the public state needed to simulate from the acting seat's view.
+     * Reads this.hands ONLY for the acting seat. Returns null if inconsistent.
+     */
+    mcGatherPublicState(playerKey) {
+        const actingIdx = this.players.indexOf(playerKey);
+        if (actingIdx < 0 || !this.hands[playerKey]) return null;
+        const trumpIdx = (this.trumpSuit && this.trumpSuit !== 'notrump')
+            ? this._mcSuitIdx[this.trumpSuit] : -1;
+
+        const seen = new Uint8Array(52);
+        const ownHand = [];
+        for (const c of this.hands[playerKey]) { const id = this.mcEncode(c); ownHand.push(id); seen[id] = 1; }
+
+        const need = [0, 0, 0, 0];
+        const won = [0, 0, 0, 0];
+        const bids = [0, 0, 0, 0];
+        const voids = [];
+        for (let s = 0; s < 4; s++) {
+            const key = this.players[s];
+            const played = (this.botMemory && this.botMemory.cardsPlayed && this.botMemory.cardsPlayed[key]) || [];
+            for (const c of played) { const id = this.mcEncode(c); seen[id] = 1; }
+            need[s] = 13 - played.length;
+            won[s] = this.tricksWon[key] || 0;
+            const b = this.phase2Bids[key];
+            bids[s] = (b === null || b === undefined) ? 0 : b;
+            const v = (this.botMemory && this.botMemory.suitVoids && this.botMemory.suitVoids[key]) || {};
+            voids[s] = [!!v.clubs, !!v.diamonds, !!v.hearts, !!v.spades];
+        }
+
+        const trickInts = [];
+        for (const t of this.currentTrick) {
+            const id = this.mcEncode(t.card); seen[id] = 1;
+            trickInts.push({ seat: this.players.indexOf(t.player), card: id });
+        }
+
+        const pool = [];
+        for (let id = 0; id < 52; id++) if (!seen[id]) pool.push(id);
+
+        return { actingIdx, trumpIdx, ownHand, need, won, bids, voids, pool, trickInts, leader: this.trickLeader };
+    }
+
+    _mcAllowedCount(card, others, ps, relax) {
+        const suit = (card / 13) | 0; let c = 0;
+        for (const s of others) if (relax || !ps.voids[s][suit]) c++;
+        return c;
+    }
+
+    /**
+     * One constrained dealing attempt: distribute the unseen pool to the three
+     * non-acting seats respecting hand-size (need) and void constraints. Cards
+     * with the fewest legal homes are placed first. Returns per-seat int hands
+     * or null on a dead end.
+     */
+    _mcTryDeal(others, ps, relax) {
+        const cap = {}; const hands = {};
+        for (const s of others) { cap[s] = ps.need[s]; hands[s] = []; }
+        const cards = ps.pool.slice();
+        this._mcShuffle(cards);
+        cards.sort((a, b) => this._mcAllowedCount(a, others, ps, relax) - this._mcAllowedCount(b, others, ps, relax));
+        for (const card of cards) {
+            const suit = (card / 13) | 0;
+            let n = 0; const allowed = [];
+            for (const s of others) if (cap[s] > 0 && (relax || !ps.voids[s][suit])) allowed.push(s);
+            if (allowed.length === 0) return null;
+            const chosen = allowed[(Math.random() * allowed.length) | 0];
+            hands[chosen].push(card); cap[chosen]--;
+        }
+        return hands;
+    }
+
+    /**
+     * Sample one consistent full 4-hand deal. Acting seat keeps its real hand;
+     * the other three are dealt the unseen pool. Retries, then relaxes voids,
+     * then returns null (caller falls back to a heuristic).
+     */
+    mcSampleDeal(ps) {
+        const others = [];
+        for (let s = 0; s < 4; s++) if (s !== ps.actingIdx) others.push(s);
+        let hands = null;
+        for (let attempt = 0; attempt < 8 && !hands; attempt++) hands = this._mcTryDeal(others, ps, false);
+        if (!hands) hands = this._mcTryDeal(others, ps, true); // relax voids as last resort
+        if (!hands) return null;
+        const deal = [null, null, null, null];
+        deal[ps.actingIdx] = ps.ownHand.slice();
+        for (const s of others) deal[s] = hands[s];
+        return deal;
+    }
+
+    /**
+     * Fast rollout policy: pick a move index for `seat`. If the seat still wants
+     * tricks (bidGap > 0, or allWant), win as cheaply as possible else keep low;
+     * otherwise duck (dump the highest card that loses, else lowest). Integer
+     * only — no DOM, no evaluate* heuristics.
+     */
+    mcRolloutMove(sim, seat, hand, leadSuit, trumpIdx) {
+        const n = hand.length;
+        const wants = sim.allWant ? true : (sim.bids[seat] - sim.tricksWon[seat]) > 0;
+
+        if (leadSuit < 0) {
+            // Leading: high if we want tricks, low if we want to duck.
+            let pick = 0, bestR = wants ? -1 : 99;
+            for (let i = 0; i < n; i++) {
+                const r = hand[i] % 13;
+                if (wants ? r > bestR : r < bestR) { bestR = r; pick = i; }
+            }
+            return pick;
+        }
+
+        let mustFollow = false;
+        for (let i = 0; i < n; i++) { if (((hand[i] / 13) | 0) === leadSuit) { mustFollow = true; break; } }
+
+        let bestPow = -1;
+        for (let k = 0; k < sim.trick.length; k++) {
+            const p = this.mcCardPower(sim.trick[k].card, leadSuit, trumpIdx);
+            if (p > bestPow) bestPow = p;
+        }
+
+        if (wants) {
+            let win = -1, winRank = 99, low = 0, lowRank = 99;
+            for (let i = 0; i < n; i++) {
+                if (mustFollow && ((hand[i] / 13) | 0) !== leadSuit) continue;
+                const id = hand[i], r = id % 13;
+                if (r < lowRank) { lowRank = r; low = i; }
+                if (this.mcCardPower(id, leadSuit, trumpIdx) > bestPow && r < winRank) { winRank = r; win = i; }
+            }
+            return win >= 0 ? win : low;
+        } else {
+            let dump = -1, dumpRank = -1, low = 0, lowRank = 99;
+            for (let i = 0; i < n; i++) {
+                if (mustFollow && ((hand[i] / 13) | 0) !== leadSuit) continue;
+                const id = hand[i], r = id % 13;
+                if (r < lowRank) { lowRank = r; low = i; }
+                if (this.mcCardPower(id, leadSuit, trumpIdx) <= bestPow && r > dumpRank) { dumpRank = r; dump = i; }
+            }
+            return dump >= 0 ? dump : low;
+        }
+    }
+
+    /**
+     * Play a SimState to completion using the rollout policy. MUTATES sim
+     * (hands, trick, tricksWon — all caller-owned copies). Returns tricksWon.
+     */
+    mcPlayout(sim) {
+        const trumpIdx = sim.trumpIdx;
+        let remaining = sim.hands[0].length + sim.hands[1].length + sim.hands[2].length + sim.hands[3].length;
+        while (remaining > 0) {
+            const seat = sim.trick.length === 0 ? sim.leader : (sim.trick[sim.trick.length - 1].seat + 1) % 4;
+            const leadSuit = sim.trick.length ? ((sim.trick[0].card / 13) | 0) : -1;
+            const hand = sim.hands[seat];
+            const idx = this.mcRolloutMove(sim, seat, hand, leadSuit, trumpIdx);
+            const card = hand[idx];
+            hand.splice(idx, 1);
+            remaining--;
+            sim.trick.push({ seat, card });
+            if (sim.trick.length === 4) {
+                const w = this.mcTrickWinner(sim.trick, trumpIdx);
+                sim.tricksWon[w]++;
+                sim.leader = w;
+                sim.trick.length = 0;
+            }
+        }
+        return sim.tricksWon;
+    }
+
+    _mcDeadline() {
+        return performance.now() + (this.fastMode ? this.mcConfig.maxMsTurbo : this.mcConfig.maxMs);
+    }
+
+    /**
+     * PIMC card selection for Phase 3. Returns the hand index to play, or null
+     * to defer to the heuristic selector. Uses common random deals across all
+     * candidate cards (variance reduction) and scores each by the acting seat's
+     * own expected score (its bid vs simulated final tricks).
+     */
+    mcSelectCardPhase3(playerKey) {
+        const ps = this.mcGatherPublicState(playerKey);
+        if (!ps) return null;
+        const acting = ps.actingIdx;
+        const ownHand = ps.ownHand;
+
+        // Legal moves of the real hand (follow suit if able).
+        const leadSuit = ps.trickInts.length ? ((ps.trickInts[0].card / 13) | 0) : -1;
+        let mustFollow = false;
+        if (leadSuit >= 0) for (let i = 0; i < ownHand.length; i++) { if (((ownHand[i] / 13) | 0) === leadSuit) { mustFollow = true; break; } }
+        const legal = [];
+        for (let i = 0; i < ownHand.length; i++) {
+            if (mustFollow && ((ownHand[i] / 13) | 0) !== leadSuit) continue;
+            legal.push(i);
+        }
+        if (legal.length <= 1) return legal.length === 1 ? legal[0] : null;
+
+        const tricksRemaining = 13 - this.tricksPlayed;
+        let N;
+        if (tricksRemaining >= 10) N = this.mcConfig.phase3SamplesEarly;
+        else if (tricksRemaining >= 5) N = this.mcConfig.phase3SamplesMid;
+        else N = this.mcConfig.phase3SamplesLate;
+
+        const deadline = this._mcDeadline();
+        const deals = [];
+        for (let i = 0; i < N; i++) {
+            if (performance.now() > deadline) break;
+            const d = this.mcSampleDeal(ps);
+            if (d) deals.push(d);
+        }
+        if (deals.length < this.mcConfig.phase3MinSamples) return null;
+
+        const bid = ps.bids[acting];
+        const handType = this.handType;
+        let bestIdx = legal[0], bestAvg = -Infinity;
+        for (const cIdx of legal) {
+            const card = ownHand[cIdx];
+            let sum = 0;
+            for (const d of deals) {
+                const sim = {
+                    hands: [d[0].slice(), d[1].slice(), d[2].slice(), d[3].slice()],
+                    trumpIdx: ps.trumpIdx,
+                    leader: ps.leader,
+                    trick: ps.trickInts.map(t => ({ seat: t.seat, card: t.card })),
+                    tricksWon: Int32Array.from(ps.won),
+                    bids: ps.bids,
+                    allWant: false
+                };
+                // Force the acting seat to play `card` now.
+                const ah = sim.hands[acting];
+                const ci = ah.indexOf(card);
+                if (ci >= 0) ah.splice(ci, 1);
+                sim.trick.push({ seat: acting, card });
+                if (sim.trick.length === 4) {
+                    const w = this.mcTrickWinner(sim.trick, sim.trumpIdx);
+                    sim.tricksWon[w]++; sim.leader = w; sim.trick.length = 0;
+                }
+                const tw = this.mcPlayout(sim);
+                const finalTricks = tw[acting];
+                sum += (bid === 0)
+                    ? this.calculateZeroBidScore(null, finalTricks, handType)
+                    : this.calculateScore(null, bid, finalTricks);
+            }
+            const avg = sum / deals.length;
+            if (avg > bestAvg) { bestAvg = avg; bestIdx = cIdx; }
+        }
+        return bestIdx;
+    }
+
+    /** Guarded Phase-3 entry: returns hand index or null (→ heuristic fallback). */
+    mcTryPhase3(playerKey) {
+        if (!this.mcEnabled) return null;
+        try {
+            const before = this.hands[playerKey] ? this.hands[playerKey].length : -1;
+            const idx = this.mcSelectCardPhase3(playerKey);
+            const after = this.hands[playerKey] ? this.hands[playerKey].length : -1;
+            if (before !== after) return null; // safety: real hand must be untouched
+            return idx;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Empirical trick-count distribution for the acting seat in Phase 2, from
+     * simulating many full deals. Returns dist[0..13] (Laplace-smoothed) or null.
+     */
+    mcTrickDistributionPhase2(playerKey) {
+        if (!this.mcEnabled) return null;
+        const cacheKey = 'p2_' + playerKey;
+        if (this._mcCache[cacheKey]) return this._mcCache[cacheKey];
+        try {
+            const ps = this.mcGatherPublicState(playerKey);
+            if (!ps) return null;
+            const leader = this.players.indexOf(this.trumpWinner); // Phase 3 lead seat
+            const M = this.mcConfig.phase2Deals;
+            const deadline = this._mcDeadline();
+            const counts = new Float64Array(14);
+            let done = 0;
+            for (let i = 0; i < M; i++) {
+                if ((i & 7) === 0 && performance.now() > deadline) break;
+                const d = this.mcSampleDeal(ps);
+                if (!d) continue;
+                const sim = {
+                    hands: d, trumpIdx: ps.trumpIdx,
+                    leader: leader >= 0 ? leader : ps.actingIdx,
+                    trick: [], tricksWon: new Int32Array(4), bids: ps.bids, allWant: true
+                };
+                const tw = this.mcPlayout(sim);
+                counts[tw[ps.actingIdx]]++; done++;
+            }
+            if (done < 20) return null;
+            const dist = new Array(14); let tot = 0;
+            for (let t = 0; t < 14; t++) { dist[t] = counts[t] + 0.5; tot += dist[t]; }
+            for (let t = 0; t < 14; t++) dist[t] /= tot;
+            this._mcCache[cacheKey] = dist;
+            return dist;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Simulation-based Phase 1 evaluation: estimate expected tricks for the
+     * acting hand under each candidate trump, then recommend a suit + minTakes
+     * (or 'pass'). Returns { recommend, meanBySuit } or null on failure.
+     */
+    mcEvaluatePhase1(playerKey) {
+        if (!this.mcEnabled) return null;
+        const cacheKey = 'p1_' + playerKey;
+        if (this._mcCache[cacheKey]) return this._mcCache[cacheKey];
+        try {
+            const ps = this.mcGatherPublicState(playerKey);
+            if (!ps) return null;
+            const K = this.mcConfig.phase1Deals;
+            const deadline = this._mcDeadline();
+            const deals = [];
+            for (let i = 0; i < K; i++) {
+                if (performance.now() > deadline) break;
+                const d = this.mcSampleDeal(ps);
+                if (d) deals.push(d);
+            }
+            if (deals.length < 10) return null;
+
+            const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
+            const meanBySuit = {}, distBySuit = {};
+            for (const suit of suits) {
+                const trumpIdx = suit === 'notrump' ? -1 : this._mcSuitIdx[suit];
+                const counts = new Float64Array(14); let sum = 0;
+                for (const d of deals) {
+                    const sim = {
+                        hands: [d[0].slice(), d[1].slice(), d[2].slice(), d[3].slice()],
+                        trumpIdx, leader: ps.actingIdx, trick: [],
+                        tricksWon: new Int32Array(4), bids: ps.bids, allWant: true
+                    };
+                    const tw = this.mcPlayout(sim);
+                    counts[tw[ps.actingIdx]]++; sum += tw[ps.actingIdx];
+                }
+                meanBySuit[suit] = sum / deals.length;
+                const dist = new Array(14); let tot = 0;
+                for (let t = 0; t < 14; t++) { dist[t] = counts[t] + 0.5; tot += dist[t]; }
+                for (let t = 0; t < 14; t++) dist[t] /= tot;
+                distBySuit[suit] = dist;
+            }
+
+            // minTakes is a FLOOR the trump winner must meet, so commit to
+            // floor(mean) and only open a suit where that floor reaches the
+            // legal minimum of 5. Among qualifying suits, pick the best EV.
+            let bestSuit = null, bestVal = -Infinity, bestMean = 0;
+            for (const suit of suits) {
+                const mean = meanBySuit[suit];
+                const floorBid = Math.floor(mean);
+                if (floorBid < 5) continue; // can't meet the minimum-5 floor
+                const ev = this.expectedBidScore(Math.min(13, floorBid), distBySuit[suit], 'over');
+                if (ev > bestVal) { bestVal = ev; bestSuit = suit; bestMean = mean; }
+            }
+            const result = (!bestSuit)
+                ? { recommend: 'pass', meanBySuit }
+                : { recommend: { minTakes: Math.max(5, Math.min(13, Math.floor(bestMean))), trumpSuit: bestSuit }, meanBySuit };
+            this._mcCache[cacheKey] = result;
+            return result;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Cheapest simulation-supported Phase 1 raise that beats the current high
+     * bid, or 'pass'. "Supported" = the candidate trump's simulated mean tricks
+     * covers the minTakes floor. Picks the bid with the best support margin.
+     */
+    mcFindRaise(mc, currentHighestBid) {
+        const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
+        let best = null, bestMargin = -Infinity;
+        for (const suit of suits) {
+            const mean = mc.meanBySuit[suit];
+            const maxM = Math.min(13, Math.floor(mean + 0.25));
+            for (let M = 5; M <= maxM; M++) {
+                const cand = { minTakes: M, trumpSuit: suit };
+                if (!this.isBidHigher(cand, currentHighestBid)) continue;
+                if (mean < M - 0.5) continue;
+                const margin = mean - M;
+                if (margin > bestMargin) { bestMargin = margin; best = cand; }
+            }
+        }
+        return best || 'pass';
+    }
+
+
     clearPlayedCards() {
         this.players.forEach(player => {
             const el = document.getElementById(`${player}-played`);
@@ -2840,8 +3306,14 @@ class IsraeliWhist {
     selectValidBotCard(player) {
         const hand = this.hands[player];
         if (!hand || hand.length === 0) return 0;
-        
-        // Advanced card selection based on sophisticated strategy
+
+        // World-class path: Monte Carlo (PIMC) per-card simulation. Returns a
+        // hand index, or null to defer to the heuristic selector below
+        // (single legal card, sampling failure, or time budget exceeded).
+        const mcIdx = this.mcTryPhase3(player);
+        if (mcIdx !== null && mcIdx !== undefined) return mcIdx;
+
+        // Heuristic fallback (also the rollout-independent safety net).
         if (this.currentTrick.length === 0) {
             return this.selectLeadCard(player);
         } else {
@@ -6137,7 +6609,32 @@ class IsraeliWhist {
         // Decide whether to pass or bid based on hand strength and current bidding
         let shouldPass = false;
         let bidMade = false;
-        
+
+        // WORLD-CLASS PATH: simulation-based Phase 1 evaluation recommends a
+        // trump + minTakes (or pass) by estimating tricks per candidate suit.
+        // Falls through to the heuristic auction logic when MC is unavailable.
+        const mcP1 = this.mcEnabled ? this.mcEvaluatePhase1(player) : null;
+        let mcHandled = false;
+        if (mcP1) {
+            let action;
+            if (mcP1.recommend === 'pass') action = 'pass';
+            else if (!currentHighestBid) action = mcP1.recommend;
+            else action = this.mcFindRaise(mcP1, currentHighestBid);
+
+            mcHandled = true;
+            if (action === 'pass' || !action) {
+                shouldPass = true;
+            } else {
+                this.phase1Bids[player] = action;
+                const verb = currentHighestBid ? 'bids' : 'opens';
+                this.logPlayer(`🃏 PHASE 1: ${this.getPlayerDisplayName(player)} ${verb} ${action.minTakes} ${action.trumpSuit}`, player);
+                this.showBidAnimation(player, `${action.minTakes} ${this.getSuitSymbol(action.trumpSuit)}`);
+                bidMade = true;
+                this.updateDisplay();
+            }
+        }
+
+        if (!mcHandled) {
         if (currentHighestBid) {
             // If there's a current bid, evaluate whether we can/should bid higher
             const currentBidValue = currentHighestBid.minTakes;
@@ -6200,7 +6697,8 @@ class IsraeliWhist {
                 shouldPass = true;
             }
         }
-        
+        } // end if (!mcHandled)
+
         if (shouldPass) {
             this.playersPassed[player] = true;
             this.passCount++;
@@ -7537,6 +8035,7 @@ class IsraeliWhist {
       */
      resetBotMemory() {
          // Reset all tracking for new hand
+         this._mcCache = {}; // drop cached Monte Carlo phase1/phase2 results
          this.botMemory.cardsPlayed = { north: [], east: [], south: [], west: [] };
          this.botMemory.trumpsPlayed = [];
          this.botMemory.suitDistribution = { clubs: 13, diamonds: 13, hearts: 13, spades: 13 };
