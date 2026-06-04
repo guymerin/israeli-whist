@@ -1284,125 +1284,89 @@ class IsraeliWhist {
         // ADVANCED: Adjust bidding based on bid sum analysis
         trickEstimate = this.adjustBidForSumAwareness(trickEstimate, bidSumAnalysis, playersRemaining);
         
-        // Expert strategic bidding - prioritize achieving optimal totals
-        let optimalBid = trickEstimate;
-        
-        if (playersRemaining === 1) {
-            // Last bidder - we control the final total, so be very strategic
-            const targetTotals = [12, 14]; // Optimal totals in order of preference
-            let bestBid = Math.round(trickEstimate);
-            let bestScore = -1000;
-            
-            // Evaluate each possible bid
-            for (let testBid = minBid; testBid <= maxBid; testBid++) {
-                const resultingTotal = currentTotal + testBid;
-                let bidScore = 0;
-                
-                // Heavily favor optimal totals
-                if (resultingTotal === 12) {
-                    bidScore += 100; // Best total
-                } else if (resultingTotal === 14) {
-                    bidScore += 90;  // Second best total
-                } else if (resultingTotal === 11 || resultingTotal === 15) {
-                    bidScore += 20;  // Decent totals
-                } else if (resultingTotal === 10 || resultingTotal === 16) {
-                    bidScore += 10;  // OK totals
-                } else if (resultingTotal === 13) {
-                    bidScore -= 200; // Forbidden total
-                } else {
-                    bidScore -= Math.abs(resultingTotal - 13) * 10; // Penalty for distance from 13
-                }
-                
-                // Factor in how close the bid is to our hand strength
-                const handFit = 1 - Math.abs(testBid - trickEstimate) / 10;
-                bidScore += handFit * 50;
-                
-                // Penalty for extreme overbidding/underbidding
-                if (testBid > trickEstimate * 1.5) {
-                    bidScore -= 30; // Overbidding penalty
-                } else if (testBid < trickEstimate * 0.6) {
-                    bidScore -= 20; // Underbidding penalty
-                }
-                
-                if (bidScore > bestScore) {
-                    bestScore = bidScore;
-                    bestBid = testBid;
-                }
-            }
-            
-            optimalBid = bestBid;
-            
-        } else {
-            // Not last bidder - coordinate towards optimal totals
-            const remainingPlayers = playersRemaining;
-            
-            // Calculate what total we're aiming for
-            let targetTotal = 12; // Default preference
-            
-            // If we're early in bidding, consider both 12 and 14
-            const projectedFor12 = (12 - currentTotal) / remainingPlayers;
-            const projectedFor14 = (14 - currentTotal) / remainingPlayers;
-            
-            // Choose the target that's more reasonable given our hand
-            if (Math.abs(trickEstimate - projectedFor14) < Math.abs(trickEstimate - projectedFor12)) {
-                targetTotal = 14;
-            }
-            
-            const targetBidForOptimal = (targetTotal - currentTotal) / remainingPlayers;
-            
-            // Balance between our hand strength and optimal total contribution
-            const handWeight = 0.6; // 60% hand strength
-            const optimalWeight = 0.4; // 40% optimal total targeting
-            
-            optimalBid = (trickEstimate * handWeight) + (targetBidForOptimal * optimalWeight);
-            
-            // Adjust based on position in bidding order
-            if (this.currentBidder === 0) {
-                // First bidder - be slightly conservative to allow room for others
-                optimalBid *= 0.9;
-            } else if (this.currentBidder === 1) {
-                // Second bidder - moderate approach
-                optimalBid *= 0.95;
-            } else {
-                // Third bidder - more aggressive to set up last bidder
-                optimalBid *= 1.05;
-            }
-        }
-        
-        // Apply bot personality (but keep it smaller)
+        // EV-BASED BIDDING: rather than rounding the mean trick estimate (or
+        // steering toward an arbitrary "good" table total like 12/14), build a
+        // probability distribution over how many tricks this hand will actually
+        // take and pick the bid that maximizes EXPECTED SCORE under the real
+        // payoff tables. Scoring rewards an exact hit (+10) and penalizes every
+        // trick of miss (-10), so in an individual game precision is worth far
+        // more than nudging your own bid to massage the table total.
+        const mean = Math.max(0, Math.min(13, trickEstimate));
+
+        // Uncertainty band around the estimate. Bolder bots (higher
+        // riskTolerance) accept a wider spread, which nudges them toward
+        // higher-variance, higher-ceiling bids; cautious bots tighten in.
         const riskTolerance = playerPattern.riskTolerance;
-        if (riskTolerance < 0.3) {
-            optimalBid *= 0.95; // Slightly conservative
-        } else if (riskTolerance > 0.6) {
-            optimalBid *= 1.05; // Slightly aggressive
+        const sigma = Math.max(0.6, 1.1 + (riskTolerance - 0.5) * 0.6);
+        const trickDist = this.buildTrickDistribution(mean, sigma);
+
+        // Only the final seat to bid can push the four-seat total to exactly 13
+        // (forbidden by the over/under rule); earlier seats are unconstrained.
+        const isLastBidder = playersRemaining === 1;
+
+        let bestBid = Math.max(minBid, Math.min(maxBid, Math.round(mean)));
+        let bestEV = -Infinity;
+        for (let bid = minBid; bid <= maxBid; bid++) {
+            if (isLastBidder && currentTotal + bid === 13) continue; // illegal total
+            const ev = this.expectedBidScore(bid, trickDist);
+            if (ev > bestEV) {
+                bestEV = ev;
+                bestBid = bid;
+            }
         }
-        
-        // Trump winner constraint
-        if (player === this.trumpWinner) {
-            optimalBid = Math.max(optimalBid, this.minimumTakes);
+
+        // Trump winner must still honor their Phase 1 minimum.
+        if (player === this.trumpWinner && bestBid < this.minimumTakes) {
+            bestBid = this.minimumTakes;
+            if (isLastBidder && currentTotal + bestBid === 13) {
+                bestBid = Math.min(maxBid, bestBid + 1);
+            }
         }
-        
-        // Hand strength reality checks
-        const isWeakHand = handStrength.score < 18;
-        const isStrongHand = handStrength.score >= 25;
-        
-        if (isWeakHand && optimalBid > 4) {
-            optimalBid = Math.min(4, Math.max(minBid, optimalBid * 0.8));
-        } else if (isStrongHand && optimalBid < 2) {
-            optimalBid = Math.max(2, optimalBid);
+
+        return Math.max(minBid, Math.min(maxBid, bestBid));
+    }
+
+    /**
+     * Builds a normalized discrete distribution P(tricks = t) for t in 0..13,
+     * approximated as a discretized Gaussian centered on the estimated mean.
+     * @param {number} mean Expected tricks (fractional).
+     * @param {number} sigma Spread; larger = more uncertain/aggressive.
+     * @returns {number[]} dist[t] = probability of taking exactly t tricks.
+     */
+    buildTrickDistribution(mean, sigma) {
+        const safeSigma = Math.max(0.5, sigma);
+        const dist = [];
+        let total = 0;
+        for (let t = 0; t <= 13; t++) {
+            const p = Math.exp(-((t - mean) ** 2) / (2 * safeSigma * safeSigma));
+            dist[t] = p;
+            total += p;
         }
-        
-        // Final constraints
-        let finalBid = Math.round(optimalBid);
-        finalBid = Math.max(minBid, Math.min(maxBid, finalBid));
-        
-        // Last safety check - don't bid impossibly high compared to hand
-        const maxReasonableBid = Math.ceil(trickEstimate * 1.6);
-        if (finalBid > maxReasonableBid && !isStrongHand) {
-            finalBid = Math.max(minBid, maxReasonableBid);
+        if (total > 0) {
+            for (let t = 0; t <= 13; t++) dist[t] /= total;
         }
-        
-        return finalBid;
+        return dist;
+    }
+
+    /**
+     * Expected score of predicting `bid` tricks under distribution `dist`,
+     * using the exact payoff tables the game scores with so bots optimize
+     * precisely what they are graded on.
+     * @param {number} bid Candidate Phase 2 prediction.
+     * @param {number[]} dist Trick distribution from buildTrickDistribution.
+     * @returns {number} Expected points for this bid.
+     */
+    expectedBidScore(bid, dist) {
+        let ev = 0;
+        for (let t = 0; t <= 13; t++) {
+            const p = dist[t];
+            if (!p) continue;
+            const score = bid === 0
+                ? this.calculateZeroBidScore(null, t)
+                : this.calculateScore(null, bid, t);
+            ev += p * score;
+        }
+        return ev;
     }
     
     calculateRealisticTricks(hand, trumpSuit, handStrength) {
@@ -1553,9 +1517,12 @@ class IsraeliWhist {
             tricks *= 1.1; // Strong hands perform better
         }
         
-        // Cap the estimate to be realistic - adjusted ceiling for better accuracy
-        tricks = Math.max(0.5, Math.min(7.0, tricks));
-        
+        // Clamp to a sane range. The old 7.0 ceiling silently re-imposed the
+        // very cap the maxBid=13 change removed, making genuinely strong hands
+        // (long trumps + top honors) impossible to bid honestly. 11 leaves room
+        // for big hands while still rejecting absurd estimates.
+        tricks = Math.max(0.5, Math.min(11, tricks));
+
         return tricks;
     }
     
@@ -4382,7 +4349,14 @@ class IsraeliWhist {
         // Analyze current trick situation
         const canWinTrick = this.canCardWinTrick(card, context.currentTrick);
         const trickAnalysis = context.trickAnalysis;
-        
+
+        // TRICK-POSITION AWARENESS: weigh how certain the outcome is given how
+        // many seats still have to play. 4th hand is deterministic (win cheap or
+        // duck safely); earlier seats discount for the risk of being overtaken,
+        // especially by a ruff. This stops bots winning/losing tricks by
+        // accident, which is what makes "take exactly N" reliable.
+        score += this.evaluateTrickPositionPlay(card, player, context, canWinTrick);
+
         if (context.isUnderBid) {
             // UNDER BID STRATEGY: Aggressively try to win tricks
             score += this.evaluateUnderBidFollowStrategy(card, player, context, canWinTrick, isLeadSuit, isTrump, cardStrength);
@@ -4924,6 +4898,108 @@ class IsraeliWhist {
         }
         
         return highest;
+    }
+
+    /**
+     * Seats that still have to play AFTER `player` in the current trick, in
+     * play order. Empty array when `player` is 4th hand (last to act).
+     * @param {string} player Compass key of the seat about to play.
+     * @returns {string[]} Compass keys of seats yet to act this trick.
+     */
+    getSeatsYetToActThisTrick(player) {
+        const seats = [];
+        const playedCount = this.currentTrick.length; // `player` occupies this slot
+        for (let slot = playedCount + 1; slot < 4; slot++) {
+            seats.push(this.players[(this.trickLeader + slot) % 4]);
+        }
+        return seats;
+    }
+
+    /**
+     * Heuristic probability (0..1) that some seat still to act overtakes `card`.
+     * Uses public inference only — shown voids and the honest trump estimates —
+     * never another seat's actual hand.
+     * @param {object} card Candidate card.
+     * @param {string} player Seat playing it.
+     * @param {object} context Follow-card context (needs leadSuit).
+     * @param {string[]} seatsToAct Seats yet to act this trick.
+     * @returns {number} Estimated overtake risk in [0,1].
+     */
+    estimateOvertakeRisk(card, player, context, seatsToAct) {
+        if (!seatsToAct || seatsToAct.length === 0) return 0;
+        const leadSuit = context.leadSuit;
+        const isTrump = card.suit === this.trumpSuit;
+        const hasTrumps = this.trumpSuit && this.trumpSuit !== 'notrump';
+        let risk = 0;
+
+        seatsToAct.forEach(opp => {
+            // Ruff risk: a non-trump card can be trumped by a seat that is void
+            // in the lead suit and still holds trumps.
+            if (hasTrumps && !isTrump && this.isPlayerVoidInSuit(opp, leadSuit)) {
+                const oppTrumps = (this.botMemory.probabilityModel &&
+                    this.botMemory.probabilityModel.trumpEstimates[opp]) || 0;
+                if (oppTrumps > 0) risk = Math.max(risk, 0.7);
+            }
+        });
+
+        // Non-honor cards (below Queen) carry baseline in-suit overtake risk that
+        // grows with the number of seats still to act.
+        if (this.getCardValue(card) < 12) {
+            risk = Math.max(risk, 0.15 * seatsToAct.length);
+        }
+        return Math.min(1, risk);
+    }
+
+    /**
+     * Score adjustment from trick position. 4th hand is deterministic; 2nd/3rd
+     * hand discounts for overtake risk. Positive when the card serves the bot's
+     * current need (win when short of bid, duck when bid is met/exceeded).
+     * @param {object} card Candidate card.
+     * @param {string} player Seat playing it.
+     * @param {object} context Follow-card context (needs tricksNeeded, leadSuit).
+     * @param {boolean} canWinTrick Whether the card currently beats the trick.
+     * @returns {number} Score delta.
+     */
+    evaluateTrickPositionPlay(card, player, context, canWinTrick) {
+        const seatsToAct = this.getSeatsYetToActThisTrick(player);
+        const cardStrength = this.getCardValue(card);
+        const wantsTrick = context.tricksNeeded > 0; // still short of bid
+        const mustAvoid = context.tricksNeeded <= 0; // bid met or exceeded
+        let score = 0;
+
+        if (seatsToAct.length === 0) {
+            // 4TH HAND — the outcome is fully determined, no inference needed.
+            if (wantsTrick) {
+                // Win as cheaply as possible, else throw the lowest card.
+                score += canWinTrick ? 60 - cardStrength * 2 : -cardStrength * 2;
+            } else if (mustAvoid) {
+                // Winning is bad here; otherwise unload the highest safe card.
+                score += canWinTrick ? -80 : cardStrength * 2;
+            }
+            return score;
+        }
+
+        // 2ND/3RD HAND — weigh the chance a later seat overtakes this card.
+        const overtakeRisk = this.estimateOvertakeRisk(card, player, context, seatsToAct);
+
+        if (wantsTrick) {
+            if (canWinTrick) {
+                // Value a likely-to-hold win; discourage burning a high card that
+                // is probably overtaken anyway.
+                score += 40 * (1 - overtakeRisk) - cardStrength * overtakeRisk;
+            } else {
+                score -= cardStrength; // can't win now: keep it cheap
+            }
+        } else if (mustAvoid) {
+            if (canWinTrick) {
+                // Currently winning: only safe if a later seat will very likely
+                // overtake us, otherwise discourage.
+                score += 50 * overtakeRisk - 40 * (1 - overtakeRisk);
+            } else {
+                score += cardStrength * 0.5; // safely shedding a high card
+            }
+        }
+        return score;
     }
 
     /**
@@ -7206,10 +7282,21 @@ class IsraeliWhist {
      updateAILearning() {
          // Update AI learning with actual performance vs predictions
          this.players.forEach(player => {
-             if (player === 'south') return; // Skip human player
-             
              const actualTricks = this.tricksWon[player] || 0;
              const predictedTricks = this.phase2Bids[player] || 0;
+
+             // Record a behavior-profile sample for EVERY seat, including the
+             // human. updateBehaviorProfile was previously never called, so
+             // behaviorProfiles stayed at confidence 0 and the card-play
+             // profiler (evaluatePlayerBehaviorProfiling) was inert. The bid vs
+             // actual-tricks delta is what lets bots model who over/under-bids.
+             this.updateBehaviorProfile(player, 'phase2', {
+                 bid: predictedTricks,
+                 actualTricks: actualTricks
+             });
+
+             if (player === 'south') return; // Human has no auto-tuned bidding pattern
+
              const pattern = this.botMemory.playerPatterns[player];
              
              // Update recent learning data with actual results
