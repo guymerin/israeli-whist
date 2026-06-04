@@ -65,6 +65,15 @@ Key sub-structures:
 
 Use the existing trackers (`trackPlayedCard`, `updateCardMemory`, `trackHighCardPlayed`, `updateTrumpEstimates`) rather than mutating `botMemory` directly. Preserve defensive reads (`if (this.botMemory && this.botMemory.X && this.botMemory.X[player])`) because `highCardsPlayed` is lazily created.
 
+### Monte Carlo (PIMC) engine
+
+The bots' primary intelligence is a Determinized Monte Carlo engine — one contiguous `mc*` block right after `getCardValue`. It samples the unseen cards into consistent opponent hands, simulates playouts, and picks the action that maximizes the acting seat's expected **score** (not tricks). The legacy `evaluate*`/`calculate*Bid` heuristics remain as a guaranteed fallback and run only when MC is disabled or sampling fails.
+
+- **Wiring**: Phase 3 — `selectValidBotCard` tries `mcTryPhase3` first (PIMC per-card), else heuristic. Phase 2 — `calculateSmartPhase2Bid` prefers `mcTrickDistributionPhase2` (empirical trick distribution) and feeds the existing EV loop. Phase 1 — `botMakePhase1Bid` uses `mcEvaluatePhase1`/`mcFindRaise`, keeping `isBidHigher`/min-bid-5/legality gates.
+- **Fairness invariant**: an MC decision for a seat reads only `this.hands[seat]` plus *public* state (`cardsPlayed`, `suitVoids`, `currentTrick`, `trumpSuit`, bids). It must **never** read another seat's real hand — opponent hands are always sampled. All MC methods work on plain SimState copies and integer card ids (`id = suitIndex*13 + rankIndex`); they never mutate `this.hands`/`this.currentTrick`/`this.botMemory`/`this.tricksWon`.
+- **Budget/safety**: `this.mcConfig` sets sample counts; every loop honors a `performance.now()` deadline (`maxMs`/`maxMsTurbo`). `this.mcEnabled` is the master switch (tests/benchmarks toggle it). `_mcCache` (per-gamlet) is cleared in `resetBotMemory`. `mcTrickWinner` must stay logically identical to `determineTrickWinner` — `tests/mc-parity.mjs` guards this.
+- **Tests**: `tests/mc-parity.mjs` (trick-winner parity, playout=13, sampler/void validity), `tests/mc-strength.mjs` (MC vs heuristic A/B — exact-hit rate, score/seat, decision-time p95).
+
 ## Required conventions
 
 - **Delays through `this.getDelay(...)`** — never raw `setTimeout(fn, 800)`. The Turbo checkbox sets `fastMode`, and `getDelay()` divides by 10 with a 50 ms floor.
