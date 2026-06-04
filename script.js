@@ -1304,11 +1304,22 @@ class IsraeliWhist {
         // (forbidden by the over/under rule); earlier seats are unconstrained.
         const isLastBidder = playersRemaining === 1;
 
+        // A nil (0) bid is a genuine bet on taking ZERO tricks. The kept
+        // missed-nil payoff (−50 + (N−1)·10) RISES with tricks taken, so a hand
+        // that will win lots of tricks scores positively on a nil — which would
+        // otherwise tempt the EV search into bidding nil on strong hands. Only
+        // treat 0 as a candidate when the hand actually projects near zero.
+        const NIL_MAX_MEAN = 1.5;
+
         let bestBid = Math.max(minBid, Math.min(maxBid, Math.round(mean)));
         let bestEV = -Infinity;
         for (let bid = minBid; bid <= maxBid; bid++) {
+            if (bid === 0 && mean > NIL_MAX_MEAN) continue; // not a genuine nil hand
             if (isLastBidder && currentTotal + bid === 13) continue; // illegal total
-            const ev = this.expectedBidScore(bid, trickDist);
+            // Value nil bids against the hand type this bid would produce, since
+            // this.handType is not set until every seat has bid.
+            const projectedHandType = this.projectHandType(currentTotal, bid, playersRemaining);
+            const ev = this.expectedBidScore(bid, trickDist, projectedHandType);
             if (ev > bestEV) {
                 bestEV = ev;
                 bestBid = bid;
@@ -1354,19 +1365,43 @@ class IsraeliWhist {
      * precisely what they are graded on.
      * @param {number} bid Candidate Phase 2 prediction.
      * @param {number[]} dist Trick distribution from buildTrickDistribution.
+     * @param {string|null} projectedHandType 'under'/'over' used to value a nil
+     *        bid (made nil pays 50 in an Under hand, 25 in an Over hand). Null
+     *        falls back to the live this.handType inside calculateZeroBidScore.
      * @returns {number} Expected points for this bid.
      */
-    expectedBidScore(bid, dist) {
+    expectedBidScore(bid, dist, projectedHandType = null) {
         let ev = 0;
         for (let t = 0; t <= 13; t++) {
             const p = dist[t];
             if (!p) continue;
             const score = bid === 0
-                ? this.calculateZeroBidScore(null, t)
+                ? this.calculateZeroBidScore(null, t, projectedHandType)
                 : this.calculateScore(null, bid, t);
             ev += p * score;
         }
         return ev;
+    }
+
+    /**
+     * Projects whether the finished hand will be 'over' (four-seat total bids
+     * > 13) or 'under' (< 13) from the seat now considering `bid`. The last seat
+     * to bid knows this exactly; earlier seats estimate the remaining seats'
+     * contribution from the running average bid so far. Only matters for valuing
+     * nil bids, whose made payoff is 50 (Under) vs 25 (Over).
+     * @param {number} currentTotal Sum of bids placed so far.
+     * @param {number} bid Candidate bid for this seat.
+     * @param {number} playersRemaining Seats still to bid, including this one.
+     * @returns {'over'|'under'} Projected hand type.
+     */
+    projectHandType(currentTotal, bid, playersRemaining) {
+        if (playersRemaining <= 1) {
+            return (currentTotal + bid) > 13 ? 'over' : 'under';
+        }
+        const seatsBidSoFar = 4 - playersRemaining;
+        const avgSoFar = seatsBidSoFar > 0 ? currentTotal / seatsBidSoFar : 3.25;
+        const projectedFinal = currentTotal + bid + avgSoFar * (playersRemaining - 1);
+        return projectedFinal > 13 ? 'over' : 'under';
     }
     
     calculateRealisticTricks(hand, trumpSuit, handStrength) {
@@ -7133,12 +7168,17 @@ class IsraeliWhist {
       * Calculates the special scoring branch for a zero Phase 2 bid.
       * @param {string} player Compass key (kept for call-site symmetry).
       * @param {number} tricksWon Actual tricks taken.
+      * @param {string|null} handTypeOverride 'under'/'over' to score against a
+      *        projected hand type instead of this.handType. The live handType is
+      *        only set after all four seats bid, so EV bidding passes a projection
+      *        here; endHand passes none and uses the real value.
       * @returns {number} Hand-type-sensitive score delta for zero bids.
       */
-     calculateZeroBidScore(player, tricksWon) {
+     calculateZeroBidScore(player, tricksWon, handTypeOverride = null) {
+         const handType = handTypeOverride || this.handType;
          if (tricksWon === 0) {
              // Zero bid, zero tricks: 50 points for Under, 25 for Over
-             return this.handType === 'under' ? 50 : 25;
+             return handType === 'under' ? 50 : 25;
          } else if (tricksWon === 1) {
              // Zero bid, one trick: lose 50 points
              return -50;
