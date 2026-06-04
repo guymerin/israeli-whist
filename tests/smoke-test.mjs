@@ -5,8 +5,8 @@
  * scores exactly as the rules define:
  *   - meet your bid : bid² + 10
  *   - miss your bid : −10 per trick over/under
- *   - made nil      : +50 (Under hand) / +25 (Over hand)
- *   - missed nil    : −50 + (tricks − 1) × 10
+ *   - zero bid      : ±50 in an Under hand, ±25 in an Over hand
+ *                     (+ when you take 0 tricks, − when you take any)
  * It also confirms the phase machine advances dealing → phase1 → phase2 →
  * phase3 → scoring, that the four-seat total never lands on the forbidden 13,
  * and that no uncaught console/page errors fire.
@@ -169,9 +169,8 @@ await browser.close();
 // ---- Analysis & assertions ----
 function scoreFor(bid, tricks, handType) {
   if (bid === 0) {
-    if (tricks === 0) return handType === 'under' ? 50 : 25;
-    if (tricks === 1) return -50;
-    return -50 + (tricks - 1) * 10;
+    const magnitude = handType === 'under' ? 50 : 25;
+    return tricks === 0 ? magnitude : -magnitude;
   }
   if (bid === tricks) return bid * bid + 10;
   return -10 * Math.abs(bid - tricks);
@@ -198,17 +197,28 @@ if (!end) {
   console.log(`phase2 bids: ${JSON.stringify(end.bids)} (total ${totalBids})`);
   console.log(`tricks won : ${JSON.stringify(end.tricks)} (total ${Object.values(end.tricks).reduce((a, b) => a + b, 0)})`);
 
-  const endIdx = snaps.indexOf(end);
-  const afterScore = snaps.find((s, i) => i > endIdx && Object.values(s.scores).some(v => v !== 0))
-    || snaps.slice().reverse().find(s => Object.values(s.scores).some(v => v !== 0));
+  const seats = ['north', 'east', 'south', 'west'];
+  const anyScored = snaps.some(s => Object.values(s.scores).some(v => v !== 0));
+  const allFailed = seats.every(p => end.bids[p] !== end.tricks[p]);
 
-  console.log('\n=== SCORING VALIDATION (recompute vs game) ===');
-  for (const p of ['north', 'east', 'south', 'west']) {
-    const expected = scoreFor(end.bids[p], end.tricks[p], end.handType);
-    const got = afterScore ? afterScore.scores[p] : undefined;
-    const ok = got === expected;
-    if (!ok) failures.push(`${p}: expected ${expected}, game scored ${got}`);
-    console.log(`  ${p.padEnd(6)} bid ${end.bids[p]} took ${end.tricks[p]} -> expected ${expected}, game scored ${got}  ${ok ? 'OK' : 'MISMATCH'}`);
+  if (allFailed && !anyScored) {
+    // Israeli Whist: if EVERY seat misses its bid the gamlet is cancelled and
+    // nothing is scored. In this single-gamlet test that means scores stay 0.
+    console.log('\n=== GAMLET CANCELLED (all four seats missed their bids) ===');
+    console.log('scores correctly unchanged (cancellation rule held)  OK');
+  } else {
+    const endIdx = snaps.indexOf(end);
+    const afterScore = snaps.find((s, i) => i > endIdx && Object.values(s.scores).some(v => v !== 0))
+      || snaps.slice().reverse().find(s => Object.values(s.scores).some(v => v !== 0));
+
+    console.log('\n=== SCORING VALIDATION (recompute vs game) ===');
+    for (const p of seats) {
+      const expected = scoreFor(end.bids[p], end.tricks[p], end.handType);
+      const got = afterScore ? afterScore.scores[p] : undefined;
+      const ok = got === expected;
+      if (!ok) failures.push(`${p}: expected ${expected}, game scored ${got}`);
+      console.log(`  ${p.padEnd(6)} bid ${end.bids[p]} took ${end.tricks[p]} -> expected ${expected}, game scored ${got}  ${ok ? 'OK' : 'MISMATCH'}`);
+    }
   }
   if (totalBids === 13) failures.push('four-seat total bids landed on forbidden 13');
   console.log(`\ntotal bids != 13 (over/under rule held): ${totalBids !== 13 ? 'OK' : 'VIOLATED'}`);

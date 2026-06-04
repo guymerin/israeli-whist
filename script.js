@@ -1304,17 +1304,9 @@ class IsraeliWhist {
         // (forbidden by the over/under rule); earlier seats are unconstrained.
         const isLastBidder = playersRemaining === 1;
 
-        // A nil (0) bid is a genuine bet on taking ZERO tricks. The kept
-        // missed-nil payoff (−50 + (N−1)·10) RISES with tricks taken, so a hand
-        // that will win lots of tricks scores positively on a nil — which would
-        // otherwise tempt the EV search into bidding nil on strong hands. Only
-        // treat 0 as a candidate when the hand actually projects near zero.
-        const NIL_MAX_MEAN = 1.5;
-
         let bestBid = Math.max(minBid, Math.min(maxBid, Math.round(mean)));
         let bestEV = -Infinity;
         for (let bid = minBid; bid <= maxBid; bid++) {
-            if (bid === 0 && mean > NIL_MAX_MEAN) continue; // not a genuine nil hand
             if (isLastBidder && currentTotal + bid === 13) continue; // illegal total
             // Value nil bids against the hand type this bid would produce, since
             // this.handType is not set until every seat has bid.
@@ -7172,20 +7164,14 @@ class IsraeliWhist {
       *        projected hand type instead of this.handType. The live handType is
       *        only set after all four seats bid, so EV bidding passes a projection
       *        here; endHand passes none and uses the real value.
-      * @returns {number} Hand-type-sensitive score delta for zero bids.
+      * @returns {number} ±magnitude, magnitude 50 in an Under hand / 25 in an
+      *        Over hand: + when the nil is made (0 tricks), − when it is missed.
       */
      calculateZeroBidScore(player, tricksWon, handTypeOverride = null) {
          const handType = handTypeOverride || this.handType;
-         if (tricksWon === 0) {
-             // Zero bid, zero tricks: 50 points for Under, 25 for Over
-             return handType === 'under' ? 50 : 25;
-         } else if (tricksWon === 1) {
-             // Zero bid, one trick: lose 50 points
-             return -50;
-         } else {
-             // Zero bid, multiple tricks: lose 50 for first, +10 for each additional
-             return -50 + ((tricksWon - 1) * 10);
-         }
+         // Under hand scores ±50, Over hand ±25.
+         const magnitude = handType === 'under' ? 50 : 25;
+         return tricksWon === 0 ? magnitude : -magnitude;
      }
      
      /**
