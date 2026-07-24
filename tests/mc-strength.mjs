@@ -17,7 +17,9 @@
  */
 import { chromium } from 'playwright';
 
-const URL = process.env.WHIST_URL || 'http://localhost:8000/';
+import { ensureServer } from './static-server.mjs';
+const served = process.env.WHIST_URL ? null : await ensureServer();
+const URL = process.env.WHIST_URL || served.url;
 const DEALS = parseInt(process.env.WHIST_DEALS || '120', 10);
 
 const browser = await chromium.launch({ headless: true });

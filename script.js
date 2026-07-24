@@ -32,12 +32,23 @@
  * probabilityModel estimates) that reset between gamlets.
  */
 
+// Debug logging is silent for players and fully on for development. Open the
+// page with ?debug (e.g. index.html?debug) to see the color-coded logPlayer
+// events and the rest of the diagnostic logging. console.error is never gated,
+// so genuine failures always surface. dlog/dwarn are plain globals (not this.*)
+// so they work identically inside methods, arrow callbacks, and top-level code.
+const WHIST_DEBUG = typeof location !== 'undefined' && /[?&]debug\b/i.test(location.search);
+function dlog(...args) { if (WHIST_DEBUG) console.log(...args); }
+function dwarn(...args) { if (WHIST_DEBUG) console.warn(...args); }
+
 class IsraeliWhist {
     constructor() {
+        this.debug = WHIST_DEBUG; // also exposed on window.game for the console
         // Seat identity and clockwise turn order.
         this.players = ['north', 'east', 'south', 'west'];
         this.southIndex = this.players.indexOf('south'); // always 2; named to avoid magic number
         this.playerName = 'Player'; // Human player's name (default)
+        this.SESSION_KEY = 'israeliWhist_session'; // localStorage key for the persisted session (see saveSession)
         this.botNames = {
             north: 'Botti (N)',
             east: 'Droidi (E)',
@@ -55,7 +66,7 @@ class IsraeliWhist {
             west: []
         };
         // Score state and scorecard history.
-        this.scores = {
+        this.gameScores = {
             north: 0,
             east: 0,
             south: 0,
@@ -68,7 +79,7 @@ class IsraeliWhist {
         // `cumulativeScores` aggregates across multiple full games (a
         // session-long grand total) and only ticks at full-game-end.
         // Per-gamlet deltas are recoverable via `gamletHistory`.
-        this.cumulativeScores = {
+        this.sessionScores = {
             north: 0,
             east: 0,
             south: 0,
@@ -239,16 +250,21 @@ class IsraeliWhist {
      */
     logPlayer(message, player = null) {
         if (player && this.getPlayerColor(player)) {
-            console.log(`%c${message}`, `color: ${this.getPlayerColor(player)}; font-weight: bold;`);
+            dlog(`%c${message}`, `color: ${this.getPlayerColor(player)}; font-weight: bold;`);
         } else {
-            console.log(message);
+            dlog(message);
         }
     }
 
     initializeGame() {
+        // Resume a persisted session (scores, grand total, scorecard) if one
+        // exists. This runs before the name modal so the restored playerName and
+        // scores are already in place when the board first renders.
+        this.restoreSession();
+
         // Check if we have a cached name
         const cachedName = localStorage.getItem('israeliWhist_playerName');
-        
+
         // Show name modal first (it will auto-fill the cached name if available)
         this.showNameModal();
         
@@ -521,7 +537,7 @@ class IsraeliWhist {
           
           // Add safety check for deck
         if (!this.deck || !Array.isArray(this.deck) || this.deck.length < 52) {
-            console.warn('Deck not properly initialized, reshuffling...');
+            dwarn('Deck not properly initialized, reshuffling...');
             this.shuffleDeck();
         }
         
@@ -581,12 +597,12 @@ class IsraeliWhist {
         });
         
         // Log all initial hands for analysis
-        console.log(`\n🃏 INITIAL HANDS DEALT:`);
+        dlog(`\n🃏 INITIAL HANDS DEALT:`);
         this.players.forEach(player => {
             const hand = this.hands[player].map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`).sort();
             this.logPlayer(`   ${this.getPlayerDisplayName(player)}: ${hand.join(' ')}`, player);
         });
-        console.log('');
+        dlog('');
         
         this.displayCards();
         
@@ -925,7 +941,7 @@ class IsraeliWhist {
             let currentTotalBid = 0;
             this.players.forEach(player => {
                 const currentBid = this.phase2Bids[player] || '-';
-                const currentScore = this.scores[player] || 0;
+                const currentScore = this.gameScores[player] || 0;
                 if (typeof currentBid === 'number') currentTotalBid += currentBid;
                 
                 tableHTML += `<td class="bid-col player-${player} current">${currentBid}</td>`;
@@ -951,7 +967,7 @@ class IsraeliWhist {
                 cumulativeScore = this.gamletHistory.reduce((sum, gamlet) => sum + (gamlet.finalScores[player] || 0), 0);
             } else {
                 // For first gamlet, use current scores
-                cumulativeScore = this.scores[player] || 0;
+                cumulativeScore = this.gameScores[player] || 0;
             }
             tableHTML += `<td class="player-${player} total-score-cell player-total-${player}" colspan="2"><strong>${cumulativeScore}</strong></td>`;
         });
@@ -1198,7 +1214,7 @@ class IsraeliWhist {
                     // violated for this gamlet but the game continues.
                     console.error(`🚫 No legal Phase 2 correction for ${playerDisplayName}; keeping ${takes}`);
                 } else {
-                    console.warn(`↩️ Auto-correcting ${playerDisplayName}'s Phase 2 bid from ${takes} to ${corrected} to avoid total=13`);
+                    dwarn(`↩️ Auto-correcting ${playerDisplayName}'s Phase 2 bid from ${takes} to ${corrected} to avoid total=13`);
                     takes = corrected;
                 }
             }
@@ -1222,7 +1238,7 @@ class IsraeliWhist {
                      if (allPlayersBid) {
                // Calculate total bids for analysis
                const totalBids = Object.values(this.phase2Bids).reduce((sum, bid) => sum + bid, 0);
-               console.log(`📊 PHASE 2 COMPLETE: Total bids = ${totalBids} (${totalBids === 13 ? 'EXACT' : totalBids > 13 ? 'OVER' : 'UNDER'})`);
+               dlog(`📊 PHASE 2 COMPLETE: Total bids = ${totalBids} (${totalBids === 13 ? 'EXACT' : totalBids > 13 ? 'OVER' : 'UNDER'})`);
                
                // Small delay to show the final bid before transitioning
                setTimeout(() => this.startPhase3(), this.getDelay(1000));
@@ -1430,19 +1446,19 @@ class IsraeliWhist {
         // MUCH MORE CONSERVATIVE and realistic trick calculation
         let tricks = 0;
         
-        console.log(`Calculating tricks for hand: ${hand.map(c => c.rank + c.suit).join(', ')} with trump: ${trumpSuit}`);
+        dlog(`Calculating tricks for hand: ${hand.map(c => c.rank + c.suit).join(', ')} with trump: ${trumpSuit}`);
         
         // Count aces - more accurate evaluation
         const aces = hand.filter(card => card.rank === 'A').length;
         tricks += aces * 0.9; // Aces are very strong but can lose to trumps
-        console.log(`Aces (${aces}): +${aces * 0.9} tricks`);
+        dlog(`Aces (${aces}): +${aces * 0.9} tricks`);
         
         // Trump suit analysis - improved accuracy
         if (trumpSuit !== 'notrump') {
             const trumpCards = hand.filter(card => card.suit === trumpSuit);
             const trumpLength = trumpCards.length;
             
-            console.log(`Trump cards (${trumpSuit}): ${trumpCards.map(c => c.rank + c.suit).join(', ')} (${trumpLength} cards)`);
+            dlog(`Trump cards (${trumpSuit}): ${trumpCards.map(c => c.rank + c.suit).join(', ')} (${trumpLength} cards)`);
             
             // Trump length analysis - more accurate values
             if (trumpLength >= 7) {
@@ -1468,34 +1484,34 @@ class IsraeliWhist {
             
             if (trumpAce) {
                 tricks += 0.8; // Trump ace is very strong
-                console.log(`Trump Ace: +0.8 tricks`);
+                dlog(`Trump Ace: +0.8 tricks`);
             }
             if (trumpKing && trumpLength >= 3) {
                 tricks += 0.5; // Trump king with protection
-                console.log(`Trump King (protected): +0.5 tricks`);
+                dlog(`Trump King (protected): +0.5 tricks`);
             }
             if (trumpQueen && trumpLength >= 3) { // Lower protection requirement
                 tricks += 0.3; // Trump queen is more valuable with length
-                console.log(`Trump Queen (protected): +0.3 tricks`);
+                dlog(`Trump Queen (protected): +0.3 tricks`);
             }
             if (trumpJack && trumpLength >= 4) {
                 tricks += 0.2; // Trump jack with good length
-                console.log(`Trump Jack (protected): +0.2 tricks`);
+                dlog(`Trump Jack (protected): +0.2 tricks`);
             }
             if (trump10 && trumpLength >= 4) {
                 tricks += 0.1; // Trump ten can be valuable
-                console.log(`Trump Ten (protected): +0.1 tricks`);
+                dlog(`Trump Ten (protected): +0.1 tricks`);
             }
             
             // Trump sequence evaluation - NEW
             const trumpSequence = this.evaluateTrumpSequence(trumpCards);
             if (trumpSequence > 0) {
                 tricks += trumpSequence;
-                console.log(`Trump sequence value: +${trumpSequence} tricks`);
+                dlog(`Trump sequence value: +${trumpSequence} tricks`);
             }
             
             const lengthContribution = trumpLength >= 7 ? 2.8 : trumpLength >= 6 ? 2.2 : trumpLength >= 5 ? 1.6 : trumpLength >= 4 ? 1.0 : trumpLength >= 3 ? 0.5 : trumpLength <= 2 ? -0.3 : 0;
-            console.log(`Trump contribution: +${lengthContribution} for length`);
+            dlog(`Trump contribution: +${lengthContribution} for length`);
         }
         
         // High cards in side suits - much more accurate evaluation
@@ -1512,11 +1528,11 @@ class IsraeliWhist {
                 const jacks = suitCards.filter(card => card.rank === 'J').length;
                 const tens = suitCards.filter(card => card.rank === '10').length;
                 
-                console.log(`Side suit ${suit} (${suitLength} cards): ${suitCards.map(c => c.rank + c.suit).join(', ')}`);
+                dlog(`Side suit ${suit} (${suitLength} cards): ${suitCards.map(c => c.rank + c.suit).join(', ')}`);
                 
                 // Aces already counted above, but side suit aces are excellent
                 if (suitAces > 0) {
-                    console.log(`  Side suit Aces: already counted in main calculation`);
+                    dlog(`  Side suit Aces: already counted in main calculation`);
                 }
                 
                 // Improved side suit evaluation based on protection and position
@@ -1526,28 +1542,28 @@ class IsraeliWhist {
                     tricks += queens * 0.6; // Protected queens in long suits
                     tricks += jacks * 0.4; // Protected jacks
                     tricks += tens * 0.3; // Protected tens
-                    console.log(`  Very long suit (${suitLength}): K=${kings * 0.9}, Q=${queens * 0.6}, J=${jacks * 0.4}, 10=${tens * 0.3}`);
+                    dlog(`  Very long suit (${suitLength}): K=${kings * 0.9}, Q=${queens * 0.6}, J=${jacks * 0.4}, 10=${tens * 0.3}`);
                 } else if (suitLength === 4) {
                     // Long suits - well protected
                     tricks += kings * 0.8; // Well-protected kings
                     tricks += queens * 0.5; // Protected queens
                     tricks += jacks * 0.3; // Protected jacks
                     tricks += tens * 0.2; // Protected tens
-                    console.log(`  Long suit (4): K=${kings * 0.8}, Q=${queens * 0.5}, J=${jacks * 0.3}, 10=${tens * 0.2}`);
+                    dlog(`  Long suit (4): K=${kings * 0.8}, Q=${queens * 0.5}, J=${jacks * 0.3}, 10=${tens * 0.2}`);
                 } else if (suitLength === 3) {
                     // Medium suits - decent protection
                     tricks += kings * 0.7; // Reasonably protected kings
                     tricks += queens * 0.4; // Protected queens
                     tricks += jacks * 0.2; // Protected jacks
-                    console.log(`  Medium suit (3): K=${kings * 0.7}, Q=${queens * 0.4}, J=${jacks * 0.2}`);
+                    dlog(`  Medium suit (3): K=${kings * 0.7}, Q=${queens * 0.4}, J=${jacks * 0.2}`);
                 } else if (suitLength === 2) {
                     // Short suits - some protection
                     tricks += kings * 0.5; // Some protection
                     tricks += queens * 0.3; // Better than before
-                    console.log(`  Short suit (2): K=${kings * 0.5}, Q=${queens * 0.3}`);
+                    dlog(`  Short suit (2): K=${kings * 0.5}, Q=${queens * 0.3}`);
                 } else { // singleton
                     tricks += kings * 0.3; // Singleton king still has value
-                    console.log(`  Singleton: K=${kings * 0.3} (risky)`);
+                    dlog(`  Singleton: K=${kings * 0.3} (risky)`);
                     // Don't count singleton queens/jacks - too risky
                 }
             }
@@ -1669,15 +1685,15 @@ class IsraeliWhist {
          this.handType = totalBids > 13 ? 'over' : 'under';
 
         // Log Phase 3 start with all player hands for analysis
-        console.log(`\n🎮 PHASE 3 STARTING - CARD PLAY:`);
-        console.log(`   Trump: ${this.trumpSuit || 'No Trump'} | Total Bids: ${totalBids} (${this.handType.toUpperCase()})`);
-        console.log(`   Current Hands:`);
+        dlog(`\n🎮 PHASE 3 STARTING - CARD PLAY:`);
+        dlog(`   Trump: ${this.trumpSuit || 'No Trump'} | Total Bids: ${totalBids} (${this.handType.toUpperCase()})`);
+        dlog(`   Current Hands:`);
         this.players.forEach(player => {
             const hand = this.hands[player].map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`).sort();
             const bid = this.phase2Bids[player];
             this.logPlayer(`     ${this.getPlayerDisplayName(player)}: ${hand.join(' ')} (bid: ${bid})`, player);
         });
-        console.log('');
+        dlog('');
         
         // Start first trick
         this.startTrick();
@@ -1730,7 +1746,7 @@ class IsraeliWhist {
             
             if (isSafari) {
                 // SAFARI: Minimal setup - let the global emergency fix handle clicks
-                console.log('🔥 Safari detected: Using emergency fix, minimal card setup');
+                dlog('🔥 Safari detected: Using emergency fix, minimal card setup');
                 
                 // Just ensure the card is clickable for the global listener
                 newCard.style.webkitTouchCallout = 'none';
@@ -1739,7 +1755,7 @@ class IsraeliWhist {
                 
             } else {
                 // NON-SAFARI BROWSERS: Standard event handling
-                console.log('🌐 Applying standard event handlers for card index', index);
+                dlog('🌐 Applying standard event handlers for card index', index);
                 
                 // Standard event handling for non-Safari browsers
                 newCard.addEventListener('click', clickHandler);
@@ -1803,7 +1819,7 @@ class IsraeliWhist {
         try {
             bestIndex = this.getHumanHintCardIndex();
         } catch (e) {
-            console.warn('suggestBestCard: hint failed, no suggestion shown', e);
+            dwarn('suggestBestCard: hint failed, no suggestion shown', e);
             return;
         }
         if (typeof bestIndex !== 'number' || bestIndex < 0 || bestIndex >= southHand.length) return;
@@ -2024,10 +2040,10 @@ class IsraeliWhist {
      * @param {HTMLElement} cardElement Rendered card element from #south-cards.
      */
     onCardClick(cardElement) {
-        console.log('🎯 onCardClick called with element:', cardElement);
-        console.log('🎯 Browser:', navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1 ? 'Safari' : 'Other');
-        console.log('🎯 Current phase:', this.currentPhase);
-        console.log('🎯 Player turn enabled:', document.querySelector('.human-cards')?.classList.contains('player-turn'));
+        dlog('🎯 onCardClick called with element:', cardElement);
+        dlog('🎯 Browser:', navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1 ? 'Safari' : 'Other');
+        dlog('🎯 Current phase:', this.currentPhase);
+        dlog('🎯 Player turn enabled:', document.querySelector('.human-cards')?.classList.contains('player-turn'));
 
         // Guard against stale / duplicate clicks (e.g., mobile double-tap, or
         // a click that arrives after the card was already removed from the
@@ -2052,7 +2068,7 @@ class IsraeliWhist {
         
         if (!cardRankElement || !cardSuitElement) {
             console.error('Could not find rank or suit elements in clicked card');
-            console.log('🔍 Card element structure:', cardElement.innerHTML);
+            dlog('🔍 Card element structure:', cardElement.innerHTML);
             return;
         }
         
@@ -2108,13 +2124,13 @@ class IsraeliWhist {
         }
         const expectedPlayer = this.players[this.getCurrentPlayerIndex()];
         if (player !== expectedPlayer) {
-            console.warn(`🚫 playCard rejected: not ${player}'s turn (expected ${expectedPlayer})`);
+            dwarn(`🚫 playCard rejected: not ${player}'s turn (expected ${expectedPlayer})`);
             return;
         }
 
-        console.log('🎮 playCard called:', { player, cardIndex, handLength: this.hands[player]?.length });
-        console.log('🎮 Current phase:', this.currentPhase);
-        console.log('🎮 Current player index:', this.getCurrentPlayerIndex());
+        dlog('🎮 playCard called:', { player, cardIndex, handLength: this.hands[player]?.length });
+        dlog('🎮 Current phase:', this.currentPhase);
+        dlog('🎮 Current player index:', this.getCurrentPlayerIndex());
         
         const hand = this.hands[player];
         if (cardIndex >= hand.length) {
@@ -2123,25 +2139,25 @@ class IsraeliWhist {
         }
         
         const card = hand[cardIndex];
-        console.log('🃏 Playing card:', card);
+        dlog('🃏 Playing card:', card);
         
         // Validate card play according to Israeli Whist rules (before removing from hand)
-        console.log('🔍 Validating card play...');
-        console.log('🔍 isValidCardPlay result:', this.isValidCardPlay(player, card));
+        dlog('🔍 Validating card play...');
+        dlog('🔍 isValidCardPlay result:', this.isValidCardPlay(player, card));
         
         if (!this.isValidCardPlay(player, card)) {
             console.error(`❌ Invalid card play: ${player} cannot play ${card.rank}${this.getSuitSymbol(card.suit)}`);
-            console.log('🔍 Current trick:', this.currentTrick);
-            console.log('🔍 Lead suit:', this.currentTrick[0] ? this.currentTrick[0].card.suit : 'none');
-            console.log('🔍 Trump suit:', this.trumpSuit);
+            dlog('🔍 Current trick:', this.currentTrick);
+            dlog('🔍 Lead suit:', this.currentTrick[0] ? this.currentTrick[0].card.suit : 'none');
+            dlog('🔍 Trump suit:', this.trumpSuit);
             if (player === 'south') {
                 this.showGameNotification('You must follow suit if you can!', 'warning');
             }
             return;
         }
         
-        console.log('✅ Card play validation passed!');
-        console.log('🎮 Proceeding with card play...');
+        dlog('✅ Card play validation passed!');
+        dlog('🎮 Proceeding with card play...');
         
         // Update AI memory with card played
         this.updateCardMemory(card, player);
@@ -2336,7 +2352,7 @@ class IsraeliWhist {
         // "Cannot determine winner of incomplete trick" and silently invent
         // a winner — or worse, crash on an empty array).
         if (!Array.isArray(this.currentTrick) || this.currentTrick.length !== 4) {
-            console.warn(
+            dwarn(
                 'completeTrick skipped: currentTrick length is',
                 this.currentTrick ? this.currentTrick.length : 'null'
             );
@@ -2365,7 +2381,7 @@ class IsraeliWhist {
         const trickCards = this.currentTrick.map(play => 
             `${this.getPlayerDisplayName(play.player)}: ${play.card.rank}${this.getSuitSymbol(play.card.suit)}`
         ).join(', ');
-        console.log(`🏆 TRICK ${this.tricksPlayed} WINNER: ${this.getPlayerDisplayName(winner)} | Cards played: ${trickCards}`);
+        dlog(`🏆 TRICK ${this.tricksPlayed} WINNER: ${this.getPlayerDisplayName(winner)} | Cards played: ${trickCards}`);
         
         // Update round display immediately after trick completion
         this.updateDisplay();
@@ -2413,7 +2429,7 @@ class IsraeliWhist {
         const winnerNameElement = document.querySelector(`.${winner}-player .player-name`);
         
         if (!winnerNameElement) {
-            console.warn(`Could not find winner's name element for ${winner}`);
+            dwarn(`Could not find winner's name element for ${winner}`);
             return;
         }
         
@@ -2452,7 +2468,7 @@ class IsraeliWhist {
             const tricksWon = this.tricksWon[player];
             trickCountElement.textContent = `Takes: ${tricksWon}`;
         } else {
-            console.warn(`Could not find trick count element for ${player}`);
+            dwarn(`Could not find trick count element for ${player}`);
         }
     }
     
@@ -2594,36 +2610,16 @@ class IsraeliWhist {
      * Power of a card for winning the current trick. Higher wins. Mirrors the
      * precedence in determineTrickWinner: trump > lead suit > off-suit.
      */
-    mcCardPower(id, leadSuit, trumpIdx) {
-        const suit = (id / 13) | 0;
-        const rank = id % 13;
-        if (trumpIdx >= 0 && suit === trumpIdx) return 200 + rank;
-        if (suit === leadSuit) return 100 + rank;
-        return rank;
-    }
+    mcCardPower(id, leadSuit, trumpIdx) { return window.MCEngine.mcCardPower(id, leadSuit, trumpIdx); }
 
     /**
      * Winning seat of a complete-or-partial trick (array of {seat, card:int}).
      * Integer mirror of determineTrickWinner — verified by tests/mc-parity.mjs.
      */
-    mcTrickWinner(trick, trumpIdx) {
-        const leadSuit = (trick[0].card / 13) | 0;
-        let winSeat = trick[0].seat;
-        let winPow = this.mcCardPower(trick[0].card, leadSuit, trumpIdx);
-        for (let i = 1; i < trick.length; i++) {
-            const p = this.mcCardPower(trick[i].card, leadSuit, trumpIdx);
-            if (p > winPow) { winPow = p; winSeat = trick[i].seat; }
-        }
-        return winSeat;
-    }
+    mcTrickWinner(trick, trumpIdx) { return window.MCEngine.mcTrickWinner(trick, trumpIdx); }
 
     /** In-place Fisher-Yates shuffle of an int array. */
-    _mcShuffle(a) {
-        for (let i = a.length - 1; i > 0; i--) {
-            const j = (Math.random() * (i + 1)) | 0;
-            const t = a[i]; a[i] = a[j]; a[j] = t;
-        }
-    }
+    _mcShuffle(a) { return window.MCEngine.mcShuffle(a); }
 
     /**
      * Gather the public state needed to simulate from the acting seat's view.
@@ -2667,11 +2663,7 @@ class IsraeliWhist {
         return { actingIdx, trumpIdx, ownHand, need, won, bids, voids, pool, trickInts, leader: this.trickLeader };
     }
 
-    _mcAllowedCount(card, others, ps, relax) {
-        const suit = (card / 13) | 0; let c = 0;
-        for (const s of others) if (relax || !ps.voids[s][suit]) c++;
-        return c;
-    }
+    _mcAllowedCount(card, others, ps, relax) { return window.MCEngine.mcAllowedCount(card, others, ps, relax); }
 
     /**
      * One constrained dealing attempt: distribute the unseen pool to the three
@@ -2679,40 +2671,14 @@ class IsraeliWhist {
      * with the fewest legal homes are placed first. Returns per-seat int hands
      * or null on a dead end.
      */
-    _mcTryDeal(others, ps, relax) {
-        const cap = {}; const hands = {};
-        for (const s of others) { cap[s] = ps.need[s]; hands[s] = []; }
-        const cards = ps.pool.slice();
-        this._mcShuffle(cards);
-        cards.sort((a, b) => this._mcAllowedCount(a, others, ps, relax) - this._mcAllowedCount(b, others, ps, relax));
-        for (const card of cards) {
-            const suit = (card / 13) | 0;
-            let n = 0; const allowed = [];
-            for (const s of others) if (cap[s] > 0 && (relax || !ps.voids[s][suit])) allowed.push(s);
-            if (allowed.length === 0) return null;
-            const chosen = allowed[(Math.random() * allowed.length) | 0];
-            hands[chosen].push(card); cap[chosen]--;
-        }
-        return hands;
-    }
+    _mcTryDeal(others, ps, relax) { return window.MCEngine.mcTryDeal(others, ps, relax); }
 
     /**
      * Sample one consistent full 4-hand deal. Acting seat keeps its real hand;
      * the other three are dealt the unseen pool. Retries, then relaxes voids,
      * then returns null (caller falls back to a heuristic).
      */
-    mcSampleDeal(ps) {
-        const others = [];
-        for (let s = 0; s < 4; s++) if (s !== ps.actingIdx) others.push(s);
-        let hands = null;
-        for (let attempt = 0; attempt < 8 && !hands; attempt++) hands = this._mcTryDeal(others, ps, false);
-        if (!hands) hands = this._mcTryDeal(others, ps, true); // relax voids as last resort
-        if (!hands) return null;
-        const deal = [null, null, null, null];
-        deal[ps.actingIdx] = ps.ownHand.slice();
-        for (const s of others) deal[s] = hands[s];
-        return deal;
-    }
+    mcSampleDeal(ps) { return window.MCEngine.mcSampleDeal(ps); }
 
     /**
      * Fast rollout policy: pick a move index for `seat`. If the seat still wants
@@ -2720,75 +2686,13 @@ class IsraeliWhist {
      * otherwise duck (dump the highest card that loses, else lowest). Integer
      * only — no DOM, no evaluate* heuristics.
      */
-    mcRolloutMove(sim, seat, hand, leadSuit, trumpIdx) {
-        const n = hand.length;
-        const wants = sim.allWant ? true : (sim.bids[seat] - sim.tricksWon[seat]) > 0;
-
-        if (leadSuit < 0) {
-            // Leading: high if we want tricks, low if we want to duck.
-            let pick = 0, bestR = wants ? -1 : 99;
-            for (let i = 0; i < n; i++) {
-                const r = hand[i] % 13;
-                if (wants ? r > bestR : r < bestR) { bestR = r; pick = i; }
-            }
-            return pick;
-        }
-
-        let mustFollow = false;
-        for (let i = 0; i < n; i++) { if (((hand[i] / 13) | 0) === leadSuit) { mustFollow = true; break; } }
-
-        let bestPow = -1;
-        for (let k = 0; k < sim.trick.length; k++) {
-            const p = this.mcCardPower(sim.trick[k].card, leadSuit, trumpIdx);
-            if (p > bestPow) bestPow = p;
-        }
-
-        if (wants) {
-            let win = -1, winRank = 99, low = 0, lowRank = 99;
-            for (let i = 0; i < n; i++) {
-                if (mustFollow && ((hand[i] / 13) | 0) !== leadSuit) continue;
-                const id = hand[i], r = id % 13;
-                if (r < lowRank) { lowRank = r; low = i; }
-                if (this.mcCardPower(id, leadSuit, trumpIdx) > bestPow && r < winRank) { winRank = r; win = i; }
-            }
-            return win >= 0 ? win : low;
-        } else {
-            let dump = -1, dumpRank = -1, low = 0, lowRank = 99;
-            for (let i = 0; i < n; i++) {
-                if (mustFollow && ((hand[i] / 13) | 0) !== leadSuit) continue;
-                const id = hand[i], r = id % 13;
-                if (r < lowRank) { lowRank = r; low = i; }
-                if (this.mcCardPower(id, leadSuit, trumpIdx) <= bestPow && r > dumpRank) { dumpRank = r; dump = i; }
-            }
-            return dump >= 0 ? dump : low;
-        }
-    }
+    mcRolloutMove(sim, seat, hand, leadSuit, trumpIdx) { return window.MCEngine.mcRolloutMove(sim, seat, hand, leadSuit, trumpIdx); }
 
     /**
      * Play a SimState to completion using the rollout policy. MUTATES sim
      * (hands, trick, tricksWon — all caller-owned copies). Returns tricksWon.
      */
-    mcPlayout(sim) {
-        const trumpIdx = sim.trumpIdx;
-        let remaining = sim.hands[0].length + sim.hands[1].length + sim.hands[2].length + sim.hands[3].length;
-        while (remaining > 0) {
-            const seat = sim.trick.length === 0 ? sim.leader : (sim.trick[sim.trick.length - 1].seat + 1) % 4;
-            const leadSuit = sim.trick.length ? ((sim.trick[0].card / 13) | 0) : -1;
-            const hand = sim.hands[seat];
-            const idx = this.mcRolloutMove(sim, seat, hand, leadSuit, trumpIdx);
-            const card = hand[idx];
-            hand.splice(idx, 1);
-            remaining--;
-            sim.trick.push({ seat, card });
-            if (sim.trick.length === 4) {
-                const w = this.mcTrickWinner(sim.trick, trumpIdx);
-                sim.tricksWon[w]++;
-                sim.leader = w;
-                sim.trick.length = 0;
-            }
-        }
-        return sim.tricksWon;
-    }
+    mcPlayout(sim) { return window.MCEngine.mcPlayout(sim); }
 
     _mcDeadline() {
         return performance.now() + (this.fastMode ? this.mcConfig.maxMsTurbo : this.mcConfig.maxMs);
@@ -5517,7 +5421,7 @@ class IsraeliWhist {
     displayCards() {
         // Add safety check for hands
         if (!this.hands || typeof this.hands !== 'object') {
-            console.warn('displayCards called but hands not initialized:', this.hands);
+            dwarn('displayCards called but hands not initialized:', this.hands);
             return;
         }
         
@@ -5528,7 +5432,7 @@ class IsraeliWhist {
                 // Limit to 13 cards to prevent display issues
                 if (this.hands[player].length > 13) {
                     this.hands[player] = this.hands[player].slice(0, 13);
-                    console.warn(`Truncated ${player} hand to 13 cards`);
+                    dwarn(`Truncated ${player} hand to 13 cards`);
                 }
             }
         });
@@ -5565,7 +5469,7 @@ class IsraeliWhist {
 
     createCardElement(card) {
         if (!card || typeof card !== 'object') {
-            console.warn('createCardElement called with invalid card:', card);
+            dwarn('createCardElement called with invalid card:', card);
             return this.createCardBack();
         }
 
@@ -5738,7 +5642,7 @@ class IsraeliWhist {
     sortCards(cards) {
         // Add safety check for cards parameter
         if (!cards || !Array.isArray(cards)) {
-            console.warn('sortCards called with invalid cards:', cards);
+            dwarn('sortCards called with invalid cards:', cards);
             return [];
         }
         
@@ -5746,7 +5650,7 @@ class IsraeliWhist {
         const validCards = cards.filter(card => card && typeof card === 'object' && card.suit && card.rank);
         
         if (validCards.length !== cards.length) {
-            console.warn('sortCards: filtered out invalid cards, original:', cards.length, 'valid:', validCards.length);
+            dwarn('sortCards: filtered out invalid cards, original:', cards.length, 'valid:', validCards.length);
         }
         
         // Define suit order (clubs, diamonds, spades, hearts)
@@ -5873,7 +5777,7 @@ class IsraeliWhist {
         // Create an array of players with their scores for sorting
         const playerScores = this.players.map(player => ({
             player: player,
-            score: this.scores[player],
+            score: this.gameScores[player],
             displayName: this.getPlayerDisplayName(player)
         }));
         
@@ -5889,7 +5793,7 @@ class IsraeliWhist {
         // Get the total score content container
         const totalScoreContent = document.getElementById('total-score-content');
         if (!totalScoreContent) {
-            console.warn('Could not find total-score-content element');
+            dwarn('Could not find total-score-content element');
             return;
         }
         
@@ -5953,7 +5857,7 @@ class IsraeliWhist {
                     bidSpan.textContent = 'bid: -';
                 }
              } else {
-                 console.warn(`Could not find bid span for player: ${player}`);
+                 dwarn(`Could not find bid span for player: ${player}`);
              }
          });
      }
@@ -5991,9 +5895,9 @@ class IsraeliWhist {
              
              // Debug: log all elements with player-bid class
              const allBidSpans = document.querySelectorAll('.player-bid');
-             console.log('All bid spans found:', allBidSpans);
+             dlog('All bid spans found:', allBidSpans);
              allBidSpans.forEach((span, index) => {
-                 console.log(`Bid span ${index}:`, span.textContent, 'parent:', span.parentElement);
+                 dlog(`Bid span ${index}:`, span.textContent, 'parent:', span.parentElement);
              });
          }
          
@@ -6080,13 +5984,13 @@ class IsraeliWhist {
 
     debugPhase2Bids() {
         // Debug method to check Phase 2 bid state
-        console.log('=== PHASE 2 BID DEBUG ===');
-        console.log('Current Phase:', this.currentPhase);
-        console.log('Phase 2 Bids:', this.phase2Bids);
-        console.log('Current Bidder:', this.currentBidder);
-        console.log('Trump Winner:', this.trumpWinner);
-        console.log('Trump Suit:', this.trumpSuit);
-        console.log('Minimum Takes:', this.minimumTakes);
+        dlog('=== PHASE 2 BID DEBUG ===');
+        dlog('Current Phase:', this.currentPhase);
+        dlog('Phase 2 Bids:', this.phase2Bids);
+        dlog('Current Bidder:', this.currentBidder);
+        dlog('Trump Winner:', this.trumpWinner);
+        dlog('Trump Suit:', this.trumpSuit);
+        dlog('Minimum Takes:', this.minimumTakes);
         
         // Check DOM elements
         this.players.forEach(player => {
@@ -6095,9 +5999,9 @@ class IsraeliWhist {
         
         // Check Phase 2 interface
         const phase2Interface = document.querySelector('.second-phase-bidding');
-        console.log('Phase 2 interface:', phase2Interface);
+        dlog('Phase 2 interface:', phase2Interface);
         // Check bids data (debug only)
-        console.log('Phase 2 Bids:', this.phase2Bids);
+        dlog('Phase 2 Bids:', this.phase2Bids);
     }
 
     getPhaseDisplayText() {
@@ -6271,7 +6175,7 @@ class IsraeliWhist {
                     this.showGameNotification('🐌 Normal Speed Restored', 'info', 1000);
                 }
                 
-                console.log(`Fast mode ${this.fastMode ? 'enabled' : 'disabled'}`);
+                dlog(`Fast mode ${this.fastMode ? 'enabled' : 'disabled'}`);
             });
         }
 
@@ -6427,7 +6331,7 @@ class IsraeliWhist {
      * copy-pasted) so a future change only has to happen in one place.
      */
     handleAllPassed() {
-        console.log('All players passed. Starting new hand.');
+        dlog('All players passed. Starting new hand.');
         this.showGameNotification('All players passed! Starting new hand with fresh cards.', 'info');
 
         // Animate human player cards to center and remove them, then redeal.
@@ -6477,7 +6381,7 @@ class IsraeliWhist {
                 this.trumpWinner = winner;
                 this.trumpSuit = this.phase1Bids[winner].trumpSuit;
                 this.minimumTakes = this.phase1Bids[winner].minTakes;
-                console.log(`Phase 1 complete. ${winner} won with ${this.minimumTakes} ${this.trumpSuit}`);
+                dlog(`Phase 1 complete. ${winner} won with ${this.minimumTakes} ${this.trumpSuit}`);
                 setTimeout(() => this.startPhase2(), this.getDelay(1000));
                 return;
             }
@@ -6569,7 +6473,7 @@ class IsraeliWhist {
                 this.trumpWinner = winner;
                 this.trumpSuit = this.phase1Bids[winner].trumpSuit;
                 this.minimumTakes = this.phase1Bids[winner].minTakes;
-                console.log(`Phase 1 complete. ${winner} won with ${this.minimumTakes} ${this.trumpSuit}`);
+                dlog(`Phase 1 complete. ${winner} won with ${this.minimumTakes} ${this.trumpSuit}`);
                 setTimeout(() => this.startPhase2(), this.getDelay(1000));
                 return;
             }
@@ -6721,7 +6625,7 @@ class IsraeliWhist {
                     this.trumpWinner = winner;
                     this.trumpSuit = this.phase1Bids[winner].trumpSuit;
                     this.minimumTakes = this.phase1Bids[winner].minTakes;
-                    console.log(`Phase 1 complete. ${winner} won with ${this.minimumTakes} ${this.trumpSuit}`);
+                    dlog(`Phase 1 complete. ${winner} won with ${this.minimumTakes} ${this.trumpSuit}`);
                     setTimeout(() => this.startPhase2(), this.getDelay(1000));
                     return;
                 }
@@ -6902,7 +6806,7 @@ class IsraeliWhist {
             minTakes: minTakes,
             trumpSuit: trumpSuit
         };
-        console.log(`calculateOpeningBid returning:`, result);
+        dlog(`calculateOpeningBid returning:`, result);
         return result;
     }
 
@@ -6917,7 +6821,7 @@ class IsraeliWhist {
         
         // Add null check for hand
         if (!hand || !Array.isArray(hand)) {
-            console.warn('evaluateHandStrength called with invalid hand for player:', player, hand);
+            dwarn('evaluateHandStrength called with invalid hand for player:', player, hand);
             return { score: 0, longestSuit: 'clubs', suitCounts: { clubs: 0, diamonds: 0, hearts: 0, spades: 0 }, maxLength: 0 };
         }
         
@@ -6931,7 +6835,7 @@ class IsraeliWhist {
         // Advanced hand analysis with sophisticated evaluation
         hand.forEach(card => {
             if (!card || typeof card !== 'object') {
-                console.warn('Invalid card found in hand:', card);
+                dwarn('Invalid card found in hand:', card);
                 return;
             }
             
@@ -7479,21 +7383,21 @@ class IsraeliWhist {
             this.trumpSuit = highestBid.trumpSuit;
             this.minimumTakes = highestBid.minTakes;
             const winnerDisplayName = this.getPlayerDisplayName(trumpWinner);
-            console.log(`🏆 PHASE 1 WINNER: ${winnerDisplayName} won with ${highestBid.minTakes} ${highestBid.trumpSuit}`);
+            dlog(`🏆 PHASE 1 WINNER: ${winnerDisplayName} won with ${highestBid.minTakes} ${highestBid.trumpSuit}`);
             
             // Show all player hands for analysis
-            console.log(`\n🃏 PLAYER HANDS ANALYSIS:`);
+            dlog(`\n🃏 PLAYER HANDS ANALYSIS:`);
             this.players.forEach(player => {
                 const hand = this.hands[player].map(card => `${card.rank}${this.getSuitSymbol(card.suit)}`).sort();
                 const handStrength = this.evaluateHandStrength(player);
                 this.logPlayer(`   ${this.getPlayerDisplayName(player)}: ${hand.join(' ')} (${handStrength.score} pts)`, player);
             });
-            console.log(''); // Empty line for readability
+            dlog(''); // Empty line for readability
             
             this.startPhase2();
         } else {
             // All passed, redeal
-            console.log('All players passed, redealing...');
+            dlog('All players passed, redealing...');
             this.resetForNewHand();
         }
     }
@@ -7516,7 +7420,7 @@ class IsraeliWhist {
         // Verify hands are empty
         this.players.forEach(player => {
             if (this.hands[player].length !== 0) {
-                console.warn(`resetForNewHand: ${player} hand not properly cleared, forcing reset`);
+                dwarn(`resetForNewHand: ${player} hand not properly cleared, forcing reset`);
                 this.hands[player] = [];
             }
         });
@@ -7579,7 +7483,7 @@ class IsraeliWhist {
                                 document.querySelector(`.${player}-player`);
             
             if (!playerElement) {
-                console.warn(`Could not find player element for ${player}`);
+                dwarn(`Could not find player element for ${player}`);
                 return;
             }
             
@@ -7677,9 +7581,9 @@ class IsraeliWhist {
       * Side effects: updates scores/gamletHistory/AI learning, and may add to cumulativeScores.
       */
      endHand() {
-                 console.log('🏁 HAND COMPLETE - Final Results:');
+                 dlog('🏁 HAND COMPLETE - Final Results:');
         const results = Object.entries(this.tricksWon).map(([p, t]) => `${this.getPlayerDisplayName(p)}: ${t} tricks`).join(', ');
-        console.log(`   Tricks Won: ${results}`);
+        dlog(`   Tricks Won: ${results}`);
         
         // Check if all players failed their bids - if so, cancel the gamlet
         const allPlayersFailed = this.players.every(player => {
@@ -7690,7 +7594,7 @@ class IsraeliWhist {
         });
         
         if (allPlayersFailed) {
-            console.log('❌ ALL PLAYERS FAILED THEIR BIDS - GAMLET CANCELLED');
+            dlog('❌ ALL PLAYERS FAILED THEIR BIDS - GAMLET CANCELLED');
             this.logPlayer('🚫 All players failed their bids! This gamlet is cancelled and will not be scored.', 'south');
             this.players.forEach(player => {
                 this.logPlayer(`   ${this.getPlayerDisplayName(player)}: bid ${this.phase2Bids[player]}, took ${this.tricksWon[player]} → FAILED`, player);
@@ -7717,17 +7621,17 @@ class IsraeliWhist {
              if (bid === 0) {
                  // Special scoring for zero bids
                  score = this.calculateZeroBidScore(player, tricks);
-                 this.logPlayer(`   💯 ${this.getPlayerDisplayName(player)}: bid 0, took ${tricks} → ${score > 0 ? '+' : ''}${score} pts (${this.scores[player]} → ${this.scores[player] + score})`, player);
+                 this.logPlayer(`   💯 ${this.getPlayerDisplayName(player)}: bid 0, took ${tricks} → ${score > 0 ? '+' : ''}${score} pts (${this.gameScores[player]} → ${this.gameScores[player] + score})`, player);
              } else {
                  // Regular scoring
                  score = this.calculateScore(player, bid, tricks);
                  const status = tricks === bid ? '✅ EXACT' : tricks > bid ? '📈 OVER' : '📉 UNDER';
-                 this.logPlayer(`   ${status} ${this.getPlayerDisplayName(player)}: bid ${bid}, took ${tricks} → ${score > 0 ? '+' : ''}${score} pts (${this.scores[player]} → ${this.scores[player] + score})`, player);
+                 this.logPlayer(`   ${status} ${this.getPlayerDisplayName(player)}: bid ${bid}, took ${tricks} → ${score > 0 ? '+' : ''}${score} pts (${this.gameScores[player]} → ${this.gameScores[player] + score})`, player);
              }
              
              scoreChanges[player] = score;
              gamletScores[player] = score; // Store individual gamlet score
-             this.scores[player] += score;
+             this.gameScores[player] += score;
          });
          
          // Update AI learning with actual results
@@ -7745,7 +7649,7 @@ class IsraeliWhist {
          this.saveGamletToHistory(gamletScores);
          
                  // Check for full game completion (200 points OR 10 gamlets)
-        const winnerBy200 = this.players.find(player => this.scores[player] >= 200);
+        const winnerBy200 = this.players.find(player => this.gameScores[player] >= 200);
         const gameComplete = winnerBy200 || this.gamletNumber >= 10;
         
         // Check if human player got the most points in this specific gamlet
@@ -7755,7 +7659,7 @@ class IsraeliWhist {
         
         if (gamletWinner === 'south') {
             // Human player got the most points in this gamlet - show fireworks!
-            console.log(`🎆 Human player won the gamlet with ${gamletScores.south} points! Showing fireworks.`);
+            dlog(`🎆 Human player won the gamlet with ${gamletScores.south} points! Showing fireworks.`);
             this.showFireworks();
         }
         
@@ -7763,14 +7667,14 @@ class IsraeliWhist {
             const winnerDisplayName = winnerBy200 ? 
                 this.getPlayerDisplayName(winnerBy200) : 
                 this.getPlayerDisplayName(this.players.reduce((leader, player) => 
-                    this.scores[player] > this.scores[leader] ? player : leader
+                    this.gameScores[player] > this.gameScores[leader] ? player : leader
                 ));
             
             const winReason = winnerBy200 ? 
-                `with ${this.scores[winnerBy200]} points!` : 
+                `with ${this.gameScores[winnerBy200]} points!` : 
                 `after ${this.gamletNumber} gamlets!`;
             
-            console.log(`🏆 FULL GAME WINNER: ${winnerDisplayName} ${winReason}`);
+            dlog(`🏆 FULL GAME WINNER: ${winnerDisplayName} ${winReason}`);
             
             // Fireworks only for gamlet wins, not full game wins
             
@@ -7784,10 +7688,11 @@ class IsraeliWhist {
              // used to crash the scorecard render (see gameHistory shape
              // mismatch bug found by code review).
              this.players.forEach(player => {
-                 this.cumulativeScores[player] += this.scores[player];
+                 this.sessionScores[player] += this.gameScores[player];
              });
 
              this.gamletsPlayed++;
+             this.saveSession(); // persist the new session grand total
              
              // Show full game completion and start new full game
              this.showGameNotification(`Full Game ${this.fullGameNumber} Complete! Starting new full game in 3 seconds...`, 'info', 3000);
@@ -7796,7 +7701,7 @@ class IsraeliWhist {
              }, this.getDelay(3000));
         } else {
              // Continue with new gamlet
-             console.log(`Gamlet ${this.gamletNumber} complete. Starting next gamlet...`);
+             dlog(`Gamlet ${this.gamletNumber} complete. Starting next gamlet...`);
 
              setTimeout(() => {
                  this.resetForNewGamlet();
@@ -7890,10 +7795,10 @@ class IsraeliWhist {
      
      /**
       * Advances to the next gamlet within the current full game.
-      * Preserves this.scores, refreshes displays/name state, and delegates hand cleanup to resetForNewHand().
+      * Preserves this.gameScores, refreshes displays/name state, and delegates hand cleanup to resetForNewHand().
       */
      resetForNewGamlet() {
-         console.log('=== RESETTING FOR NEW GAMLET ===');
+         dlog('=== RESETTING FOR NEW GAMLET ===');
          
          // Increment gamlet number for next gamlet
          this.gamletNumber++;
@@ -7902,14 +7807,14 @@ class IsraeliWhist {
          const roundIndicator = document.getElementById('round-indicator');
          if (roundIndicator) {
              roundIndicator.textContent = this.gamletNumber;
-             console.log(`Gamlet counter updated to: ${this.gamletNumber}`);
+             dlog(`Gamlet counter updated to: ${this.gamletNumber}`);
          }
          
          // Check if we have a cached player name to auto-continue
          const cachedName = localStorage.getItem('israeliWhist_playerName');
          if (cachedName && cachedName.trim()) {
              // Auto-continue with cached name - no need to show modal
-             console.log(`Auto-starting new gamlet with cached name: ${cachedName}`);
+             dlog(`Auto-starting new gamlet with cached name: ${cachedName}`);
              this.playerName = cachedName.trim();
          } else {
              // Show name modal for new players
@@ -7918,7 +7823,7 @@ class IsraeliWhist {
          }
          
          // DON'T reset scores for new gamlet - scores carry over until full game ends
-         // this.scores = { north: 0, east: 0, south: 0, west: 0 }; // Keep current scores!
+         // this.gameScores = { north: 0, east: 0, south: 0, west: 0 }; // Keep current scores!
          // Advance the round counter so per-gamlet learning data (cardsSeen,
          // opponent patterns, the round filter in updateAILearning) is keyed to
          // a unique value per gamlet instead of collapsing every gamlet to 1.
@@ -7957,7 +7862,7 @@ class IsraeliWhist {
         // Reset bot memory for new gamlet
         this.resetBotMemory();
         
-        console.log('New gamlet started fresh!');
+        dlog('New gamlet started fresh!');
      }
      
      /**
@@ -7965,7 +7870,7 @@ class IsraeliWhist {
       * Resets full-game scores and gamlet number but leaves cumulativeScores as the session grand total.
       */
      resetForNewFullGame() {
-         console.log('=== RESETTING FOR NEW FULL GAME ===');
+         dlog('=== RESETTING FOR NEW FULL GAME ===');
          
          // Increment full game number
          this.fullGameNumber++;
@@ -7977,14 +7882,14 @@ class IsraeliWhist {
          const roundIndicator = document.getElementById('round-indicator');
          if (roundIndicator) {
              roundIndicator.textContent = this.gamletNumber;
-             console.log(`New full game started - Gamlet counter reset to: ${this.gamletNumber}`);
+             dlog(`New full game started - Gamlet counter reset to: ${this.gamletNumber}`);
          }
          
          // Check if we have a cached player name to auto-continue
          const cachedName = localStorage.getItem('israeliWhist_playerName');
          if (cachedName && cachedName.trim()) {
              // Auto-continue with cached name - no need to show modal
-             console.log(`Auto-starting new full game with cached name: ${cachedName}`);
+             dlog(`Auto-starting new full game with cached name: ${cachedName}`);
              this.playerName = cachedName.trim();
          } else {
              // Show name modal for new players
@@ -7993,7 +7898,7 @@ class IsraeliWhist {
          }
          
          // Reset ALL scores for new full game
-         this.scores = { north: 0, east: 0, south: 0, west: 0 };
+         this.gameScores = { north: 0, east: 0, south: 0, west: 0 };
          this.currentRound = 1;
          
          // Reset game state completely
@@ -8026,7 +7931,7 @@ class IsraeliWhist {
             this.updateTrickCount(player);
         });
         
-         console.log('New full game started fresh!');
+         dlog('New full game started fresh!');
      }
      
      /**
@@ -8068,7 +7973,7 @@ class IsraeliWhist {
               }
           };
          
-         console.log('🧠 Bot memory reset for new hand');
+         dlog('🧠 Bot memory reset for new hand');
      }
      
      showDealButtonForNextHand() {
@@ -8076,7 +7981,7 @@ class IsraeliWhist {
          const dealBtn = document.getElementById('deal-btn');
          if (dealBtn) {
              dealBtn.style.display = 'block';
-             console.log('Deal button shown for next hand');
+             dlog('Deal button shown for next hand');
          }
          
          // Update the display to show new game number
@@ -9101,9 +9006,71 @@ class IsraeliWhist {
         };
         
         this.gamletHistory.push(gamletRecord);
-        console.log(`Gamlet ${this.gamletNumber} saved to history:`, gamletRecord);
-        
+        dlog(`Gamlet ${this.gamletNumber} saved to history:`, gamletRecord);
+        this.saveSession();
+    }
 
+    // ── Session persistence ──────────────────────────────────────────────────
+    // A full game runs up to 10 gamlets (or 200 pts), and a session spans many
+    // full games. Without this, an accidental reload wiped the running score,
+    // the session grand total, and the whole scorecard. We persist the
+    // between-gamlet session state (not mid-trick play) to localStorage; on the
+    // next load restoreSession() resumes it and the next Deal continues where
+    // the player left off.
+
+    /** The session-level state worth surviving a reload. Plain JSON only. */
+    snapshotSession() {
+        return {
+            v: 1,
+            savedAt: new Date().toISOString(),
+            playerName: this.playerName,
+            sessionScores: this.sessionScores,
+            gameScores: this.gameScores,
+            gamletHistory: this.gamletHistory,
+            gamletsPlayed: this.gamletsPlayed,
+            gamletNumber: this.gamletNumber,
+            fullGameNumber: this.fullGameNumber,
+            currentRound: this.currentRound,
+        };
+    }
+
+    /** Mirror the current session to localStorage. Never throws. */
+    saveSession() {
+        try {
+            localStorage.setItem(this.SESSION_KEY, JSON.stringify(this.snapshotSession()));
+        } catch (e) {
+            dwarn('Session save failed (storage full or blocked):', e);
+        }
+    }
+
+    /** Restore a saved session if one exists. Returns true if state was applied. */
+    restoreSession() {
+        let raw = null;
+        try { raw = localStorage.getItem(this.SESSION_KEY); } catch (e) { return false; }
+        if (!raw) return false;
+        try {
+            const s = JSON.parse(raw);
+            if (!s || s.v !== 1) return false;
+            if (s.playerName) this.playerName = s.playerName;
+            if (s.sessionScores) this.sessionScores = s.sessionScores;
+            if (s.gameScores) this.gameScores = s.gameScores;
+            if (Array.isArray(s.gamletHistory)) this.gamletHistory = s.gamletHistory;
+            if (typeof s.gamletsPlayed === 'number') this.gamletsPlayed = s.gamletsPlayed;
+            if (typeof s.gamletNumber === 'number') this.gamletNumber = s.gamletNumber;
+            if (typeof s.fullGameNumber === 'number') this.fullGameNumber = s.fullGameNumber;
+            if (typeof s.currentRound === 'number') this.currentRound = s.currentRound;
+            dlog('Session restored from localStorage:', s);
+            return true;
+        } catch (e) {
+            dwarn('Session restore failed (corrupt data); starting fresh:', e);
+            return false;
+        }
+    }
+
+    /** Forget the persisted session (exposed as window.clearWhistSession). */
+    clearSession() {
+        try { localStorage.removeItem(this.SESSION_KEY); } catch (e) { /* ignore */ }
+        dlog('Persisted session cleared.');
     }
     
     // Fireworks animation for when human player wins
@@ -9246,11 +9213,11 @@ class IsraeliWhist {
                          navigator.userAgent.indexOf('Edg') === -1;
         
         if (isSafari) {
-            console.log('🚨 Setting up Safari EMERGENCY fix - global click detector');
+            dlog('🚨 Setting up Safari EMERGENCY fix - global click detector');
             
             // Add global document click listener that captures ALL clicks
             document.addEventListener('click', (e) => {
-                console.log('🚨 Safari: Global click detected on:', e.target);
+                dlog('🚨 Safari: Global click detected on:', e.target);
                 
                 // Check if click was on a card in human hand
                 let cardElement = e.target;
@@ -9266,19 +9233,19 @@ class IsraeliWhist {
                 // Check if this card is in the human hand
                 const humanCardsContainer = document.getElementById('south-cards');
                 if (!humanCardsContainer || !humanCardsContainer.contains(cardElement)) {
-                    console.log('🚨 Safari: Not a human card, ignoring');
+                    dlog('🚨 Safari: Not a human card, ignoring');
                     return;
                 }
                 
                 // Check if it's the player's turn
                 if (!humanCardsContainer.classList.contains('player-turn')) {
-                    console.log('🚨 Safari: Not player turn, ignoring');
+                    dlog('🚨 Safari: Not player turn, ignoring');
                     return;
                 }
                 
                 // Check if we're in the right phase
                 if (this.currentPhase !== 'phase3') {
-                    console.log('🚨 Safari: Not in phase3, ignoring');
+                    dlog('🚨 Safari: Not in phase3, ignoring');
                     return;
                 }
 
@@ -9288,36 +9255,36 @@ class IsraeliWhist {
                 // taps that should be ignored (e.g., a second quick tap before
                 // .player-turn is removed by nextPlayerInTrick()).
                 if (this.currentTrick.length >= 4) {
-                    console.log('🚨 Safari: Trick already full, ignoring');
+                    dlog('🚨 Safari: Trick already full, ignoring');
                     return;
                 }
                 if (this.getCurrentPlayerIndex() !== this.southIndex) {
-                    console.log('🚨 Safari: Not south\'s turn, ignoring');
+                    dlog('🚨 Safari: Not south\'s turn, ignoring');
                     return;
                 }
 
-                console.log('🚨 Safari: Valid card click detected!');
+                dlog('🚨 Safari: Valid card click detected!');
                 
                 // Find the card index by its position in the container
                 const allCards = Array.from(humanCardsContainer.querySelectorAll('.card'));
                 const cardIndex = allCards.indexOf(cardElement);
                 
                 if (cardIndex === -1) {
-                    console.log('🚨 Safari: Could not determine card index');
+                    dlog('🚨 Safari: Could not determine card index');
                     return;
                 }
                 
                 // Debug: Show detailed card information
-                console.log('🚨 Safari: Card details:');
-                console.log('  - Visual position in DOM:', cardIndex);
-                console.log('  - Total cards in DOM:', allCards.length);
-                console.log('  - Total cards in hand:', this.hands.south ? this.hands.south.length : 'undefined');
-                console.log('  - Clicked card element:', cardElement);
+                dlog('🚨 Safari: Card details:');
+                dlog('  - Visual position in DOM:', cardIndex);
+                dlog('  - Total cards in DOM:', allCards.length);
+                dlog('  - Total cards in hand:', this.hands.south ? this.hands.south.length : 'undefined');
+                dlog('  - Clicked card element:', cardElement);
                 
                 // Try to get the actual card data from the element
                 const cardRank = cardElement.querySelector('.card-rank')?.textContent;
                 const cardSuit = cardElement.querySelector('.card-center-suit')?.textContent;
-                console.log('  - Card visual: rank =', cardRank, ', suit =', cardSuit);
+                dlog('  - Card visual: rank =', cardRank, ', suit =', cardSuit);
                 
                 // Find the matching card in the hand array
                 let actualCardIndex = -1;
@@ -9328,10 +9295,10 @@ class IsraeliWhist {
                     });
                 }
                 
-                console.log('  - Actual card index in hand:', actualCardIndex);
+                dlog('  - Actual card index in hand:', actualCardIndex);
                 
                 const finalIndex = actualCardIndex !== -1 ? actualCardIndex : cardIndex;
-                console.log('🚨 Safari: Using final index', finalIndex, 'to play card');
+                dlog('🚨 Safari: Using final index', finalIndex, 'to play card');
                 
                 // Add immediate visual feedback
                 cardElement.style.opacity = '0.6';
@@ -9351,7 +9318,7 @@ class IsraeliWhist {
                 
             }, { capture: true, passive: false });
             
-            console.log('✅ Safari emergency fix installed');
+            dlog('✅ Safari emergency fix installed');
         }
     }
 
@@ -9359,12 +9326,13 @@ class IsraeliWhist {
 
 // Initialize the game when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing game...');
+    dlog('DOM loaded, initializing game...');
     try {
         window.game = new IsraeliWhist();
-        console.log('Israeli Whist game loaded successfully!');
+        dlog('Israeli Whist game loaded successfully!');
         
                  // Expose debug methods globally for console access
+         window.clearWhistSession = () => window.game.clearSession();
          window.debugPhase2Bids = () => window.game.debugPhase2Bids();
          window.refreshPhase2Displays = () => window.game.refreshAllPhase2Displays();
          window.forceUpdate = () => window.game.forceDisplayUpdate();

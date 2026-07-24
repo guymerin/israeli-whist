@@ -11,24 +11,41 @@ python3 -m http.server 8000
 # visit http://localhost:8000/
 ```
 
-No build step, no install, no test command. Reload the page to apply changes.
+No build step for the game itself. Reload the page to apply changes.
 
-## Verifying changes
+## Debug logging
 
-There is no test framework. Verify changes by exercising the game in the browser and watching the DevTools console — most state transitions emit color-coded logs via `this.logPlayer(message, player)`.
+Logging (including the color-coded `logPlayer` events) is **silent by default** so players get a clean console. Open the page with `?debug` in the URL (e.g. `index.html?debug`) to turn it on. Under the hood: `dlog(...)`/`dwarn(...)` are module-level globals gated on `WHIST_DEBUG` (derived from the URL); `console.error` is never gated, so genuine failures always surface. `window.game.debug` reflects the flag.
 
-The repo ships `.mcp.json` registering a Playwright MCP server for agent-driven smoke tests:
-1. Serve the repo and open `http://localhost:8000/`
-2. Drive the flow with Playwright MCP tools — click Deal, walk through Phase 1 bidding, Phase 2 takes prediction, and a few tricks of Phase 3
-3. Use `evaluate` to read `window.game` state directly (`window.game.currentPhase`, `window.game.phase2Bids`, `window.game.scores`) and confirm the right `logPlayer` events fired
+## Testing
+
+There is now a runnable test suite (dev-only; the game still ships with zero runtime dependencies). Install once, then run:
+
+```bash
+npm install                       # installs playwright (devDependency)
+npx playwright install chromium   # one-time browser download
+npm test                          # unit + parity + strength
+```
+
+- `npm run test:unit` — **`tests/mc-engine.test.mjs`**: Node-native, no browser. Imports `mc-engine.js` directly and checks encode/decode, trick-winner parity, playout=13, sampler sizes/coverage/voids. Sub-second.
+- `npm run test:parity` — **`tests/mc-parity.mjs`**: in-browser parity of the live engine vs `determineTrickWinner`.
+- `npm run test:strength` — **`tests/mc-strength.mjs`**: MC vs heuristic A/B (exact-hit rate, score/seat, decision-time p95). `WHIST_DEALS=N` to resize.
+- `npm run test:smoke` — **`tests/smoke-test.mjs`**: one full gamlet, phase flow, scoring rules, over/under rule, no page errors.
+
+The Playwright suites boot their own ephemeral static server via `tests/static-server.mjs` (set `WHIST_URL` to point at an external one instead). The repo also ships `.mcp.json` registering a Playwright MCP server for interactive agent-driven checks — drive Deal → Phase 1 → Phase 2 → a few tricks, and read `window.game` state (`currentPhase`, `phase2Bids`, `gameScores`) directly.
 
 ## Architecture
 
-Three files; no modules, no build, no framework:
+No build, no framework. `script.js` is a classic (non-module) script; the pure MC engine is a real ES module loaded alongside it:
 
-- **`index.html`** — static DOM. All elements exist at load time; script.js toggles `style.display` and writes `textContent` imperatively. Never renders from JS templates.
+- **`index.html`** — static DOM. All elements exist at load time; script.js toggles `style.display` and writes `textContent` imperatively. Never renders from JS templates. Loads `mc-engine.js` via a tiny `type="module"` shim that assigns the namespace to `window.MCEngine` (runs before `DOMContentLoaded`), then loads `script.js` classic.
+- **`mc-engine.js`** — the pure Determinized Monte Carlo core, extracted as an ES module: integer-only, no DOM, no `this`. Exports `mcTrickWinner`, `mcPlayout`, `mcSampleDeal`, `mcRolloutMove`, `mcEncode/Decode`, etc. `script.js`'s `mc*` simulation methods delegate here (`window.MCEngine.*`); Node tests import it directly. Keeping `script.js` a classic script avoids forcing ~9k lines into strict mode in one step.
 - **`styles.css`** — ~4.5k lines. Compass layout via `.north-player`, `.east-player`, `.south-player`, `.west-player`. Phase 2 predictions use a 3×3 grid (`.prediction-list`) with each `.prediction-item:nth-child(N)` pinned to a compass position.
-- **`script.js`** — single `IsraeliWhist` class (~8k lines), instantiated once as `window.game`. State machine on `this.currentPhase`: `dealing → phase1 → phase2 → phase3 → scoring`, then back to `dealing` for the next gamlet.
+- **`script.js`** — single `IsraeliWhist` class (~9k lines), instantiated once as `window.game`. State machine on `this.currentPhase`: `dealing → phase1 → phase2 → phase3 → scoring`, then back to `dealing` for the next gamlet.
+
+### Session persistence
+
+`saveSession()`/`restoreSession()` mirror the **between-gamlet** session state (`sessionScores`, `gameScores`, `gamletHistory`, `gamletNumber`, `fullGameNumber`, `gamletsPlayed`, `playerName`) to `localStorage` under `this.SESSION_KEY` (`israeliWhist_session`). Saved at each gamlet end (`saveGamletToHistory`) and full-game grand-total update; restored in `initializeGame()` before the board first renders, so a reload resumes the session (the next Deal continues it). Mid-trick play is intentionally **not** persisted. `window.clearWhistSession()` forgets it.
 
 ### Players and DOM naming
 
@@ -44,8 +61,8 @@ Bots are driven from the same code paths as the human but auto-triggered: when a
 
 ### Score granularity
 
-- `this.scores` — cumulative within **one full game** (200 pts or 10 gamlets ends a game). `resetForNewHand` intentionally does NOT reset this.
-- `this.cumulativeScores` — aggregates across **multiple full games** (session-level grand total); only ticks at full-game-end.
+- `this.gameScores` — cumulative within **one full game** (200 pts or 10 gamlets ends a game). `resetForNewHand` intentionally does NOT reset this. (Renamed from `this.scores`.)
+- `this.sessionScores` — aggregates across **multiple full games** (session-level grand total); only ticks at full-game-end. (Renamed from `this.cumulativeScores`.)
 - `this.gamletHistory` — per-gamlet deltas; feeds the extended scorecard view.
 
 ### `botMemory` AI substrate
