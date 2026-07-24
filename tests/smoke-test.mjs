@@ -26,7 +26,9 @@
  */
 import { chromium } from 'playwright';
 
-const URL = process.env.WHIST_URL || 'http://localhost:8000/';
+import { ensureServer } from './static-server.mjs';
+const served = process.env.WHIST_URL ? null : await ensureServer();
+const URL = process.env.WHIST_URL || served.url;
 const logs = [];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -49,7 +51,7 @@ await page.evaluate(() => {
       phase: g.currentPhase,
       bids: { ...g.phase2Bids },
       tricks: { ...g.tricksWon },
-      scores: { ...g.scores },
+      scores: { ...g.gameScores },
       handType: g.handType,
       trump: g.trumpSuit,
       trumpWinner: g.trumpWinner,

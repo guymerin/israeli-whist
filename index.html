@@ -505,6 +505,15 @@ Israeli Whist DOM map:
         }
     </script>
 
-    <script src="script.js?v=20260601b"></script>
+    <!-- Pure Monte Carlo engine, extracted as an ES module (Node-testable).
+         Loaded as a module (always deferred) and exposed on window.MCEngine
+         before DOMContentLoaded, so the classic script below can delegate to it
+         at runtime. Keeping script.js a classic (non-module) script avoids
+         forcing ~9k lines into strict mode in one step. -->
+    <script type="module">
+        import * as MCEngine from './mc-engine.js?v=20260723';
+        window.MCEngine = MCEngine;
+    </script>
+    <script src="script.js?v=20260723"></script>
 </body>
 </html>
