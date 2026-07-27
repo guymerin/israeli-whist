@@ -5443,12 +5443,6 @@ class IsraeliWhist {
             const el = document.getElementById(`${this.players[i]}-player`);
             if (el) el.classList.toggle('seat-active', i === acting);
         }
-        const fill = document.getElementById('trick-progress-fill');
-        if (fill) {
-            const played = (typeof this.tricksPlayed === 'number') ? this.tricksPlayed : 0;
-            const pct = (phase === 'phase3' || phase === 'scoring') ? Math.max(0, Math.min(13, played)) / 13 * 100 : 0;
-            fill.style.width = pct + '%';
-        }
     }
 
     displayCards() {

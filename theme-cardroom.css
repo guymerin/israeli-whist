@@ -83,12 +83,6 @@ body {
     border-radius: 9px !important; font-size: 1.35em !important;
     box-shadow: 0 1px 3px rgba(0,0,0,.35) !important;
 }
-.trick-progress {
-    position: absolute !important; left: 0; right: 0; bottom: 0; height: 3px;
-    background: rgba(240,235,220,.10);
-}
-.trick-progress > i { display: block; height: 100%; width: 0; background: var(--cr-brass); transition: width .3s ease; }
-
 /* ── 4. Total score box ────────────────────────────────────────────────── */
 .total-score-box {
     background: rgba(14,28,21,.9) !important;
@@ -163,10 +157,23 @@ body {
     color: #221803 !important; border-color: transparent !important;
 }
 .trick-btn:disabled { opacity: .32 !important; }
-/* Suit glyphs keep their real colour on the ivory-ish chip for readability. */
+/* Suit glyphs keep their real colour on the chip for readability. */
 .suit-button[data-value="hearts"], .suit-button[data-value="diamonds"] { color: var(--cr-red) !important; }
 .suit-button[data-value="spades"], .suit-button[data-value="clubs"] { color: var(--cr-ink) !important; }
-.suit-button.selected[data-value] { color: #221803 !important; }
+/* Override the legacy per-suit green selected + green hover (specificity 0,3,0). */
+.suit-button.selected[data-value="clubs"], .suit-button.selected[data-value="diamonds"],
+.suit-button.selected[data-value="hearts"], .suit-button.selected[data-value="spades"],
+.suit-button.selected[data-value="notrump"] {
+    background: linear-gradient(180deg, var(--cr-brass), var(--cr-brass-deep)) !important;
+    color: #221803 !important; border-color: var(--cr-brass-deep) !important; box-shadow: none !important;
+}
+.suit-button[data-value="clubs"]:hover, .suit-button[data-value="spades"]:hover,
+.suit-button[data-value="notrump"]:hover {
+    background: rgba(240,235,220,.18) !important; color: var(--cr-ink) !important; border-color: var(--cr-brass) !important;
+}
+.suit-button[data-value="hearts"]:hover, .suit-button[data-value="diamonds"]:hover {
+    background: rgba(240,235,220,.18) !important; color: var(--cr-red) !important; border-color: var(--cr-brass) !important;
+}
 
 /* ── 7. Seat plates + turn spotlight (the signature) ───────────────────── */
 .player-info {
@@ -226,31 +233,39 @@ body {
 .waiting-message p { color: var(--cr-ink-soft) !important; }
 
 /* ── 9. The hand: all 13 cards visible, never a scroll ─────────────────── */
-/* Cards shrink-overlap so the row always fits the viewport. The min() picks a
-   small positive gap on wide screens and a negative (overlapping) margin when
-   space is tight — total width can never exceed the viewport. */
+/* The row is centred and never scrolls. Each card is a known width (--cw, set
+   per breakpoint) and gets an overlap margin: min() yields a small positive gap
+   when there's room and a negative (overlapping) margin when space is tight, so
+   13 cards can never exceed the viewport. Rank/suit sit top-left, so overlapped
+   cards stay readable; z-index already increases L→R, so the covered edge is the
+   right one. All id-scoped to beat the legacy per-card nth-child rules. */
 #south-cards.human-cards {
+    --cw: 70px;
     display: flex !important;
     flex-wrap: nowrap !important;
     justify-content: center !important;
     align-items: flex-end !important;
     max-width: 100vw !important;
-    padding: 0 10px !important;
+    padding: 0 12px !important;
     box-sizing: border-box !important;
     overflow: visible !important;
 }
 #south-cards.human-cards .card {
     flex: 0 0 auto !important;
-    margin-left: min(8px, calc((100vw - 20px - 13 * 64px) / 12)) !important;
-    transition: transform .12s ease !important;
+    box-sizing: border-box !important;   /* --cw is the full outer width incl. border */
+    width: var(--cw) !important;
+    min-width: var(--cw) !important;
+    height: calc(var(--cw) * 1.4) !important;
+    margin: 0 !important;
+    /* Fit within the SMALLER of the viewport and the fixed 1000px board — the
+       board has overflow:hidden, so anything wider than it gets clipped. */
+    margin-left: min(6px, calc((min(100vw, 1000px) - 56px - 13 * var(--cw)) / 12)) !important;
 }
 #south-cards.human-cards .card:first-child { margin-left: 0 !important; }
-/* Lift a card on hover/selection so overlapped indices stay readable. */
-#south-cards.human-cards .card:hover,
-#south-cards.human-cards .card.selected,
-#south-cards.human-cards .card.playable:hover {
-    transform: translateY(-14px) !important; z-index: 20 !important;
-}
+/* Lift a card on hover so overlapped indices stay readable. */
+#south-cards.human-cards .card:hover { transform: translateY(-14px) !important; z-index: 40 !important; }
+@media (max-width: 900px) { #south-cards.human-cards { --cw: 58px; } }
+@media (max-width: 560px) { #south-cards.human-cards { --cw: 48px; } }
 
 /* ── 10. Modals + inputs: same card-room palette ───────────────────────── */
 .name-content, .rules-content, .hint-content, .last-trick-content {
@@ -283,30 +298,40 @@ body {
 #rotate-device-overlay { display: none !important; }
 
 @media (max-width: 900px) {
-    body { overflow-x: hidden !important; }
+    html, body { overflow-x: hidden !important; }
+    .game-container { padding: 10px !important; }
+    /* Board fills its container (not 100vw, which ignores padding and shoves the
+       centered hand off-axis). Centered == the hand centers and fits. */
     .game-board {
-        width: 100vw !important;
-        max-width: 100vw !important;
+        width: 100% !important;
+        max-width: 100% !important;
         height: auto !important;
         min-height: 62vh !important;
-        margin-top: 6px !important;
+        margin: 6px auto 0 !important;
     }
 }
 @media (orientation: portrait) and (max-width: 760px) {
-    /* Compact the top chrome so the table gets the room. */
+    /* Stack the top chrome instead of overlapping the title with the absolutely
+       positioned control clusters. */
     .game-container { padding: 8px !important; }
-    .game-container h1 { font-size: 1.5em !important; margin: 2px 0 6px !important; }
-    .game-status { min-height: 40px !important; padding: 5px 10px !important; }
-    .game-control-buttons { gap: 4px !important; }
+    .game-container h1 { font-size: 1.5em !important; margin: 2px 0 4px !important; }
+    .fast-mode-container { top: 6px !important; left: 6px !important; }
+    .fast-mode-label { padding: 4px 8px !important; }
+    .game-control-buttons {
+        position: static !important;
+        display: flex !important; justify-content: center !important; flex-wrap: wrap !important;
+        gap: 4px !important; margin: 2px auto 8px !important;
+    }
     .game-control-buttons button { font-size: .72em !important; padding: 5px 8px !important; }
+    /* Status wraps and centres rather than clipping "Gamlet". */
+    .game-status { min-height: 40px !important; padding: 5px 10px !important; flex-wrap: wrap !important; justify-content: center !important; }
+    .game-status > div { font-size: .82em !important; margin: 0 6px !important; }
+    .tricks-counter { left: 0 !important; }
     /* Total score box docks quietly top-left instead of overlapping the felt. */
     .total-score-box { position: static !important; width: auto !important; min-width: 0 !important; margin: 0 auto 8px !important; }
     /* Board is portrait-tall; keep seats and hand inside it. */
     .game-board { min-height: 68vh !important; }
-    #south-cards.human-cards { padding: 0 4px !important; }
-    #south-cards.human-cards .card { margin-left: min(4px, calc((100vw - 8px - 13 * 46px) / 12)) !important; }
-    /* Shrink cards a touch so the overlap stays gentle. */
-    .human-cards .card { width: 46px !important; height: 66px !important; }
+    #south-cards.human-cards { padding: 0 6px !important; }
     /* Bidding panels span the width at the bottom rather than floating mid-table. */
     .bidding-interface, .second-phase-bidding {
         left: 50% !important; max-width: 94vw !important; min-width: 0 !important; width: 94vw !important;
