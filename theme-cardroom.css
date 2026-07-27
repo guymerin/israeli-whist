@@ -397,6 +397,42 @@ body {
     #south-cards.human-cards .card .card-center-suit { font-size: 20px !important; }
 }
 
+/* ── 11c. Compact bid panel on mobile (portrait + landscape) ───────────────
+   The trump/takes panel was eating half the screen and hiding the seats — so you
+   couldn't see whose turn it was. Shrink the buttons and tighten the panel so the
+   board (and the brass turn-spotlight on the acting seat) stays visible. The
+   panel only shows on the human's turn, so we also label it plainly. */
+@media (orientation: portrait) and (max-width: 760px),
+       (orientation: landscape) and (max-height: 500px) {
+    .bidding-interface { padding: 6px 10px 8px !important; }
+
+    /* Phase 1 header → an explicit "your turn" cue (the panel is only shown to
+       the human whose turn it is to bid). */
+    .bidding-interface h3 { font-size: 0 !important; line-height: 0 !important; margin: 2px 0 !important; }
+    .bidding-interface h3::after {
+        content: "Your turn — pick trump & tricks";
+        font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--cr-brass);
+    }
+    .second-phase-bidding h3, .second-phase-bidding h4, .your-prediction h4 { font-size: .78em !important; margin: 2px 0 4px !important; }
+
+    /* Tighter grids + smaller buttons. */
+    .tricks-buttons, .suit-buttons { gap: 4px !important; margin-top: 4px !important; }
+    .trick-button, .suit-button { padding: 3px 2px !important; min-height: 30px !important; font-size: 14px !important; border-width: 1px !important; }
+    .suit-button { font-size: 21px !important; min-height: 32px !important; }
+    .suit-button[data-value="notrump"] { font-size: 14px !important; }
+    .bid-controls .input-row { gap: 8px !important; margin: 2px 0 !important; }
+    .bid-controls .button-row { gap: 8px !important; margin-top: 6px !important; }
+    #bid-btn, #pass-btn { padding: 6px 14px !important; font-size: .82em !important; min-width: 84px !important; }
+
+    /* Phase 2 "how many tricks" buttons. */
+    .your-prediction h4 { font-size: .8em !important; }
+    .tricks-buttons-main, #tricks-buttons-main, .tricks-row { gap: 4px !important; }
+    .trick-btn { width: 34px !important; min-width: 34px !important; height: 34px !important; font-size: 15px !important; }
+    .more-btn, .less-btn { padding: 5px 10px !important; font-size: .8em !important; }
+    .prediction-list { gap: 2px 8px !important; }
+    .prediction-item { font-size: .82em !important; }
+}
+
 /* ── 12. Accessibility niceties ────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
     .game-container h1, .player-info, #south-cards.human-cards .card, .trick-progress > i { animation: none !important; transition: none !important; }
