@@ -1,0 +1,319 @@
+/* ════════════════════════════════════════════════════════════════════════
+   Card Room theme — a layered reskin of Israeli Whist.
+
+   Loaded AFTER styles.css so these rules win the cascade. Nothing in the
+   ~4.7k-line legacy stylesheet is edited; the whole new visual system lives
+   here and can be removed by dropping the one <link> in index.html.
+
+   Direction: one accent (brass) on deep felt with ivory cards. Suit red/black
+   appear only on cards. Fraunces (display) + Hanken Grotesk (UI). The seat to
+   act gets a "turn spotlight". See the before/after review for the rationale.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --cr-felt:    #1c3a2c;
+    --cr-felt-2:  #132419;
+    --cr-felt-hi: #274d3b;
+    --cr-brass:   #cba552;
+    --cr-brass-deep: #a9863a;
+    --cr-ivory:   #f0ebdc;
+    --cr-ink:     #ece7d6;
+    --cr-ink-soft:#aeb7a6;
+    --cr-line:    rgba(240,235,220,.14);
+    --cr-red:     #c0433a;
+    --cr-black:   #20242a;
+    --cr-serif: "Fraunces", "Iowan Old Style", Palatino, Georgia, serif;
+    --cr-sans:  "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ── 1. Ground + type ──────────────────────────────────────────────────── */
+body {
+    background: #0d1a14 !important;
+    background: radial-gradient(130% 90% at 50% -10%, #17301f 0%, #0d1a14 58%) fixed !important;
+    color: var(--cr-ink) !important;
+    font-family: var(--cr-sans) !important;
+}
+.game-container h1 {
+    font-family: var(--cr-serif) !important;
+    color: var(--cr-brass) !important;
+    font-weight: 600 !important;
+    letter-spacing: .005em !important;
+    text-shadow: none !important;
+    animation: none !important;
+    font-size: 2.4em !important;
+}
+
+/* ── 2. The felt board ─────────────────────────────────────────────────── */
+.game-board {
+    background:
+        radial-gradient(ellipse 70% 60% at 50% 32%, var(--cr-felt-hi) 0%, var(--cr-felt) 52%, var(--cr-felt-2) 100%) !important;
+    border: 1px solid rgba(240,235,220,.10) !important;
+    border-radius: 18px !important;
+    box-shadow: inset 0 2px 40px rgba(0,0,0,.28), inset 0 0 120px rgba(0,0,0,.30),
+                0 24px 60px -26px rgba(0,0,0,.7) !important;
+}
+
+/* ── 3. Status bar: legible labels, trump pip, trick progress ──────────── */
+.game-status {
+    background: rgba(14,28,21,.82) !important;
+    border: 1px solid var(--cr-line) !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    backdrop-filter: blur(6px) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+.game-status *,
+.game-status span {
+    color: var(--cr-ink) !important;
+    text-shadow: none !important;
+    font-family: var(--cr-sans) !important;
+    letter-spacing: .01em !important;
+}
+/* Labels ("Round:", "Bid:", "Gamlet:") read as quiet eyebrows; the values pop. */
+.tricks-counter, .current-turn, .round-counter { font-weight: 500 !important; color: var(--cr-ink-soft) !important; }
+.tricks-counter span, .current-turn span, .round-counter span {
+    color: var(--cr-ink) !important; font-weight: 700 !important; font-variant-numeric: tabular-nums;
+}
+/* Trump becomes an ivory "pip". */
+.trump-suit span {
+    display: inline-grid !important; place-items: center !important;
+    width: 36px !important; height: 36px !important;
+    background: var(--cr-ivory) !important; color: var(--cr-black) !important;
+    border-radius: 9px !important; font-size: 1.35em !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,.35) !important;
+}
+.trick-progress {
+    position: absolute !important; left: 0; right: 0; bottom: 0; height: 3px;
+    background: rgba(240,235,220,.10);
+}
+.trick-progress > i { display: block; height: 100%; width: 0; background: var(--cr-brass); transition: width .3s ease; }
+
+/* ── 4. Total score box ────────────────────────────────────────────────── */
+.total-score-box {
+    background: rgba(14,28,21,.9) !important;
+    border: 1px solid var(--cr-line) !important;
+    border-top: 2px solid var(--cr-brass) !important;
+    box-shadow: 0 14px 34px -18px rgba(0,0,0,.7) !important;
+}
+.total-score-title, #score-view-title { font-family: var(--cr-serif) !important; color: var(--cr-ivory) !important; text-shadow: none !important; font-weight: 600 !important; }
+.total-score-content *, .extended-score-content * { color: var(--cr-ink) !important; text-shadow: none !important; font-style: normal !important; }
+.total-score-content .score-value, .extended-score-content .score-value { color: var(--cr-brass) !important; font-variant-numeric: tabular-nums; }
+
+/* ── 5. One button system ──────────────────────────────────────────────── */
+.action-btn, #start-game-btn, #bid-btn, #deal-btn, .more-btn,
+.new-game-btn, .rules-btn, .hint-btn, .last-trick-btn, #pass-btn, .less-btn,
+.hint-btn-close, .extended-view-btn {
+    font-family: var(--cr-sans) !important;
+    font-weight: 600 !important;
+    letter-spacing: .01em !important;
+    border-radius: 9px !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    text-transform: none !important;
+    transition: filter .15s ease, background .15s ease, border-color .15s ease !important;
+}
+/* Primary — the action you take */
+.action-btn, #start-game-btn, #bid-btn, #deal-btn, .more-btn {
+    background: linear-gradient(180deg, var(--cr-brass), var(--cr-brass-deep)) !important;
+    color: #221803 !important;
+    border: 1px solid var(--cr-brass-deep) !important;
+}
+/* Secondary — quiet, outlined */
+.new-game-btn, .rules-btn, .hint-btn, .last-trick-btn, #pass-btn, .less-btn, .hint-btn-close {
+    background: transparent !important;
+    color: var(--cr-brass) !important;
+    border: 1px solid color-mix(in oklab, var(--cr-brass) 55%, transparent) !important;
+}
+.action-btn:hover, #start-game-btn:hover, #bid-btn:hover, #deal-btn:hover, .more-btn:hover,
+.new-game-btn:hover, .rules-btn:hover, .hint-btn:hover, .last-trick-btn:hover:not(:disabled),
+#pass-btn:hover, .less-btn:hover { filter: brightness(1.08) !important; transform: none !important; }
+.last-trick-btn:disabled { opacity: .4 !important; }
+.hint-btn[aria-pressed="true"] { background: rgba(203,165,82,.16) !important; }
+.extended-view-btn { background: rgba(203,165,82,.16) !important; color: var(--cr-brass) !important; border: 1px solid color-mix(in oklab,var(--cr-brass) 45%,transparent) !important; }
+:where(.action-btn,.new-game-btn,.rules-btn,.hint-btn,.last-trick-btn,#bid-btn,#pass-btn,#start-game-btn,#deal-btn,.more-btn,.less-btn,.trick-btn):focus-visible {
+    outline: 2px solid var(--cr-brass) !important; outline-offset: 2px !important;
+}
+
+/* Turbo → a proper toggle look */
+.fast-mode-label {
+    color: var(--cr-ink) !important; font-family: var(--cr-sans) !important; font-weight: 600 !important;
+    background: rgba(14,28,21,.75) !important; border: 1px solid var(--cr-line) !important;
+    border-radius: 999px !important; padding: 6px 12px !important;
+}
+.fast-mode-text { color: var(--cr-ink) !important; }
+.fast-mode-checkbox { accent-color: var(--cr-brass) !important; }
+
+/* ── 6. Trick-number + suit selectors → felt chips with brass selection ── */
+.trick-btn, .trick-button, .suit-button {
+    background: rgba(240,235,220,.10) !important;
+    color: var(--cr-ink) !important;
+    border: 1px solid rgba(240,235,220,.16) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    font-weight: 600 !important;
+    transition: background .12s ease, border-color .12s ease, transform .12s ease !important;
+}
+.trick-btn:hover:not(:disabled), .trick-button:hover, .suit-button:hover {
+    background: rgba(240,235,220,.18) !important; border-color: var(--cr-brass) !important; transform: none !important;
+}
+.trick-btn.selected, .trick-button.selected, .suit-button.selected {
+    background: linear-gradient(180deg, var(--cr-brass), var(--cr-brass-deep)) !important;
+    color: #221803 !important; border-color: transparent !important;
+}
+.trick-btn:disabled { opacity: .32 !important; }
+/* Suit glyphs keep their real colour on the ivory-ish chip for readability. */
+.suit-button[data-value="hearts"], .suit-button[data-value="diamonds"] { color: var(--cr-red) !important; }
+.suit-button[data-value="spades"], .suit-button[data-value="clubs"] { color: var(--cr-ink) !important; }
+.suit-button.selected[data-value] { color: #221803 !important; }
+
+/* ── 7. Seat plates + turn spotlight (the signature) ───────────────────── */
+.player-info {
+    background: rgba(12,24,18,.66) !important;
+    border: 1px solid var(--cr-line) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 6px 18px -10px rgba(0,0,0,.6) !important;
+    -webkit-backdrop-filter: blur(4px) !important; backdrop-filter: blur(4px) !important;
+    transition: box-shadow .25s ease, border-color .25s ease, transform .25s ease !important;
+}
+.player-name { font-family: var(--cr-sans) !important; font-weight: 650 !important; text-shadow: none !important; }
+/* Beat the per-seat coloured names — one ink colour on the plate. */
+.north-player .player-name, .east-player .player-name, .south-player .player-name, .west-player .player-name,
+#north-player .player-name, #east-player .player-name, #south-player .player-name, #west-player .player-name,
+.player-name[data-player] {
+    color: var(--cr-ink) !important; text-shadow: none !important;
+}
+.player-bid, .player-tricks { color: var(--cr-ink-soft) !important; font-weight: 600 !important; }
+.player-bid span, .player-tricks span { color: var(--cr-brass) !important; text-shadow: none !important; font-variant-numeric: tabular-nums; }
+/* keep the big Phase-1 trump glyph size, drop the glow */
+.player-bid span { text-shadow: none !important; }
+
+/* The spotlight: lit ring + felt glow on the acting seat. Class toggled by JS. */
+.player.seat-active { z-index: 30 !important; }
+.player.seat-active .player-info {
+    border-color: var(--cr-brass) !important;
+    box-shadow: 0 0 0 2px var(--cr-brass), 0 0 28px 2px rgba(203,165,82,.45) !important;
+}
+.player.seat-active::after {
+    content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    width: 230px; height: 150px; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(203,165,82,.22), rgba(203,165,82,0) 70%);
+    pointer-events: none; z-index: -1;
+}
+
+/* ── 8. Predictions panel + bidding tray: legible, docked look ──────────── */
+.bidding-interface, .second-phase-bidding {
+    background: linear-gradient(180deg, rgba(20,40,30,.97), rgba(15,30,22,.98)) !important;
+    border: 1px solid var(--cr-line) !important;
+    border-top: 2px solid var(--cr-brass) !important;
+    box-shadow: 0 18px 40px -18px rgba(0,0,0,.8) !important;
+    -webkit-backdrop-filter: blur(8px) !important; backdrop-filter: blur(8px) !important;
+    color: var(--cr-ink) !important;
+}
+.bidding-interface h3, .second-phase-bidding h3, .second-phase-bidding h4, .your-prediction h4 {
+    color: var(--cr-brass) !important; font-family: var(--cr-sans) !important; text-shadow: none !important; font-weight: 600 !important;
+}
+/* Kill the green-on-green predictions bug — solid dark, ivory text. */
+.predictions-status {
+    background: rgba(10,20,15,.6) !important; border: 1px solid var(--cr-line) !important;
+}
+.predictions-status *, .prediction-item, .prediction-item .player-name {
+    color: var(--cr-ink) !important; text-shadow: none !important; opacity: 1 !important; font-family: var(--cr-sans) !important;
+}
+.prediction-value { color: var(--cr-brass) !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+.trump-reminder { background: rgba(203,165,82,.16) !important; border: 1px solid color-mix(in oklab,var(--cr-brass) 40%,transparent) !important; color: var(--cr-brass) !important; box-shadow: none !important; }
+.waiting-message p { color: var(--cr-ink-soft) !important; }
+
+/* ── 9. The hand: all 13 cards visible, never a scroll ─────────────────── */
+/* Cards shrink-overlap so the row always fits the viewport. The min() picks a
+   small positive gap on wide screens and a negative (overlapping) margin when
+   space is tight — total width can never exceed the viewport. */
+#south-cards.human-cards {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    align-items: flex-end !important;
+    max-width: 100vw !important;
+    padding: 0 10px !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+}
+#south-cards.human-cards .card {
+    flex: 0 0 auto !important;
+    margin-left: min(8px, calc((100vw - 20px - 13 * 64px) / 12)) !important;
+    transition: transform .12s ease !important;
+}
+#south-cards.human-cards .card:first-child { margin-left: 0 !important; }
+/* Lift a card on hover/selection so overlapped indices stay readable. */
+#south-cards.human-cards .card:hover,
+#south-cards.human-cards .card.selected,
+#south-cards.human-cards .card.playable:hover {
+    transform: translateY(-14px) !important; z-index: 20 !important;
+}
+
+/* ── 10. Modals + inputs: same card-room palette ───────────────────────── */
+.name-content, .rules-content, .hint-content, .last-trick-content {
+    background: linear-gradient(180deg, #16281e, #101d16) !important;
+    border: 1px solid var(--cr-line) !important;
+    border-top: 3px solid var(--cr-brass) !important;
+    box-shadow: 0 30px 70px -30px rgba(0,0,0,.85) !important;
+}
+.name-header h2, .rules-header h2, .hint-header h3, .last-trick-header h3,
+.rules-section h3 {
+    font-family: var(--cr-serif) !important; color: var(--cr-brass) !important; text-shadow: none !important; font-weight: 600 !important;
+}
+.rules-header { background: rgba(203,165,82,.10) !important; border-bottom: 1px solid var(--cr-line) !important; }
+.rules-header h2, .rules-header .close-btn { color: var(--cr-brass) !important; }
+.rules-body, .rules-body p, .rules-body li, .hint-body, .name-body p { color: var(--cr-ink) !important; }
+.rules-section li strong, .rules-body strong { color: var(--cr-brass) !important; }
+.rules-section { border-bottom: 1px solid var(--cr-line) !important; }
+#player-name-input {
+    background: rgba(10,20,15,.7) !important; color: var(--cr-ink) !important;
+    border: 1px solid var(--cr-line) !important; border-radius: 9px !important;
+    box-shadow: none !important; font-family: var(--cr-sans) !important;
+}
+#player-name-input:focus { border-color: var(--cr-brass) !important; outline: none !important; box-shadow: 0 0 0 2px rgba(203,165,82,.35) !important; }
+#player-name-input::placeholder { color: var(--cr-ink-soft) !important; }
+.close-btn, .hint-close, .last-trick-close { color: var(--cr-ink-soft) !important; }
+.close-btn:hover, .hint-close:hover, .last-trick-close:hover { color: var(--cr-brass) !important; }
+
+/* ── 11. Mobile: portrait is playable, not blocked ─────────────────────── */
+/* Retire the hard rotate wall. The board scales to fit and the hand overlaps. */
+#rotate-device-overlay { display: none !important; }
+
+@media (max-width: 900px) {
+    body { overflow-x: hidden !important; }
+    .game-board {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: auto !important;
+        min-height: 62vh !important;
+        margin-top: 6px !important;
+    }
+}
+@media (orientation: portrait) and (max-width: 760px) {
+    /* Compact the top chrome so the table gets the room. */
+    .game-container { padding: 8px !important; }
+    .game-container h1 { font-size: 1.5em !important; margin: 2px 0 6px !important; }
+    .game-status { min-height: 40px !important; padding: 5px 10px !important; }
+    .game-control-buttons { gap: 4px !important; }
+    .game-control-buttons button { font-size: .72em !important; padding: 5px 8px !important; }
+    /* Total score box docks quietly top-left instead of overlapping the felt. */
+    .total-score-box { position: static !important; width: auto !important; min-width: 0 !important; margin: 0 auto 8px !important; }
+    /* Board is portrait-tall; keep seats and hand inside it. */
+    .game-board { min-height: 68vh !important; }
+    #south-cards.human-cards { padding: 0 4px !important; }
+    #south-cards.human-cards .card { margin-left: min(4px, calc((100vw - 8px - 13 * 46px) / 12)) !important; }
+    /* Shrink cards a touch so the overlap stays gentle. */
+    .human-cards .card { width: 46px !important; height: 66px !important; }
+    /* Bidding panels span the width at the bottom rather than floating mid-table. */
+    .bidding-interface, .second-phase-bidding {
+        left: 50% !important; max-width: 94vw !important; min-width: 0 !important; width: 94vw !important;
+    }
+}
+
+/* ── 12. Accessibility niceties ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .game-container h1, .player-info, #south-cards.human-cards .card, .trick-progress > i { animation: none !important; transition: none !important; }
+}

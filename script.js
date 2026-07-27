@@ -262,6 +262,13 @@ class IsraeliWhist {
         // scores are already in place when the board first renders.
         this.restoreSession();
 
+        // Card Room theme: keep the turn spotlight and trick-progress bar in
+        // sync with game state via a lightweight poller (decoupled from the
+        // phase/turn control flow, so it can't break gameplay).
+        if (!this._chromeTimer) {
+            this._chromeTimer = setInterval(() => { try { this.updateTableChrome(); } catch (e) { /* presentation only */ } }, 180);
+        }
+
         // Check if we have a cached name
         const cachedName = localStorage.getItem('israeliWhist_playerName');
 
@@ -5413,9 +5420,35 @@ class IsraeliWhist {
         if (this.currentTrick.length === 0) {
             return this.trickLeader;
         }
-        
+
         const lastPlayer = this.currentTrick[this.currentTrick.length - 1].player;
         return (this.players.indexOf(lastPlayer) + 1) % 4;
+    }
+
+    /**
+     * Card Room theme chrome: light the seat on the move (the "turn spotlight")
+     * and advance the status-bar trick-progress bar. Reads state only, mutates
+     * only presentation classes/width, so it can run on a decoupled poller (see
+     * initializeGame) without touching the phase control flow.
+     */
+    updateTableChrome() {
+        let acting = -1;
+        const phase = this.currentPhase;
+        if (phase === 'phase1' || phase === 'phase2') {
+            acting = (typeof this.currentBidder === 'number' && this.currentBidder !== null) ? this.currentBidder : -1;
+        } else if (phase === 'phase3') {
+            acting = this.getCurrentPlayerIndex();
+        }
+        for (let i = 0; i < this.players.length; i++) {
+            const el = document.getElementById(`${this.players[i]}-player`);
+            if (el) el.classList.toggle('seat-active', i === acting);
+        }
+        const fill = document.getElementById('trick-progress-fill');
+        if (fill) {
+            const played = (typeof this.tricksPlayed === 'number') ? this.tricksPlayed : 0;
+            const pct = (phase === 'phase3' || phase === 'scoring') ? Math.max(0, Math.min(13, played)) / 13 * 100 : 0;
+            fill.style.width = pct + '%';
+        }
     }
 
     displayCards() {
