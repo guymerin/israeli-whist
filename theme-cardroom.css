@@ -367,28 +367,60 @@ body {
     }
     .score-item .player-label { margin: 0 !important; }
 
-    /* Board takes all remaining height; the hand sits at its bottom, on-screen. */
-    .game-board { flex: 1 1 auto !important; width: 100% !important; height: auto !important; min-height: 0 !important; margin: 3px 0 0 !important; }
+    /* Board takes the space between the score and the bid tray, and flex-shrinks
+       so the tray + hand always fit. min-height keeps the hand fully visible. */
+    .game-board { flex: 1 1 auto !important; width: 100% !important; height: auto !important; min-height: 132px !important; margin: 3px 0 0 !important; }
 
     /* Bigger, more legible hand — larger, bolder rank digits. */
     #south-cards.human-cards { --cw: 50px !important; padding: 0 6px 4px !important; align-items: flex-end !important; }
     #south-cards.human-cards .card .card-rank { font-size: 21px !important; font-weight: 800 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 22px !important; }
 
-    /* Bidding tray docks to the bottom of the screen, just above the hand, so it
-       never covers the header/score and the cards stay visible while you bid.
-       Fixed to the viewport (the panel is a sibling of the board, so its `top`
-       otherwise resolves against the page, not the felt). */
+    /* Bidding/prediction tray is IN-FLOW (not a fixed overlay), so it sits BELOW
+       the board and pushes the board — and the hand pinned at the board's bottom
+       — up above it. The hand is never covered while bidding. When the tray is
+       hidden it takes no space and the board fills the screen. */
     .bidding-interface, .second-phase-bidding {
-        position: fixed !important;
-        left: 50% !important; transform: translateX(-50%) !important;
-        top: auto !important; bottom: 86px !important;
-        max-width: 94vw !important; min-width: 0 !important; width: 94vw !important;
-        max-height: 52% !important; overflow: auto !important;
-        z-index: 1500 !important;
+        position: static !important;
+        transform: none !important;
+        left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
+        flex: 0 0 auto !important;
+        width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+        margin: 3px 0 0 !important;
+        max-height: 44vh !important; overflow: auto !important;
+        z-index: auto !important;
     }
     /* Shrink the opponents' card-back piles so they don't crowd the seats. */
     .bot-cards { transform: scale(.72) !important; }
+}
+
+/* Short portrait phones (e.g. iPhone SE, 320–375 wide / ≤670 tall): the top
+   chrome wraps to multiple rows and, with the in-flow bid tray, the whole column
+   can exceed the screen and push Bid/Pass below the fold. Reclaim vertical space:
+   drop the title, keep chrome to tight single rows, and slim the hand + tray. */
+@media (orientation: portrait) and (max-width: 760px) and (max-height: 670px) {
+    .game-container h1 { display: none !important; }
+    /* Turbo + controls become small corner overlays (like landscape) so they
+       cost zero column height and can't wrap. */
+    .fast-mode-container { position: absolute !important; top: 2px !important; left: 2px !important; transform: scale(.78) !important; transform-origin: top left !important; z-index: 1200 !important; }
+    .game-control-buttons { position: absolute !important; top: 2px !important; right: 2px !important; transform: scale(.72) !important; transform-origin: top right !important; z-index: 1200 !important; flex-wrap: nowrap !important; margin: 0 !important; }
+    .game-status { flex-wrap: nowrap !important; padding: 2px 6px !important; margin-top: 24px !important; }
+    .game-status > div { font-size: .68em !important; margin: 0 4px !important; }
+    /* Scores: drop the header row, one tight line. */
+    .total-score-box { padding: 2px 6px !important; }
+    .total-score-header { display: none !important; }
+    #total-score-content { flex-wrap: nowrap !important; justify-content: space-between !important; }
+    .score-item { font-size: .68em !important; }
+    /* Slimmer board + hand so the tray (incl. Bid/Pass) always fits. */
+    .game-board { min-height: 96px !important; }
+    #south-cards.human-cards { --cw: 42px !important; }
+    #south-cards.human-cards .card .card-rank { font-size: 17px !important; }
+    #south-cards.human-cards .card .card-center-suit { font-size: 18px !important; }
+    /* Tighter bid tray. */
+    .bidding-interface, .second-phase-bidding { max-height: 50vh !important; }
+    .trick-button, .suit-button { min-height: 26px !important; padding: 2px !important; }
+    .suit-button { font-size: 18px !important; min-height: 28px !important; }
+    #bid-btn, #pass-btn { padding: 5px 12px !important; }
 }
 
 /* ── 11b. Landscape on a phone ─────────────────────────────────────────────
