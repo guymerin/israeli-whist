@@ -8027,9 +8027,10 @@ class IsraeliWhist {
          const hintBtnClose = document.getElementById('hint-btn-close');
 
          if (hintBtn) {
-             hintBtn.addEventListener('click', () => this.toggleHints());
-             // Reflect the initial state on the button.
-             this._updateHintButton();
+             // Hint shows strategic ADVICE in a modal — it never lifts/highlights
+             // a card in the hand (players found the auto-highlighted, pulsing
+             // card distracting). No card changes until the player taps it.
+             hintBtn.addEventListener('click', () => this.showHint());
          }
 
          if (hintClose) {

@@ -488,6 +488,23 @@ body {
     .prediction-item { font-size: .82em !important; }
 }
 
+/* ── 11d. No card highlighted until the player taps it ─────────────────────
+   The old "suggested card" hint lifted + pulsed a card in the hand, which was
+   distracting. Hint now shows text advice in a modal instead (see script.js), so
+   this neutralises any leftover auto-highlight. Also stop :hover from lifting a
+   card on touch screens, where the hover state sticks after a tap and leaves a
+   card standing out. Tapping to select/play a card still animates normally. */
+.human-cards .card.suggested-card {
+    outline: none !important; animation: none !important; box-shadow: none !important;
+    transform: none !important; z-index: auto !important;
+}
+@media (hover: none), (pointer: coarse) {
+    #south-cards.human-cards .card:hover,
+    .human-cards .card:hover {
+        transform: none !important; z-index: auto !important; box-shadow: none !important;
+    }
+}
+
 /* ── 12. Accessibility niceties ────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
     .game-container h1, .player-info, #south-cards.human-cards .card, .trick-progress > i { animation: none !important; transition: none !important; }
