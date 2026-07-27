@@ -83,12 +83,6 @@ body {
     border-radius: 9px !important; font-size: 1.35em !important;
     box-shadow: 0 1px 3px rgba(0,0,0,.35) !important;
 }
-.trick-progress {
-    position: absolute !important; left: 0; right: 0; bottom: 0; height: 3px;
-    background: rgba(240,235,220,.10);
-}
-.trick-progress > i { display: block; height: 100%; width: 0; background: var(--cr-brass); transition: width .3s ease; }
-
 /* ── 4. Total score box ────────────────────────────────────────────────── */
 .total-score-box {
     background: rgba(14,28,21,.9) !important;
@@ -263,7 +257,9 @@ body {
     min-width: var(--cw) !important;
     height: calc(var(--cw) * 1.4) !important;
     margin: 0 !important;
-    margin-left: min(8px, calc((100vw - 34px - 13 * var(--cw)) / 12)) !important;
+    /* Fit within the SMALLER of the viewport and the fixed 1000px board — the
+       board has overflow:hidden, so anything wider than it gets clipped. */
+    margin-left: min(6px, calc((min(100vw, 1000px) - 56px - 13 * var(--cw)) / 12)) !important;
 }
 #south-cards.human-cards .card:first-child { margin-left: 0 !important; }
 /* Lift a card on hover so overlapped indices stay readable. */
