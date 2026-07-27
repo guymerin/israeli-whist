@@ -328,7 +328,7 @@ body {
         gap: 3px !important;
         box-sizing: border-box !important; overflow: hidden !important;
     }
-    .game-container h1 { flex: 0 0 auto !important; font-size: 1.2em !important; margin: 0 !important; }
+    .game-container h1 { flex: 0 0 auto !important; font-size: 1.2em !important; margin: 0 !important; order: 0 !important; }
 
     /* Turbo is a small floating chip; the control buttons flow centred. */
     .fast-mode-container { position: absolute !important; top: 4px !important; left: 4px !important; z-index: 1200 !important; }
@@ -341,7 +341,7 @@ body {
     .game-control-buttons button { font-size: .7em !important; padding: 4px 8px !important; }
 
     /* Status: one compact centred row. */
-    .game-status { flex: 0 0 auto !important; min-height: 0 !important; padding: 4px 8px !important; flex-wrap: wrap !important; justify-content: center !important; }
+    .game-status { flex: 0 0 auto !important; min-height: 0 !important; padding: 4px 8px !important; flex-wrap: wrap !important; justify-content: center !important; order: 1 !important; }
     .game-status > div { font-size: .78em !important; min-height: 0 !important; margin: 0 5px !important; }
     .tricks-counter { left: 0 !important; }
     .trump-suit span { width: 26px !important; height: 26px !important; font-size: 1em !important; }
@@ -351,7 +351,13 @@ body {
     .total-score-box {
         position: static !important; flex: 0 0 auto !important;
         width: auto !important; min-width: 0 !important; margin: 0 !important;
-        padding: 3px 8px !important;
+        padding: 3px 8px !important; order: 3 !important;
+    }
+    /* While a bid/prediction panel is open, hide the score — you don't need it
+       then, and it frees the top slot for the bid controls (see order below). */
+    .game-container:has(#bidding-interface:not([style*="display: none"])) .total-score-box,
+    .game-container:has(#second-phase-bidding:not([style*="display: none"])) .total-score-box {
+        display: none !important;
     }
     .total-score-header { padding: 0 !important; margin: 0 !important; align-items: center !important; }
     .total-score-title, #score-view-title { font-size: .82em !important; }
@@ -369,25 +375,26 @@ body {
 
     /* Board takes the space between the score and the bid tray, and flex-shrinks
        so the tray + hand always fit. min-height keeps the hand fully visible. */
-    .game-board { flex: 1 1 auto !important; width: 100% !important; height: auto !important; min-height: 132px !important; margin: 3px 0 0 !important; }
+    .game-board { flex: 1 1 auto !important; width: 100% !important; height: auto !important; min-height: 132px !important; margin: 3px 0 0 !important; order: 4 !important; }
 
     /* Bigger, more legible hand — larger, bolder rank digits. */
     #south-cards.human-cards { --cw: 50px !important; padding: 0 6px 4px !important; align-items: flex-end !important; }
     #south-cards.human-cards .card .card-rank { font-size: 21px !important; font-weight: 800 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 22px !important; }
 
-    /* Bidding/prediction tray is IN-FLOW (not a fixed overlay), so it sits BELOW
-       the board and pushes the board — and the hand pinned at the board's bottom
-       — up above it. The hand is never covered while bidding. When the tray is
-       hidden it takes no space and the board fills the screen. */
+    /* Bidding/prediction tray is IN-FLOW and ordered to the TOP (order 2, right
+       after the status bar — in the score's slot, which is hidden meanwhile). The
+       board + hand fill everything below, so the whole hand sits at the bottom,
+       fully visible, while you bid. Hidden → takes no space, board fills the screen. */
     .bidding-interface, .second-phase-bidding {
         position: static !important;
         transform: none !important;
         left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
         flex: 0 0 auto !important;
+        order: 2 !important;
         width: 100% !important; max-width: 100% !important; min-width: 0 !important;
-        margin: 3px 0 0 !important;
-        max-height: 44vh !important; overflow: auto !important;
+        margin: 0 0 3px !important;
+        max-height: 42vh !important; overflow: auto !important;
         z-index: auto !important;
     }
     /* Shrink the opponents' card-back piles so they don't crowd the seats. */
