@@ -311,31 +311,77 @@ body {
     }
 }
 @media (orientation: portrait) and (max-width: 760px) {
-    /* Stack the top chrome instead of overlapping the title with the absolutely
-       positioned control clusters. */
-    .game-container { padding: 8px !important; }
-    .game-container h1 { font-size: 1.5em !important; margin: 2px 0 4px !important; }
-    .fast-mode-container { top: 6px !important; left: 6px !important; }
-    .fast-mode-label { padding: 4px 8px !important; }
+    /* Portrait fits ONE screen — no page scroll — as a flex column:
+       title → controls → status → compact score → board (fills the rest, with
+       the hand pinned at its bottom so the cards are always on-screen). */
+    html, body { height: 100% !important; overflow: hidden !important; }
+    .game-container {
+        display: flex !important; flex-direction: column !important;
+        height: 100vh !important; height: 100dvh !important;
+        padding: 6px 6px 0 !important; gap: 3px !important;
+        box-sizing: border-box !important; overflow: hidden !important;
+    }
+    .game-container h1 { flex: 0 0 auto !important; font-size: 1.2em !important; margin: 0 !important; }
+
+    /* Turbo is a small floating chip; the control buttons flow centred. */
+    .fast-mode-container { position: absolute !important; top: 4px !important; left: 4px !important; z-index: 1200 !important; }
+    .fast-mode-label { padding: 3px 7px !important; font-size: .72em !important; }
     .game-control-buttons {
-        position: static !important;
+        position: static !important; flex: 0 0 auto !important;
         display: flex !important; justify-content: center !important; flex-wrap: wrap !important;
-        gap: 4px !important; margin: 2px auto 8px !important;
+        gap: 4px !important; margin: 0 !important;
     }
-    .game-control-buttons button { font-size: .72em !important; padding: 5px 8px !important; }
-    /* Status wraps and centres rather than clipping "Gamlet". */
-    .game-status { min-height: 40px !important; padding: 5px 10px !important; flex-wrap: wrap !important; justify-content: center !important; }
-    .game-status > div { font-size: .82em !important; margin: 0 6px !important; }
+    .game-control-buttons button { font-size: .7em !important; padding: 4px 8px !important; }
+
+    /* Status: one compact centred row. */
+    .game-status { flex: 0 0 auto !important; min-height: 0 !important; padding: 4px 8px !important; flex-wrap: wrap !important; justify-content: center !important; }
+    .game-status > div { font-size: .78em !important; min-height: 0 !important; margin: 0 5px !important; }
     .tricks-counter { left: 0 !important; }
-    /* Total score box docks quietly top-left instead of overlapping the felt. */
-    .total-score-box { position: static !important; width: auto !important; min-width: 0 !important; margin: 0 auto 8px !important; }
-    /* Board is portrait-tall; keep seats and hand inside it. */
-    .game-board { min-height: 68vh !important; }
-    #south-cards.human-cards { padding: 0 6px !important; }
-    /* Bidding panels span the width at the bottom rather than floating mid-table. */
-    .bidding-interface, .second-phase-bidding {
-        left: 50% !important; max-width: 94vw !important; min-width: 0 !important; width: 94vw !important;
+    .trump-suit span { width: 26px !important; height: 26px !important; font-size: 1em !important; }
+
+    /* Compact Total Score — a single wrapped row of "Name value", not a tall
+       stack. Addresses the box eating half the screen. */
+    .total-score-box {
+        position: static !important; flex: 0 0 auto !important;
+        width: auto !important; min-width: 0 !important; margin: 0 !important;
+        padding: 3px 8px !important;
     }
+    .total-score-header { padding: 0 !important; margin: 0 !important; align-items: center !important; }
+    .total-score-title, #score-view-title { font-size: .82em !important; }
+    .total-score-box .extended-view-btn { padding: 0 7px !important; }
+    #total-score-content {
+        display: flex !important; flex-direction: row !important; flex-wrap: wrap !important;
+        justify-content: space-between !important; gap: 0 12px !important; margin-top: 2px !important;
+    }
+    .score-item {
+        display: inline-flex !important; flex: 0 0 auto !important; width: auto !important;
+        align-items: baseline !important; justify-content: flex-start !important;
+        gap: 4px !important; margin: 0 !important; padding: 0 !important; font-size: .78em !important; border: none !important;
+    }
+    .score-item .player-label { margin: 0 !important; }
+
+    /* Board takes all remaining height; the hand sits at its bottom, on-screen. */
+    .game-board { flex: 1 1 auto !important; width: 100% !important; height: auto !important; min-height: 0 !important; margin: 3px 0 0 !important; }
+
+    /* Bigger, more legible hand — larger, bolder rank digits. */
+    #south-cards.human-cards { --cw: 50px !important; padding: 0 6px 4px !important; align-items: flex-end !important; }
+    #south-cards.human-cards .card .card-rank { font-size: 21px !important; font-weight: 800 !important; }
+    #south-cards.human-cards .card .card-center-suit { font-size: 22px !important; }
+
+    /* Bidding tray docks to the bottom of the screen, just above the hand, so it
+       never covers the header/score and the cards stay visible while you bid.
+       Fixed to the viewport (the panel is a sibling of the board, so its `top`
+       otherwise resolves against the page, not the felt). */
+    .bidding-interface, .second-phase-bidding {
+        position: fixed !important;
+        left: 50% !important; transform: translateX(-50%) !important;
+        top: auto !important; bottom: 86px !important;
+        max-width: 94vw !important; min-width: 0 !important; width: 94vw !important;
+        max-height: 52% !important; overflow: auto !important;
+        z-index: 1500 !important;
+    }
+    /* Shrink the opponents' card-back piles so they don't crowd the seats. */
+    .bot-cards { transform: scale(.72) !important; }
 }
 
 /* ── 12. Accessibility niceties ────────────────────────────────────────── */
