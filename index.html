@@ -10,7 +10,10 @@ Israeli Whist DOM map:
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- viewport-fit=cover lets the board extend under the notch/home indicator;
+         the CSS then pads with env(safe-area-inset-*). Zoom is locked for an
+         app-like feel. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     
@@ -29,17 +32,20 @@ Israeli Whist DOM map:
     <!-- Firefox specific optimizations -->
     <meta name="msapplication-tap-highlight" content="no">
     <title>Israeli Whist</title>
+
+    <!-- PWA: installable app with offline support -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#163020">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     
-    <!-- Preload fonts for better cross-browser performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Fraunces (display) + Hanken Grotesk (UI) carry the Card Room theme; Kalam kept for legacy score-box names. -->
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Self-hosted fonts (Fraunces / Hanken Grotesk / Kalam) so the installed
+         app works fully offline — no Google Fonts CDN. See scripts/fetch-fonts.mjs. -->
+    <link rel="stylesheet" href="fonts/fonts.css?v=20260727">
 
     <!-- Main stylesheet with fallbacks -->
     <link rel="stylesheet" href="styles.css?v=20260601b">
     <!-- Card Room theme: layered reskin loaded AFTER styles.css so it wins the cascade. -->
-    <link rel="stylesheet" href="theme-cardroom.css?v=20260727d">
+    <link rel="stylesheet" href="theme-cardroom.css?v=20260727e">
 
     <!-- Inline SVG favicon: white ♠ on dark-green felt. Silences the
          /favicon.ico 404 that browsers auto-request on every page load. -->
@@ -518,5 +524,15 @@ Israeli Whist DOM map:
         window.MCEngine = MCEngine;
     </script>
     <script src="script.js?v=20260723"></script>
+
+    <!-- Register the offline service worker (progressive enhancement — the game
+         works without it; this just enables offline + installed-app caching). -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('sw.js').catch(function () { /* offline unsupported; ignore */ });
+            });
+        }
+    </script>
 </body>
 </html>

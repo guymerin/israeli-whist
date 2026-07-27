@@ -318,7 +318,14 @@ body {
     .game-container {
         display: flex !important; flex-direction: column !important;
         height: 100vh !important; height: 100dvh !important;
-        padding: 6px 6px 0 !important; gap: 3px !important;
+        /* Keep chrome + hand clear of the notch and home indicator (installed app,
+           viewport-fit=cover). */
+        padding:
+            calc(6px + env(safe-area-inset-top))
+            calc(6px + env(safe-area-inset-right))
+            env(safe-area-inset-bottom)
+            calc(6px + env(safe-area-inset-left)) !important;
+        gap: 3px !important;
         box-sizing: border-box !important; overflow: hidden !important;
     }
     .game-container h1 { flex: 0 0 auto !important; font-size: 1.2em !important; margin: 0 !important; }
@@ -395,6 +402,15 @@ body {
     #south-cards.human-cards { --cw: 46px !important; padding: 2px 6px !important; }
     #south-cards.human-cards .card .card-rank { font-size: 16px !important; font-weight: 900 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 20px !important; }
+    /* Safe areas (installed app): keep the fixed board, hand and corner chrome
+       clear of the side notch and the home indicator. */
+    .game-board {
+        left: env(safe-area-inset-left) !important;
+        width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+    }
+    .south-player { bottom: env(safe-area-inset-bottom) !important; }
+    .fast-mode-container { left: env(safe-area-inset-left) !important; }
+    .game-control-buttons { right: env(safe-area-inset-right) !important; }
 }
 
 /* ── 11c. Compact bid panel on mobile (portrait + landscape) ───────────────
