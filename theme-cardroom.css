@@ -376,6 +376,14 @@ body {
     /* Board takes the space between the score and the bid tray, and flex-shrinks
        so the tray + hand always fit. min-height keeps the hand fully visible. */
     .game-board { flex: 1 1 auto !important; width: 100% !important; height: auto !important; min-height: 132px !important; margin: 3px 0 0 !important; order: 4 !important; }
+    /* Shrink the central trick square AND make it faint, so it no longer hides
+       the N/E/W/S seat stats — the played cards (opaque) still land inside it. */
+    .trick-area {
+        width: 42vw !important; height: 42vw !important; max-width: 158px !important; max-height: 158px !important;
+        margin-bottom: 0 !important;
+        background: radial-gradient(ellipse at center, rgba(203,165,82,.12), rgba(203,165,82,0) 72%) !important;
+        border: 1px solid rgba(203,165,82,.30) !important;
+    }
 
     /* Bigger, more legible hand — larger, bolder rank digits. */
     #south-cards.human-cards { --cw: 50px !important; padding: 0 6px 4px !important; align-items: flex-end !important; }
@@ -505,7 +513,41 @@ body {
     }
 }
 
+/* ── 11e. "Your turn" cue ──────────────────────────────────────────────────
+   When it's the human's turn (body.my-turn, set by updateTableChrome), blink the
+   south seat name + plate so it's obvious — especially during bidding. After 30s
+   idle the JS adds body.turn-nudge for a brighter flash (and a haptic buzz where
+   the browser supports it). */
+body.my-turn #south-player .player-name {
+    animation: myTurnName 1.15s ease-in-out infinite !important;
+}
+body.my-turn #south-player .player-info {
+    animation: myTurnPlate 1.15s ease-in-out infinite !important;
+}
+@keyframes myTurnName {
+    0%, 100% { color: var(--cr-ink); text-shadow: none; }
+    50% { color: var(--cr-brass); text-shadow: 0 0 10px rgba(203,165,82,.85); }
+}
+@keyframes myTurnPlate {
+    0%, 100% { box-shadow: 0 0 0 2px var(--cr-brass), 0 0 18px rgba(203,165,82,.32); border-color: var(--cr-brass); }
+    50% { box-shadow: 0 0 0 2px var(--cr-brass), 0 0 30px 5px rgba(203,165,82,.7); border-color: var(--cr-brass); }
+}
+body.turn-nudge #south-player .player-info {
+    animation: turnNudge .42s ease-in-out 5 !important;
+}
+@keyframes turnNudge {
+    0%, 100% { box-shadow: 0 0 0 2px var(--cr-brass), 0 0 18px rgba(203,165,82,.4); }
+    50% { box-shadow: 0 0 0 3px #fff, 0 0 34px 8px rgba(203,165,82,.95); }
+}
+
 /* ── 12. Accessibility niceties ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    body.my-turn #south-player .player-name { animation: none !important; color: var(--cr-brass) !important; }
+    body.my-turn #south-player .player-info, body.turn-nudge #south-player .player-info {
+        animation: none !important; box-shadow: 0 0 0 2px var(--cr-brass), 0 0 26px 4px rgba(203,165,82,.6) !important;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .game-container h1, .player-info, #south-cards.human-cards .card, .trick-progress > i { animation: none !important; transition: none !important; }
 }
