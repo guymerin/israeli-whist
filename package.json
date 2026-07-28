@@ -10,9 +10,22 @@
     "test:unit": "node tests/mc-engine.test.mjs",
     "test:parity": "node tests/mc-parity.mjs",
     "test:strength": "node tests/mc-strength.mjs",
-    "test:smoke": "node tests/smoke-test.mjs"
+    "test:smoke": "node tests/smoke-test.mjs",
+    "www": "node scripts/build-www.mjs",
+    "ios:sync": "node scripts/build-www.mjs && npx cap sync ios",
+    "ios:assets": "node scripts/make-native-assets.mjs && npx @capacitor/assets generate --ios",
+    "ios:open": "npm run ios:sync && npx cap open ios"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "playwright": "^1.48.0"
+  },
+  "dependencies": {
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.4.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3"
   }
 }
