@@ -1,0 +1,125 @@
+{
+  "object" : {
+    "artifacts" : [
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "capacitor-swift-pm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/ionic-team/capacitor-swift-pm.git",
+          "name" : "capacitor-swift-pm"
+        },
+        "path" : "/Users/guymerin/Projects/israeli-whist/build/ios/SourcePackages/artifacts/capacitor-swift-pm/Capacitor/Capacitor.xcframework",
+        "source" : {
+          "checksum" : "76e6ab0facc7d8bf888620b7472864249e38b4cb496469c68e3f7ae8ec9aace5",
+          "type" : "remote",
+          "url" : "https://github.com/ionic-team/capacitor-swift-pm/releases/download/8.4.2/Capacitor.xcframework.zip"
+        },
+        "targetName" : "Capacitor"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "capacitor-swift-pm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/ionic-team/capacitor-swift-pm.git",
+          "name" : "capacitor-swift-pm"
+        },
+        "path" : "/Users/guymerin/Projects/israeli-whist/build/ios/SourcePackages/artifacts/capacitor-swift-pm/Cordova/Cordova.xcframework",
+        "source" : {
+          "checksum" : "e86d4024d8cf203894e6817adc00652086f31d5531414b910fd2fb6113ceabce",
+          "type" : "remote",
+          "url" : "https://github.com/ionic-team/capacitor-swift-pm/releases/download/8.4.2/Cordova.xcframework.zip"
+        },
+        "targetName" : "Cordova"
+      }
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "capacitor-swift-pm",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/ionic-team/capacitor-swift-pm.git",
+          "name" : "capacitor-swift-pm"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "9b9fb0af76b2b653f6e9b999f658adc132b9ab4c",
+            "version" : "8.4.2"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "capacitor-swift-pm"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "capapp-spm",
+          "kind" : "fileSystem",
+          "location" : "/Users/guymerin/Projects/israeli-whist/ios/App/CapApp-SPM",
+          "name" : "CapApp-SPM"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/guymerin/Projects/israeli-whist/ios/App/CapApp-SPM"
+        },
+        "subpath" : "capapp-spm"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "haptics",
+          "kind" : "fileSystem",
+          "location" : "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/haptics",
+          "name" : "haptics"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/haptics"
+        },
+        "subpath" : "haptics"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "splash-screen",
+          "kind" : "fileSystem",
+          "location" : "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/splash-screen",
+          "name" : "splash-screen"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/splash-screen"
+        },
+        "subpath" : "splash-screen"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "status-bar",
+          "kind" : "fileSystem",
+          "location" : "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/status-bar",
+          "name" : "status-bar"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/status-bar"
+        },
+        "subpath" : "status-bar"
+      }
+    ],
+    "prebuilts" : [
+
+    ]
+  },
+  "version" : 7
+}

@@ -1,0 +1,4 @@
+module SplashScreenPlugin {
+header "SplashScreenPlugin-Swift.h"
+export *
+}

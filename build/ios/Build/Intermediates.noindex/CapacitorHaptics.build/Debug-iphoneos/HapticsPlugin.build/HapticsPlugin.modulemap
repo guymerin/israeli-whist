@@ -1,0 +1,4 @@
+module HapticsPlugin {
+header "HapticsPlugin-Swift.h"
+export *
+}

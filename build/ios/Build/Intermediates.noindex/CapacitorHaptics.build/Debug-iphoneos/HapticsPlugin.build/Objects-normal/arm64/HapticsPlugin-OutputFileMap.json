@@ -1,0 +1,29 @@
+{
+  "" : {
+    "diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin-primary.dia",
+    "emit-module-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin-primary-emit-module.dia",
+    "pch" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin-primary.swiftdeps"
+  },
+  "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/haptics/ios/Sources/HapticsPlugin/Haptics.swift" : {
+    "const-values" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/Haptics.swiftconstvalues",
+    "dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/Haptics.d",
+    "diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/Haptics.dia",
+    "index-unit-output-path" : "/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/Haptics.o",
+    "llvm-bc" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/Haptics.bc",
+    "object" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/Haptics.o",
+    "swift-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/Haptics.swiftdeps",
+    "swiftmodule" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/Haptics~partial.swiftmodule"
+  },
+  "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/haptics/ios/Sources/HapticsPlugin/HapticsPlugin.swift" : {
+    "const-values" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin.swiftconstvalues",
+    "dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin.d",
+    "diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin.dia",
+    "index-unit-output-path" : "/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin.o",
+    "llvm-bc" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin.bc",
+    "object" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin.o",
+    "swift-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin.swiftdeps",
+    "swiftmodule" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorHaptics.build/Debug-iphoneos/HapticsPlugin.build/Objects-normal/arm64/HapticsPlugin~partial.swiftmodule"
+  }
+}
