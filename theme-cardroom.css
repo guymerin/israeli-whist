@@ -328,48 +328,56 @@ body {
         gap: 3px !important;
         box-sizing: border-box !important; overflow: hidden !important;
     }
-    .game-container h1 { flex: 0 0 auto !important; font-size: 1.2em !important; margin: 0 !important; order: 0 !important; }
+    /* Minimal top chrome — give the table the screen. The title is hidden; Turbo
+       and the menu buttons are small corner overlays kept clear of the notch via
+       safe-area; only a compact status row and a thin score strip sit in flow
+       above the board. */
+    .game-container h1 { display: none !important; }
 
-    /* Turbo is a small floating chip; the control buttons flow centred. */
-    .fast-mode-container { position: absolute !important; top: 4px !important; left: 4px !important; z-index: 1200 !important; }
+    .fast-mode-container {
+        position: absolute !important; z-index: 1200 !important;
+        top: calc(env(safe-area-inset-top) + 4px) !important; left: calc(env(safe-area-inset-left) + 6px) !important;
+        transform: scale(.82) !important; transform-origin: top left !important;
+    }
     .fast-mode-label { padding: 3px 7px !important; font-size: .72em !important; }
     .game-control-buttons {
-        position: static !important; flex: 0 0 auto !important;
-        display: flex !important; justify-content: center !important; flex-wrap: wrap !important;
-        gap: 4px !important; margin: 0 !important;
+        position: absolute !important; z-index: 1200 !important;
+        top: calc(env(safe-area-inset-top) + 4px) !important; right: calc(env(safe-area-inset-right) + 6px) !important;
+        transform: scale(.74) !important; transform-origin: top right !important;
+        display: flex !important; flex-wrap: nowrap !important; gap: 4px !important; margin: 0 !important;
     }
-    .game-control-buttons button { font-size: .7em !important; padding: 4px 8px !important; }
+    .game-control-buttons button { font-size: .82em !important; padding: 5px 9px !important; white-space: nowrap !important; }
 
-    /* Status: one compact centred row. */
-    .game-status { flex: 0 0 auto !important; min-height: 0 !important; padding: 4px 8px !important; flex-wrap: wrap !important; justify-content: center !important; order: 1 !important; }
-    .game-status > div { font-size: .78em !important; min-height: 0 !important; margin: 0 5px !important; }
+    /* Status: one compact row, dropped clear of the corner overlays (which reach
+       ~40px below the safe-area top). */
+    .game-status {
+        flex: 0 0 auto !important; order: 1 !important; min-height: 0 !important;
+        margin: 46px 0 0 !important; padding: 3px 8px !important;
+        flex-wrap: nowrap !important; justify-content: center !important;
+    }
+    .game-status > div { font-size: .74em !important; min-height: 0 !important; margin: 0 5px !important; }
     .tricks-counter { left: 0 !important; }
-    .trump-suit span { width: 26px !important; height: 26px !important; font-size: 1em !important; }
+    .trump-suit span { width: 24px !important; height: 24px !important; font-size: .95em !important; }
 
-    /* Compact Total Score — a single wrapped row of "Name value", not a tall
-       stack. Addresses the box eating half the screen. */
+    /* Total Score → a thin one-line strip (no "Total Score" header row). */
     .total-score-box {
-        position: static !important; flex: 0 0 auto !important;
-        width: auto !important; min-width: 0 !important; margin: 0 !important;
-        padding: 3px 8px !important; order: 3 !important;
+        position: static !important; flex: 0 0 auto !important; order: 3 !important;
+        width: auto !important; min-width: 0 !important; margin: 0 !important; padding: 2px 8px !important;
     }
-    /* While a bid/prediction panel is open, hide the score — you don't need it
-       then, and it frees the top slot for the bid controls (see order below). */
+    /* While a bid/prediction panel is open, hide the score entirely. */
     .game-container:has(#bidding-interface:not([style*="display: none"])) .total-score-box,
     .game-container:has(#second-phase-bidding:not([style*="display: none"])) .total-score-box {
         display: none !important;
     }
-    .total-score-header { padding: 0 !important; margin: 0 !important; align-items: center !important; }
-    .total-score-title, #score-view-title { font-size: .82em !important; }
-    .total-score-box .extended-view-btn { padding: 0 7px !important; }
+    .total-score-header { display: none !important; }
     #total-score-content {
-        display: flex !important; flex-direction: row !important; flex-wrap: wrap !important;
-        justify-content: space-between !important; gap: 0 12px !important; margin-top: 2px !important;
+        display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+        justify-content: space-between !important; gap: 0 10px !important; margin: 0 !important;
     }
     .score-item {
         display: inline-flex !important; flex: 0 0 auto !important; width: auto !important;
         align-items: baseline !important; justify-content: flex-start !important;
-        gap: 4px !important; margin: 0 !important; padding: 0 !important; font-size: .78em !important; border: none !important;
+        gap: 4px !important; margin: 0 !important; padding: 0 !important; font-size: .72em !important; border: none !important;
     }
     .score-item .player-label { margin: 0 !important; }
 
@@ -421,22 +429,11 @@ body {
     .bot-cards { transform: scale(.72) !important; }
 }
 
-/* Short portrait phones (e.g. iPhone SE, 320–375 wide / ≤670 tall): the top
-   chrome wraps to multiple rows and, with the in-flow bid tray, the whole column
-   can exceed the screen and push Bid/Pass below the fold. Reclaim vertical space:
-   drop the title, keep chrome to tight single rows, and slim the hand + tray. */
+/* Short portrait phones (e.g. iPhone SE, ≤670 tall): the compact chrome above
+   already applies; here we only tighten the status margin and slim the hand /
+   board / bid tray further so Bid/Pass never drop below the fold. */
 @media (orientation: portrait) and (max-width: 760px) and (max-height: 670px) {
-    .game-container h1 { display: none !important; }
-    /* Turbo + controls become small corner overlays (like landscape) so they
-       cost zero column height and can't wrap. */
-    .fast-mode-container { position: absolute !important; top: 2px !important; left: 2px !important; transform: scale(.78) !important; transform-origin: top left !important; z-index: 1200 !important; }
-    .game-control-buttons { position: absolute !important; top: 2px !important; right: 2px !important; transform: scale(.72) !important; transform-origin: top right !important; z-index: 1200 !important; flex-wrap: nowrap !important; margin: 0 !important; }
-    .game-status { flex-wrap: nowrap !important; padding: 2px 6px !important; margin-top: 24px !important; }
     .game-status > div { font-size: .68em !important; margin: 0 4px !important; }
-    /* Scores: drop the header row, one tight line. */
-    .total-score-box { padding: 2px 6px !important; }
-    .total-score-header { display: none !important; }
-    #total-score-content { flex-wrap: nowrap !important; justify-content: space-between !important; }
     .score-item { font-size: .68em !important; }
     /* Slimmer board + hand so the tray (incl. Bid/Pass) always fits. */
     .game-board { min-height: 96px !important; }

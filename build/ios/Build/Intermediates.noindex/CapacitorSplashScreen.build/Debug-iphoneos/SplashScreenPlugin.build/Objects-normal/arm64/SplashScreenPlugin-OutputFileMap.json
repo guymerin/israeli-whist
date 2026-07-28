@@ -1,0 +1,49 @@
+{
+  "" : {
+    "diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin-primary.dia",
+    "emit-module-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin-primary-emit-module.dia",
+    "pch" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin-primary.swiftdeps"
+  },
+  "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/splash-screen/ios/Sources/SplashScreenPlugin/SplashScreen.swift" : {
+    "const-values" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreen.swiftconstvalues",
+    "dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreen.d",
+    "diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreen.dia",
+    "index-unit-output-path" : "/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreen.o",
+    "llvm-bc" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreen.bc",
+    "object" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreen.o",
+    "swift-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreen.swiftdeps",
+    "swiftmodule" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreen~partial.swiftmodule"
+  },
+  "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/splash-screen/ios/Sources/SplashScreenPlugin/SplashScreenConfig.swift" : {
+    "const-values" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenConfig.swiftconstvalues",
+    "dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenConfig.d",
+    "diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenConfig.dia",
+    "index-unit-output-path" : "/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenConfig.o",
+    "llvm-bc" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenConfig.bc",
+    "object" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenConfig.o",
+    "swift-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenConfig.swiftdeps",
+    "swiftmodule" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenConfig~partial.swiftmodule"
+  },
+  "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/splash-screen/ios/Sources/SplashScreenPlugin/SplashScreenPlugin.swift" : {
+    "const-values" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin.swiftconstvalues",
+    "dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin.d",
+    "diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin.dia",
+    "index-unit-output-path" : "/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin.o",
+    "llvm-bc" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin.bc",
+    "object" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin.o",
+    "swift-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin.swiftdeps",
+    "swiftmodule" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenPlugin~partial.swiftmodule"
+  },
+  "/Users/guymerin/Projects/israeli-whist/node_modules/@capacitor/splash-screen/ios/Sources/SplashScreenPlugin/SplashScreenSettings.swift" : {
+    "const-values" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenSettings.swiftconstvalues",
+    "dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenSettings.d",
+    "diagnostics" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenSettings.dia",
+    "index-unit-output-path" : "/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenSettings.o",
+    "llvm-bc" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenSettings.bc",
+    "object" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenSettings.o",
+    "swift-dependencies" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenSettings.swiftdeps",
+    "swiftmodule" : "/Users/guymerin/Projects/israeli-whist/build/ios/Build/Intermediates.noindex/CapacitorSplashScreen.build/Debug-iphoneos/SplashScreenPlugin.build/Objects-normal/arm64/SplashScreenSettings~partial.swiftmodule"
+  }
+}
