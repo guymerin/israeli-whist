@@ -376,14 +376,26 @@ body {
     /* Board takes the space between the score and the bid tray, and flex-shrinks
        so the tray + hand always fit. min-height keeps the hand fully visible. */
     .game-board { flex: 1 1 auto !important; width: 100% !important; height: auto !important; min-height: 132px !important; margin: 3px 0 0 !important; order: 4 !important; }
-    /* Shrink the central trick square AND make it faint, so it no longer hides
-       the N/E/W/S seat stats — the played cards (opaque) still land inside it. */
+    /* Central trick square: modest + faint so it doesn't hide the seat stats, but
+       big enough (and overflow:visible) that the four played cards spread into a
+       clear cross — including the North card — and may spill just outside it. */
     .trick-area {
-        width: 42vw !important; height: 42vw !important; max-width: 158px !important; max-height: 158px !important;
-        margin-bottom: 0 !important;
+        width: 48vw !important; height: 48vw !important; max-width: 188px !important; max-height: 188px !important;
+        margin-bottom: 0 !important; overflow: visible !important;
         background: radial-gradient(ellipse at center, rgba(203,165,82,.12), rgba(203,165,82,0) 72%) !important;
         border: 1px solid rgba(203,165,82,.30) !important;
     }
+    /* Smaller played cards so all four fit around the centre with little overlap. */
+    .played-card, .played-card .card {
+        width: 56px !important; height: 78px !important; min-width: 56px !important; min-height: 78px !important;
+    }
+    .played-card .card .card-rank { font-size: 17px !important; font-weight: 800 !important; }
+    .played-card .card .card-center-suit { font-size: 22px !important; }
+    /* Nudge the N/S cards out to the square's edges so they don't pile on centre. */
+    .north-played { top: -6px !important; }
+    .south-played { bottom: -6px !important; }
+    .west-played { left: -6px !important; }
+    .east-played { right: -6px !important; }
 
     /* Bigger, more legible hand — larger, bolder rank digits. */
     #south-cards.human-cards { --cw: 50px !important; padding: 0 6px 4px !important; align-items: flex-end !important; }
