@@ -5443,6 +5443,25 @@ class IsraeliWhist {
             const el = document.getElementById(`${this.players[i]}-player`);
             if (el) el.classList.toggle('seat-active', i === acting);
         }
+
+        // "Your turn" cue: mark the body when it's the human's turn (CSS blinks
+        // the south seat). If they sit idle for 30s, gently nudge — a haptic
+        // buzz where supported (Android/Chrome; iOS Safari has no web vibration)
+        // plus a visual flash so there's always a reminder.
+        const myTurn = acting === this.southIndex;
+        document.body.classList.toggle('my-turn', myTurn);
+        if (myTurn) {
+            if (!this._myTurnSince) { this._myTurnSince = Date.now(); this._nextNudgeAt = this._myTurnSince + 30000; }
+            else if (Date.now() >= this._nextNudgeAt) {
+                this._nextNudgeAt = Date.now() + 30000; // re-arm for repeated idle
+                try { if (navigator.vibrate) navigator.vibrate([45, 40, 45]); } catch (e) { /* unsupported */ }
+                document.body.classList.add('turn-nudge');
+                setTimeout(() => document.body.classList.remove('turn-nudge'), 2200);
+            }
+        } else if (this._myTurnSince) {
+            this._myTurnSince = null; this._nextNudgeAt = 0;
+            document.body.classList.remove('turn-nudge');
+        }
     }
 
     displayCards() {
