@@ -1,4 +1,0 @@
-module StatusBarPlugin {
-header "StatusBarPlugin-Swift.h"
-export *
-}
