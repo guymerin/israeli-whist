@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Israeli Whist — Support</title>
+<meta name="description" content="Support, help, and contact for the Israeli Whist card game app.">
+<link rel="stylesheet" href="fonts/fonts.css?v=20260727">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230f5132'/%3E%3Ctext x='8' y='13' font-family='serif' font-size='13' fill='white' text-anchor='middle'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --felt:#0e2016; --felt2:#17301f; --panel:rgba(20,40,30,.55);
+    --ink:#ece7d6; --ink-soft:#a9b3a2; --brass:#cba552; --brass-deep:#a9863a;
+    --red:#c0433a; --line:rgba(240,235,220,.13);
+    --serif:"Fraunces","Iowan Old Style",Palatino,Georgia,serif;
+    --sans:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; color:var(--ink); font-family:var(--sans); line-height:1.65;
+    background:radial-gradient(130% 90% at 50% -10%, #17301f 0%, #0d1a14 60%);
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:clamp(1.6rem,5vw,4rem) clamp(1.1rem,4vw,2rem) 4rem}
+  header.top{text-align:center; border-bottom:1px solid var(--line); padding-bottom:2rem; margin-bottom:2rem}
+  .coin{width:76px;height:76px;margin:0 auto 1rem;border-radius:50%;
+    background:radial-gradient(circle at 38% 32%,#f0d898,#dcbb63 34%,#cba552 55%,#a9863a 78%,#8a6c2c 100%);
+    box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 2px rgba(255,255,255,.35);
+    display:grid;place-items:center;position:relative}
+  .coin span{position:absolute;font-family:var(--serif);font-size:15px;line-height:1}
+  .coin .s{top:12%;left:50%;transform:translateX(-50%);color:#211d16}
+  .coin .h{top:50%;right:12%;transform:translateY(-50%);color:var(--red)}
+  .coin .d{bottom:12%;left:50%;transform:translateX(-50%);color:var(--red)}
+  .coin .c{top:50%;left:12%;transform:translateY(-50%);color:#211d16}
+  h1{font-family:var(--serif); font-weight:600; font-size:clamp(2rem,6vw,2.8rem); margin:0 0 .3rem; color:var(--brass); letter-spacing:.005em}
+  .tagline{color:var(--ink-soft); margin:0; font-size:1.05rem}
+  h2{font-family:var(--serif); font-weight:600; font-size:1.35rem; margin:2.4rem 0 .8rem; color:var(--ink)}
+  a{color:var(--brass); text-decoration:none; border-bottom:1px solid transparent; transition:border-color .15s}
+  a:hover{border-bottom-color:var(--brass)}
+  a:focus-visible{outline:2px solid var(--brass); outline-offset:2px; border-radius:2px}
+  p{margin:0 0 1rem}
+  .cards{display:flex; flex-wrap:wrap; gap:.8rem; margin:1.2rem 0}
+  .btn{display:inline-block; font-weight:650; padding:.7rem 1.2rem; border-radius:10px; font-size:.95rem}
+  .btn.primary{background:linear-gradient(180deg,var(--brass),var(--brass-deep)); color:#221803; border:1px solid var(--brass-deep)}
+  .btn.primary:hover{filter:brightness(1.07); border-bottom-color:var(--brass-deep)}
+  .btn.ghost{border:1px solid color-mix(in oklab,var(--brass) 55%,transparent); color:var(--brass)}
+  .btn.ghost:hover{border-bottom-color:transparent; background:rgba(203,165,82,.1)}
+  .faq{border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-top:1rem}
+  details{border-bottom:1px solid var(--line)}
+  details:last-child{border-bottom:none}
+  summary{cursor:pointer; padding:.9rem 1.1rem; font-weight:600; list-style:none; background:var(--panel)}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+"; float:right; color:var(--brass); font-family:var(--serif)}
+  details[open] summary::after{content:"–"}
+  details .body{padding:0 1.1rem 1rem; color:var(--ink-soft)}
+  ol,ul{color:var(--ink-soft); padding-left:1.3rem}
+  li{margin:.3rem 0}
+  .contact{background:var(--panel); border:1px solid var(--line); border-top:2px solid var(--brass); border-radius:12px; padding:1.3rem 1.4rem; margin-top:1rem}
+  .muted{color:var(--ink-soft); font-size:.9rem}
+  footer{margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--line); color:var(--ink-soft); font-size:.85rem; text-align:center}
+  code{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.85em; background:rgba(203,165,82,.14); padding:.1em .35em; border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="coin"><span class="s">&spades;</span><span class="h">&hearts;</span><span class="d">&diams;</span><span class="c">&clubs;</span></div>
+    <h1>Israeli Whist</h1>
+    <p class="tagline">Support &amp; help — the trick-taking bidding card game.</p>
+  </header>
+
+  <p>Thanks for playing! Israeli Whist is a single-player card game where you bid, predict your tricks, and try to hit your number exactly against three world-class AI opponents. It runs fully offline, shows no ads, needs no account, and collects no data.</p>
+
+  <div class="cards">
+    <a class="btn primary" href="https://guymerin.github.io/israeli-whist/">Play in your browser</a>
+    <a class="btn ghost" href="#contact">Contact</a>
+  </div>
+
+  <h2>How to play</h2>
+  <ol>
+    <li><strong>Trump bidding.</strong> Bid a minimum number of tricks and a trump suit, or pass. Each bid must beat the last (more tricks, or the same tricks with a higher-ranked trump: ♣ &lt; ♦ &lt; ♥ &lt; ♠ &lt; No&nbsp;Trump). The highest bidder sets the trump.</li>
+    <li><strong>Takes.</strong> Every player predicts how many tricks they'll win. The four predictions can never total exactly&nbsp;13 — someone is over, someone under.</li>
+    <li><strong>Play.</strong> Follow suit if you can; trump wins. Match your prediction <em>exactly</em> to score big; each trick over or under costs you. Sometimes it's smart to lose a trick on purpose.</li>
+  </ol>
+  <p class="muted">In-app, tap <strong>📖 Rules</strong> any time for the full rules and scoring, or <strong>💡 Hint</strong> for strategic advice.</p>
+
+  <h2>Frequently asked</h2>
+  <div class="faq">
+    <details><summary>Is it free? Are there ads or purchases?</summary><div class="body">It's free, with no ads, no accounts, and no in-app purchases.</div></details>
+    <details><summary>Does it need an internet connection?</summary><div class="body">No. Once installed, the app works fully offline — on a plane, a subway, anywhere.</div></details>
+    <details><summary>Does the app collect my data?</summary><div class="body">No. There's no tracking and no data collection. Your name, scores, and game history are stored only on your device. See <a href="#privacy">Privacy</a> below.</div></details>
+    <details><summary>How good are the bots? Do they cheat?</summary><div class="body">They don't cheat — each bot sees only its own hand plus public information, the same as you. They use a Determinized Monte Carlo engine (the technique behind top computer card players), so their decisions are genuinely strong and human-like.</div></details>
+    <details><summary>Why can't the four bids total 13?</summary><div class="body">That's the "over/under" rule: the last player to predict is constrained so the four predictions never sum to exactly 13. It guarantees the hand is either "over" (someone must overshoot) or "under" (someone must fall short), which shapes the strategy.</div></details>
+    <details><summary>What are a "gamlet" and a "round"?</summary><div class="body">A gamlet is one full deal (13 tricks). A game runs up to 10 gamlets or until someone reaches 200 points. Your running scorecard is saved automatically between sessions.</div></details>
+    <details><summary>Can I play on the web instead of the app?</summary><div class="body">Yes — the same game is playable in any browser at <a href="https://guymerin.github.io/israeli-whist/">guymerin.github.io/israeli-whist</a>.</div></details>
+  </div>
+
+  <h2 id="contact">Contact</h2>
+  <div class="contact">
+    <p style="margin:0 0 .4rem">Questions, bugs, or feedback? I read every message.</p>
+    <p style="margin:0"><strong>Email:</strong> <a href="mailto:guy_merin@outlook.com?subject=Israeli%20Whist%20support">guy_merin@outlook.com</a></p>
+  </div>
+
+  <h2 id="privacy">Privacy</h2>
+  <p>Israeli Whist does not collect, transmit, or share any personal data. It has no analytics, no tracking, and no advertising. All game state — your name, scores, and history — is stored locally on your device and never leaves it. The app makes no network requests beyond loading itself.</p>
+
+  <footer>
+    © 2026 Guy Merin · <a href="https://guymerin.github.io/israeli-whist/">Play online</a> · <a href="https://github.com/guymerin/israeli-whist">Source</a>
+  </footer>
+</div>
+</body>
+</html>

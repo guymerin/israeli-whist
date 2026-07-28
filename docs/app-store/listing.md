@@ -60,7 +60,7 @@ First release. Play Israeli Whist against three world-class AI opponents — off
 ```
 
 ## URLs
-- **Support URL:** `https://github.com/guymerin/israeli-whist` (or a simple contact page)
+- **Support URL:** `https://guymerin.github.io/israeli-whist/support.html`
 - **Marketing URL (optional):** `https://guymerin.github.io/israeli-whist/` (the playable web version)
 - **Copyright:** `© 2026 Guy Merin`
 
