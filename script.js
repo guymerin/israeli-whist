@@ -5451,10 +5451,14 @@ class IsraeliWhist {
         const myTurn = acting === this.southIndex;
         document.body.classList.toggle('my-turn', myTurn);
         if (myTurn) {
-            if (!this._myTurnSince) { this._myTurnSince = Date.now(); this._nextNudgeAt = this._myTurnSince + 30000; }
-            else if (Date.now() >= this._nextNudgeAt) {
+            if (!this._myTurnSince) {
+                this._myTurnSince = Date.now(); this._nextNudgeAt = this._myTurnSince + 30000;
+                // A gentle tap when it becomes your turn to bid (turns are frequent
+                // in play, so only during the bidding phases to avoid over-buzzing).
+                if (phase === 'phase1' || phase === 'phase2') this._haptic('LIGHT');
+            } else if (Date.now() >= this._nextNudgeAt) {
                 this._nextNudgeAt = Date.now() + 30000; // re-arm for repeated idle
-                try { if (navigator.vibrate) navigator.vibrate([45, 40, 45]); } catch (e) { /* unsupported */ }
+                this._haptic('MEDIUM');
                 document.body.classList.add('turn-nudge');
                 setTimeout(() => document.body.classList.remove('turn-nudge'), 2200);
             }
@@ -5462,6 +5466,21 @@ class IsraeliWhist {
             this._myTurnSince = null; this._nextNudgeAt = 0;
             document.body.classList.remove('turn-nudge');
         }
+    }
+
+    /**
+     * Fire a haptic. Uses native iOS/Android haptics via the Capacitor Haptics
+     * plugin when running inside the packaged app; falls back to the web
+     * Vibration API (Android browsers) and no-ops where neither exists (iOS
+     * Safari). style: 'LIGHT' | 'MEDIUM' | 'HEAVY'.
+     */
+    _haptic(style) {
+        const cap = (typeof window !== 'undefined') ? window.Capacitor : null;
+        const Haptics = cap && cap.Plugins && cap.Plugins.Haptics;
+        if (Haptics && typeof Haptics.impact === 'function') {
+            try { Haptics.impact({ style }); return; } catch (e) { /* fall through */ }
+        }
+        try { if (navigator.vibrate) navigator.vibrate(style === 'MEDIUM' ? [45, 40, 45] : 18); } catch (e) { /* unsupported */ }
     }
 
     displayCards() {

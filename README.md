@@ -29,6 +29,24 @@ node scripts/make-icons.mjs    # render app icons → icons/
 
 PWA files: `manifest.webmanifest`, `sw.js` (service worker), `fonts/`, `icons/`. Bump the `CACHE` name in `sw.js` (and the `?v=` query strings in `index.html`) on release so clients pick up updates.
 
+## Native iOS app (Capacitor)
+
+The same web app is wrapped as a native iOS app via [Capacitor](https://capacitorjs.com) (Xcode project under `ios/`), so it can ship to the App Store and use real device features (e.g. **haptics** on your turn / the 30s idle nudge — `@capacitor/haptics`, with a web-vibration fallback).
+
+- **App id:** `com.guymerin.israeliwhist` · **web dir:** `www/` (assembled from the root files by `scripts/build-www.mjs`; not committed).
+- `www/` and the native web assets (`ios/App/App/public`) are generated — regenerate with the scripts below.
+
+```bash
+npm install                 # Capacitor deps (already in package.json)
+npm run ios:sync            # build www/ and copy it into the iOS project
+npm run ios:assets          # regenerate app icon + splash from assets/icon.png / splash*.png
+npm run ios:open            # sync, then open ios/App in Xcode
+```
+
+In Xcode: select the **App** target → **Signing & Capabilities** → set your **Team** (the bundle id is `com.guymerin.israeliwhist`). Run on a device/simulator, then **Product → Archive → Distribute App → App Store Connect** to submit. Verified to build for the iOS Simulator (`xcodebuild … BUILD SUCCEEDED`).
+
+Native haptics are called through `window.Capacitor.Plugins.Haptics` (see `_haptic()` in `script.js`); outside the app that path is skipped and it falls back to `navigator.vibrate` (Android) or nothing (web iOS).
+
 ## Rules
 
 Tap the **📖 Rules** button in-game. Quick summary:
