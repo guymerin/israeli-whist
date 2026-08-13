@@ -71,10 +71,23 @@ Answer in App Store Connect → App Privacy:
 - No tracking. Matches the bundled `PrivacyInfo.xcprivacy`.
 
 ## Screenshots
-Provided at `docs/app-store/screenshots/` — **1290×2796** (6.9″ iPhone; also accepted for 6.7″).
-1. `01-bidding.png` — the bidding round ("Your turn — pick trump & tricks").
-2. `02-play.png` — a trick in play on the felt table.
-Add 1–3 more if you like (max 10). A 6.5″ set (1284×2778) is optional but nice to have.
+Provided at `docs/app-store/screenshots/`, three sets, one shot per phase of the game:
+
+| Folder | Size | Slot |
+|---|---|---|
+| `6.9/` | 1290×2796 | 6.9″ iPhone (also accepted for 6.7″) |
+| `6.5/` | 1284×2778 | 6.5″ iPhone |
+| `ipad/` | 2732×2048 | 12.9″ iPad, landscape |
+
+1. `01-bidding.png` — trump bidding ("Your turn — pick trump & tricks").
+2. `02-takes.png` — the takes round, with the other seats' predictions in and the
+   value that would total 13 greyed out.
+3. `03-play.png` — a trick in play on the felt.
+
+Regenerate them all with `node scripts/make-store-screenshots.mjs` (or pass
+profile names, e.g. `… 6.9 ipad`). It drives the real game headless at each
+device's CSS size and pixel ratio — nothing is composited or annotated. Max 10
+per size if you want to add more.
 
 ---
 
