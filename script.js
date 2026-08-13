@@ -6386,8 +6386,53 @@ class IsraeliWhist {
                 this.resetForNewFullGame();
             });
         }
-        
 
+        this.setupGameMenu();
+    }
+
+    /**
+     * The ☰ popover that holds Turbo + New Game / Rules / Hint / Last Trick.
+     *
+     * Purely a container: every item keeps its own id and its own listener
+     * (wired above and in initializeHintSystem), so this only opens/closes the
+     * panel. Menu items close it on activation; the Turbo toggle deliberately
+     * does not, so you can see the switch flip.
+     */
+    setupGameMenu() {
+        const btn = document.getElementById('menu-btn');
+        const menu = document.getElementById('game-menu');
+        if (!btn || !menu) return;
+
+        const isOpen = () => menu.style.display !== 'none';
+        const setOpen = (open) => {
+            menu.style.display = open ? 'flex' : 'none';
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+        this.closeGameMenu = () => setOpen(false);
+
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setOpen(!isOpen());
+        });
+
+        // Any menu *button* performs an action and dismisses the panel; the
+        // Turbo <label>/<input> stays put.
+        menu.addEventListener('click', (e) => {
+            if (e.target.closest('button')) setOpen(false);
+        });
+
+        // Click/tap anywhere else, or Escape, closes it.
+        document.addEventListener('click', (e) => {
+            if (!isOpen()) return;
+            if (menu.contains(e.target) || btn.contains(e.target)) return;
+            setOpen(false);
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isOpen()) {
+                setOpen(false);
+                btn.focus();
+            }
+        });
     }
 
     /**

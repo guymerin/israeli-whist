@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
 Israeli Whist DOM map:
-- Top chrome contains Turbo, controls, status, and the generated score box.
+- Top chrome is the ☰ menu (Turbo + game actions), status, and the score box.
 - .game-board is the compass table: north/east/west bots, south human, center trick/won piles.
 - Phase 1 and Phase 2 panels are present in the DOM and toggled by script.js.
 - Name/rules/hint/last-trick modals live after the board for JS show/hide flows.
@@ -45,7 +45,7 @@ Israeli Whist DOM map:
     <!-- Main stylesheet with fallbacks -->
     <link rel="stylesheet" href="styles.css?v=20260601b">
     <!-- Card Room theme: layered reskin loaded AFTER styles.css so it wins the cascade. -->
-    <link rel="stylesheet" href="theme-cardroom.css?v=20260728b">
+    <link rel="stylesheet" href="theme-cardroom.css?v=20260813a">
 
     <!-- Inline SVG favicon: white ♠ on dark-green felt. Silences the
          /favicon.ico 404 that browsers auto-request on every page load. -->
@@ -62,23 +62,28 @@ Israeli Whist DOM map:
     <div class="game-container">
         <h1>Israeli Whist</h1>
         
-        <!-- Fast Game Mode Toggle -->
-        <div class="fast-mode-container">
-            <label class="fast-mode-label">
-                <input type="checkbox" id="fast-mode-checkbox" class="fast-mode-checkbox">
-                <span class="fast-mode-text">⚡ Turbo</span>
-            </label>
-        </div>
-
-        <!-- Game Control Buttons - positioned on the right side -->
+        <!-- Top chrome: a single ☰ button holds Turbo and every game action.
+             The five separate controls used to eat a whole row above the table
+             on phones. The original markup/ids live untouched inside the panel,
+             so all existing listeners (setupEventListeners, initializeHintSystem,
+             the last-trick enable/disable) and CSS rules keep working. -->
         <div class="game-control-buttons">
-            <button id="new-game-btn" class="new-game-btn">🔄 New Game</button>
-            <button id="rules-btn" class="rules-btn">📖 Rules</button>
-            <button id="hint-btn" class="hint-btn" aria-pressed="false">💡 Hint</button>
-            <button id="last-trick-btn" class="last-trick-btn" disabled title="View the last completed trick">🔁 Last Trick</button>
-
+            <button id="menu-btn" class="menu-btn" aria-haspopup="true" aria-expanded="false" aria-controls="game-menu" aria-label="Game menu" title="Menu">☰</button>
+            <div class="game-menu" id="game-menu" role="menu" aria-labelledby="menu-btn" style="display: none;">
+                <!-- Fast Game Mode Toggle -->
+                <div class="fast-mode-container">
+                    <label class="fast-mode-label">
+                        <input type="checkbox" id="fast-mode-checkbox" class="fast-mode-checkbox">
+                        <span class="fast-mode-text">⚡ Turbo</span>
+                    </label>
+                </div>
+                <button id="new-game-btn" class="new-game-btn" role="menuitem">🔄 New Game</button>
+                <button id="rules-btn" class="rules-btn" role="menuitem">📖 Rules</button>
+                <button id="hint-btn" class="hint-btn" aria-pressed="false" role="menuitem">💡 Hint</button>
+                <button id="last-trick-btn" class="last-trick-btn" disabled title="View the last completed trick" role="menuitem">🔁 Last Trick</button>
+            </div>
         </div>
-        
+
         <!-- Game Status -->
         <div class="game-status">
             <div class="tricks-counter">Round: <span id="tricks-indicator">0</span></div>
@@ -523,7 +528,7 @@ Israeli Whist DOM map:
         import * as MCEngine from './mc-engine.js?v=20260723';
         window.MCEngine = MCEngine;
     </script>
-    <script src="script.js?v=20260728a"></script>
+    <script src="script.js?v=20260813a"></script>
 
     <!-- Register the offline service worker (progressive enhancement — the game
          works without it; this just enables offline + installed-app caching). -->
