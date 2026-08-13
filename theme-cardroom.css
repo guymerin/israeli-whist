@@ -296,11 +296,14 @@ body {
 .close-btn:hover, .hint-close:hover, .last-trick-close:hover { color: var(--cr-brass) !important; }
 
 /* ── 10b. The ☰ menu: one control instead of five ──────────────────────────
-   Turbo + New Game / Rules / Hint / Last Trick used to sit in a row above the
-   table; on a phone that row cost ~46px of board height and still crowded the
-   status bar. They now live in a popover anchored to a single 44px button, so
-   the top chrome is one glyph and the felt gets the space back. */
+   Turbo + New Game / Rules / Last Trick used to sit in a row above the table;
+   on a phone that row cost ~46px of board height and still crowded the status
+   bar. They now live in a popover anchored to a single 44px button, so the top
+   chrome is two glyphs — Hint in the left corner, ☰ in the right — and the felt
+   gets the space back. Hint stays out because it's a mid-play action; making it
+   two taps mid-trick is the one place the menu would actually cost something. */
 .game-control-buttons { position: absolute; top: 20px; right: 20px; z-index: 1300; display: block; }
+.quick-actions { position: absolute; top: 20px; left: 20px; z-index: 1300; display: block; }
 
 .menu-btn {
     display: inline-grid !important; place-items: center !important;
@@ -313,6 +316,14 @@ body {
     transition: background .15s ease, border-color .15s ease !important;
 }
 .menu-btn:hover { background: rgba(203,165,82,.16) !important; }
+/* Hint matches the ☰ corner button on phones (icon only); on wide screens the
+   label rides along and it keeps the ordinary secondary-button look. */
+.quick-actions .hint-btn {
+    display: inline-grid !important; place-items: center !important;
+    grid-auto-flow: column !important; gap: 6px !important;
+    min-height: 44px !important; line-height: 1 !important;
+}
+@media (max-width: 760px) { .btn-label { display: none !important; } }
 .menu-btn[aria-expanded="true"] { background: rgba(203,165,82,.20) !important; border-color: var(--cr-brass) !important; }
 .menu-btn:focus-visible { outline: 2px solid var(--cr-brass) !important; outline-offset: 2px !important; }
 
@@ -401,14 +412,22 @@ body {
         top: calc(env(safe-area-inset-top) + 2px) !important; right: calc(env(safe-area-inset-right) + 6px) !important;
         transform: none !important; margin: 0 !important;
     }
-    .menu-btn { width: 40px !important; height: 38px !important; font-size: 19px !important; }
+    .quick-actions {
+        position: absolute !important; z-index: 1300 !important;
+        top: calc(env(safe-area-inset-top) + 2px) !important; left: calc(env(safe-area-inset-left) + 6px) !important;
+        transform: none !important; margin: 0 !important;
+    }
+    .menu-btn, .quick-actions .hint-btn {
+        width: 40px !important; height: 40px !important; min-height: 40px !important;
+        padding: 0 !important; font-size: 19px !important;
+    }
 
     /* Status: one compact row at the top. Symmetric side padding reserves room
        for the ☰ button that floats over its right end and keeps the values
        optically centred. */
     .game-status {
         flex: 0 0 auto !important; order: 1 !important; min-height: 38px !important;
-        margin: 0 !important; padding: 3px 48px !important;
+        margin: 0 !important; padding: 3px 50px !important;
         flex-wrap: nowrap !important; justify-content: center !important;
         align-items: center !important;
     }
@@ -537,6 +556,22 @@ body {
    viewport, so they overlapped the seats. Match the legacy landscape card size
    (~46px) and let the original structure stand; §1–10 keep the Card Room look. */
 @media (orientation: landscape) and (max-height: 500px) {
+    /* styles.css scales the control cluster to 0.6, which left the single ☰ a
+       24px tap target. With one button per corner there's room for full size. */
+    .game-control-buttons {
+        transform: none !important; top: 4px !important;
+        right: calc(env(safe-area-inset-right) + 6px) !important;
+    }
+    .quick-actions {
+        position: fixed !important; z-index: 1300 !important;
+        transform: none !important; top: 4px !important;
+        left: calc(env(safe-area-inset-left) + 6px) !important;
+    }
+    .menu-btn, .quick-actions .hint-btn {
+        width: 38px !important; height: 36px !important; min-height: 36px !important;
+        padding: 0 !important; font-size: 18px !important;
+    }
+
     #south-cards.human-cards { --cw: 46px !important; padding: 2px 6px !important; }
     #south-cards.human-cards .card .card-rank { font-size: 16px !important; font-weight: 900 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 20px !important; }

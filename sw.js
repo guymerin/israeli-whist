@@ -8,7 +8,7 @@
 //     load and served offline afterwards.
 //
 // Bump CACHE on release to evict the old shell.
-const CACHE = 'whist-v2-20260813';
+const CACHE = 'whist-v2-20260813b';
 
 // Same-origin core precached on install. Relative paths keep this working under
 // the GitHub Pages subpath (/israeli-whist/).

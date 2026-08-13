@@ -1126,23 +1126,42 @@ class IsraeliWhist {
         this.collapsePhase2Bidding();
         
         // Set minimum bid for trump winner
+        const trickButtons = document.querySelectorAll('.trick-btn');
         if (this.currentBidder === this.players.indexOf(this.trumpWinner)) {
-            // Trump winner must bid at least their Phase 1 minimum
-            const trickButtons = document.querySelectorAll('.trick-btn');
+            // Trump winner already committed to at least their Phase 1 minimum,
+            // so anything below it isn't a choice at all — hide it instead of
+            // showing a row of dead buttons. Expand to the full 0–13 strip while
+            // we're at it: the collapsed 0–7 strip would be left with as few as
+            // three options, or none when the minimum is above 7.
             trickButtons.forEach(button => {
                 const value = parseInt(button.getAttribute('data-value'), 10);
-                if (value < this.minimumTakes) {
-                    button.disabled = true;
-                } else {
-                    button.disabled = false;
-                }
+                const legal = value >= this.minimumTakes;
+                button.disabled = !legal;
+                button.style.display = legal ? '' : 'none';
             });
+            this.expandPhase2Bidding();
         } else {
-            // Reset all buttons to be enabled
-            const trickButtons = document.querySelectorAll('.trick-btn');
+            // Reset all buttons to be enabled and visible
             trickButtons.forEach(button => {
                 button.disabled = false;
+                button.style.display = '';
             });
+        }
+        // Drop any row left with nothing in it, and release the reserved
+        // four-row height (.tricks-buttons-extra min-height: 192px) so the panel
+        // doesn't carry a hole where 0–3 used to be.
+        const extraStrip = document.getElementById('tricks-buttons-extra');
+        if (extraStrip) {
+            const rows = Array.from(extraStrip.querySelectorAll('.tricks-row'));
+            rows.forEach(row => {
+                const anyVisible = Array.from(row.querySelectorAll('.trick-btn'))
+                    .some(b => b.style.display !== 'none');
+                row.style.display = anyVisible ? '' : 'none';
+            });
+            const collapsed = rows.some(r => r.style.display === 'none');
+            extraStrip.style.minHeight = collapsed ? '0' : '';
+            const predictionBox = document.getElementById('tricks-prediction');
+            if (predictionBox) predictionBox.style.minHeight = collapsed ? '0' : '';
         }
 
         // Over/under-13 rule: if south is the last bidder, the value that
@@ -8150,7 +8169,11 @@ class IsraeliWhist {
          const btn = document.getElementById('hint-btn');
          if (!btn) return;
          btn.classList.toggle('active', !!this.hintsEnabled);
-         btn.textContent = this.hintsEnabled ? '💡 Hint ✓' : '💡 Hint';
+         // Keep the label in its own span — phones hide .btn-label and show
+         // only the 💡, so a flat textContent write would undo that.
+         btn.innerHTML = this.hintsEnabled
+             ? '💡 <span class="btn-label">Hint ✓</span>'
+             : '💡 <span class="btn-label">Hint</span>';
          btn.setAttribute('aria-pressed', this.hintsEnabled ? 'true' : 'false');
          btn.title = this.hintsEnabled
              ? 'Card hints are ON — click to turn off'
