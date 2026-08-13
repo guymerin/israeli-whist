@@ -45,11 +45,12 @@ Israeli Whist DOM map:
     <!-- Main stylesheet with fallbacks -->
     <link rel="stylesheet" href="styles.css?v=20260601b">
     <!-- Card Room theme: layered reskin loaded AFTER styles.css so it wins the cascade. -->
-    <link rel="stylesheet" href="theme-cardroom.css?v=20260813a">
+    <link rel="stylesheet" href="theme-cardroom.css?v=20260813b">
 
-    <!-- Inline SVG favicon: white ♠ on dark-green felt. Silences the
+    <!-- Inline SVG favicon: the app mark reduced to what survives 16px — the
+         cream ring on felt with a single ivory spade. Silences the
          /favicon.ico 404 that browsers auto-request on every page load. -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230f5132'/%3E%3Ctext x='8' y='13' font-family='serif' font-size='13' fill='white' text-anchor='middle'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23183524'/%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%23efe6d0' stroke-width='1.2'/%3E%3Ctext x='8' y='12' font-family='Georgia,serif' font-size='9' fill='%23efe6d0' text-anchor='middle'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 
@@ -62,11 +63,18 @@ Israeli Whist DOM map:
     <div class="game-container">
         <h1>Israeli Whist</h1>
         
-        <!-- Top chrome: a single ☰ button holds Turbo and every game action.
-             The five separate controls used to eat a whole row above the table
-             on phones. The original markup/ids live untouched inside the panel,
-             so all existing listeners (setupEventListeners, initializeHintSystem,
-             the last-trick enable/disable) and CSS rules keep working. -->
+        <!-- Hint stays out on the table: it's a mid-play action and shouldn't
+             cost two taps. On phones the label is hidden by CSS and only the 💡
+             shows, so it fits the same 40px corner as ☰. -->
+        <div class="quick-actions">
+            <button id="hint-btn" class="hint-btn" aria-pressed="false">💡 <span class="btn-label">Hint</span></button>
+        </div>
+
+        <!-- Top chrome: a single ☰ button holds Turbo and the rest of the game
+             actions. The separate controls used to eat a whole row above the
+             table on phones. The original markup/ids live untouched inside the
+             panel, so all existing listeners (setupEventListeners, the
+             last-trick enable/disable) and CSS rules keep working. -->
         <div class="game-control-buttons">
             <button id="menu-btn" class="menu-btn" aria-haspopup="true" aria-expanded="false" aria-controls="game-menu" aria-label="Game menu" title="Menu">☰</button>
             <div class="game-menu" id="game-menu" role="menu" aria-labelledby="menu-btn" style="display: none;">
@@ -79,7 +87,6 @@ Israeli Whist DOM map:
                 </div>
                 <button id="new-game-btn" class="new-game-btn" role="menuitem">🔄 New Game</button>
                 <button id="rules-btn" class="rules-btn" role="menuitem">📖 Rules</button>
-                <button id="hint-btn" class="hint-btn" aria-pressed="false" role="menuitem">💡 Hint</button>
                 <button id="last-trick-btn" class="last-trick-btn" disabled title="View the last completed trick" role="menuitem">🔁 Last Trick</button>
             </div>
         </div>
@@ -528,7 +535,7 @@ Israeli Whist DOM map:
         import * as MCEngine from './mc-engine.js?v=20260723';
         window.MCEngine = MCEngine;
     </script>
-    <script src="script.js?v=20260813a"></script>
+    <script src="script.js?v=20260813b"></script>
 
     <!-- Register the offline service worker (progressive enhancement — the game
          works without it; this just enables offline + installed-app caching). -->
