@@ -191,7 +191,9 @@ body {
 .player-name[data-player] {
     color: var(--cr-ink) !important; text-shadow: none !important;
 }
-.player-bid, .player-tricks { color: var(--cr-ink-soft) !important; font-weight: 600 !important; }
+/* nowrap: a squeezed seat plate must never break "Bid: -" across two lines. */
+.player-bid, .player-tricks { color: var(--cr-ink-soft) !important; font-weight: 600 !important; white-space: nowrap !important; }
+.player-stats { flex-wrap: nowrap !important; }
 .player-bid span, .player-tricks span { color: var(--cr-brass) !important; text-shadow: none !important; font-variant-numeric: tabular-nums; }
 /* keep the big Phase-1 trump glyph size, drop the glow */
 .player-bid span { text-shadow: none !important; }
@@ -293,6 +295,66 @@ body {
 .close-btn, .hint-close, .last-trick-close { color: var(--cr-ink-soft) !important; }
 .close-btn:hover, .hint-close:hover, .last-trick-close:hover { color: var(--cr-brass) !important; }
 
+/* ── 10b. The ☰ menu: one control instead of five ──────────────────────────
+   Turbo + New Game / Rules / Hint / Last Trick used to sit in a row above the
+   table; on a phone that row cost ~46px of board height and still crowded the
+   status bar. They now live in a popover anchored to a single 44px button, so
+   the top chrome is one glyph and the felt gets the space back. */
+.game-control-buttons { position: absolute; top: 20px; right: 20px; z-index: 1300; display: block; }
+
+.menu-btn {
+    display: inline-grid !important; place-items: center !important;
+    width: 44px !important; height: 44px !important; padding: 0 !important;
+    font-family: var(--cr-sans) !important; font-size: 20px !important; line-height: 1 !important;
+    background: rgba(14,28,21,.75) !important; color: var(--cr-brass) !important;
+    border: 1px solid color-mix(in oklab, var(--cr-brass) 55%, transparent) !important;
+    border-radius: 12px !important; cursor: pointer !important;
+    -webkit-backdrop-filter: blur(6px) !important; backdrop-filter: blur(6px) !important;
+    transition: background .15s ease, border-color .15s ease !important;
+}
+.menu-btn:hover { background: rgba(203,165,82,.16) !important; }
+.menu-btn[aria-expanded="true"] { background: rgba(203,165,82,.20) !important; border-color: var(--cr-brass) !important; }
+.menu-btn:focus-visible { outline: 2px solid var(--cr-brass) !important; outline-offset: 2px !important; }
+
+.game-menu {
+    position: absolute !important; top: calc(100% + 8px) !important; right: 0 !important;
+    display: flex; flex-direction: column; gap: 6px;
+    min-width: 200px; padding: 8px;
+    background: linear-gradient(180deg, #16281e, #101d16) !important;
+    border: 1px solid var(--cr-line) !important; border-top: 2px solid var(--cr-brass) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 26px 60px -24px rgba(0,0,0,.9) !important;
+    z-index: 1600 !important;
+    animation: cr-menuIn .16s ease-out;
+}
+@keyframes cr-menuIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* Every row is the same full-width, left-aligned item — including Turbo, whose
+   original .fast-mode-container was absolutely positioned in the page corner. */
+.game-menu > button,
+.game-menu .fast-mode-label {
+    width: 100% !important; justify-content: flex-start !important;
+    min-height: 44px !important; padding: 10px 12px !important;
+    font-size: 15px !important; white-space: nowrap !important;
+    border-radius: 9px !important; margin: 0 !important;
+}
+.game-menu .fast-mode-container {
+    position: static !important; top: auto !important; left: auto !important; right: auto !important;
+    transform: none !important; z-index: auto !important; width: 100% !important;
+}
+.game-menu .fast-mode-label {
+    background: rgba(240,235,220,.06) !important;
+    border: 1px solid var(--cr-line) !important; border-radius: 9px !important;
+}
+.game-menu .fast-mode-label.active { border-color: var(--cr-brass) !important; background: rgba(203,165,82,.16) !important; animation: none !important; }
+.game-menu .fast-mode-checkbox { width: 18px !important; height: 18px !important; margin-right: 10px !important; }
+.game-menu .fast-mode-text { color: var(--cr-ink) !important; font-size: 15px !important; font-weight: 600 !important; text-shadow: none !important; }
+
+/* Transient "3 ♥ / Pass" bid badges are appended to the board with an inline
+   z-index:2000, which drew them straight across the centred bid tray on phones.
+   Keep them above the felt but below the tray (1400) and the modals (2000). */
+.bid-animation { z-index: 1200 !important; }
+
 /* ── 11. Mobile: portrait is playable, not blocked ─────────────────────── */
 /* Retire the hard rotate wall. The board scales to fit and the hand overlaps. */
 #rotate-device-overlay { display: none !important; }
@@ -328,32 +390,27 @@ body {
         gap: 3px !important;
         box-sizing: border-box !important; overflow: hidden !important;
     }
-    /* Minimal top chrome — give the table the screen. The title is hidden; Turbo
-       and the menu buttons are small corner overlays kept clear of the notch via
-       safe-area; only a compact status row and a thin score strip sit in flow
-       above the board. */
+    /* Minimal top chrome — give the table the screen. The title is hidden and
+       the whole control cluster is one ☰ button (see §10b), so the status row
+       can sit at the very top instead of being pushed below a row of buttons;
+       only that compact row and a thin score strip sit in flow above the board. */
     .game-container h1 { display: none !important; }
 
-    .fast-mode-container {
-        position: absolute !important; z-index: 1200 !important;
-        top: calc(env(safe-area-inset-top) + 4px) !important; left: calc(env(safe-area-inset-left) + 6px) !important;
-        transform: scale(.82) !important; transform-origin: top left !important;
-    }
-    .fast-mode-label { padding: 3px 7px !important; font-size: .72em !important; }
     .game-control-buttons {
-        position: absolute !important; z-index: 1200 !important;
-        top: calc(env(safe-area-inset-top) + 4px) !important; right: calc(env(safe-area-inset-right) + 6px) !important;
-        transform: scale(.74) !important; transform-origin: top right !important;
-        display: flex !important; flex-wrap: nowrap !important; gap: 4px !important; margin: 0 !important;
+        position: absolute !important; z-index: 1300 !important;
+        top: calc(env(safe-area-inset-top) + 2px) !important; right: calc(env(safe-area-inset-right) + 6px) !important;
+        transform: none !important; margin: 0 !important;
     }
-    .game-control-buttons button { font-size: .82em !important; padding: 5px 9px !important; white-space: nowrap !important; }
+    .menu-btn { width: 40px !important; height: 38px !important; font-size: 19px !important; }
 
-    /* Status: one compact row, dropped clear of the corner overlays (which reach
-       ~40px below the safe-area top). */
+    /* Status: one compact row at the top. Symmetric side padding reserves room
+       for the ☰ button that floats over its right end and keeps the values
+       optically centred. */
     .game-status {
-        flex: 0 0 auto !important; order: 1 !important; min-height: 0 !important;
-        margin: 46px 0 0 !important; padding: 3px 8px !important;
+        flex: 0 0 auto !important; order: 1 !important; min-height: 38px !important;
+        margin: 0 !important; padding: 3px 48px !important;
         flex-wrap: nowrap !important; justify-content: center !important;
+        align-items: center !important;
     }
     .game-status > div { font-size: .74em !important; min-height: 0 !important; margin: 0 5px !important; }
     .tricks-counter { left: 0 !important; }
@@ -364,11 +421,10 @@ body {
         position: static !important; flex: 0 0 auto !important; order: 3 !important;
         width: auto !important; min-width: 0 !important; margin: 0 !important; padding: 2px 8px !important;
     }
-    /* While a bid/prediction panel is open, hide the score entirely. */
-    .game-container:has(#bidding-interface:not([style*="display: none"])) .total-score-box,
-    .game-container:has(#second-phase-bidding:not([style*="display: none"])) .total-score-box {
-        display: none !important;
-    }
+    /* (The score strip used to be hidden while a bid panel was open, because the
+       panel took its slot in the flex column. The panel is now a fixed overlay
+       on the felt, so the strip can stay — and the board no longer resizes
+       underneath you when bidding starts.) */
     .total-score-header { display: none !important; }
     #total-score-content {
         display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
@@ -410,23 +466,49 @@ body {
     #south-cards.human-cards .card .card-rank { font-size: 21px !important; font-weight: 800 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 22px !important; }
 
-    /* Bidding/prediction tray is IN-FLOW and ordered to the TOP (order 2, right
-       after the status bar — in the score's slot, which is hidden meanwhile). The
-       board + hand fill everything below, so the whole hand sits at the bottom,
-       fully visible, while you bid. Hidden → takes no space, board fills the screen. */
+    /* Bidding/prediction tray sits ON THE TABLE, centred over the felt. It used
+       to be docked above the board, where players simply didn't look — the eye
+       is on the cards and the trick square. As a fixed overlay it also stops
+       stealing height from the board, so the hand never has to shrink for it.
+       54% (not 50%) is the optical centre of the felt: the status strip above is
+       thinner than the hand below. */
     .bidding-interface, .second-phase-bidding {
-        position: static !important;
-        transform: none !important;
-        left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
-        flex: 0 0 auto !important;
-        order: 2 !important;
-        width: 100% !important; max-width: 100% !important; min-width: 0 !important;
-        margin: 0 0 3px !important;
-        max-height: 42vh !important; overflow: auto !important;
-        z-index: auto !important;
+        position: fixed !important;
+        left: 50% !important; top: 51% !important;
+        right: auto !important; bottom: auto !important;
+        transform: translate(-50%, -50%) !important;
+        width: min(90vw, 400px) !important; max-width: none !important; min-width: 0 !important;
+        margin: 0 !important;
+        max-height: 68vh !important; overflow: auto !important;
+        padding: 12px 14px 14px !important;
+        border-radius: 16px !important;
+        border: 1px solid color-mix(in oklab, var(--cr-brass) 45%, transparent) !important;
+        border-top: 2px solid var(--cr-brass) !important;
+        box-shadow: 0 30px 70px -20px rgba(0,0,0,.92), 0 0 0 1px rgba(0,0,0,.35) !important;
+        z-index: 1400 !important;
+        animation: cr-trayIn .26s ease-out !important;
     }
     /* Shrink the opponents' card-back piles so they don't crowd the seats. */
     .bot-cards { transform: scale(.72) !important; }
+
+    /* North seat: `left: calc(50% + 50px)` capped the absolutely-positioned row
+       at (board width − left) ≈ 154px, which squeezed the plate until "Bid:" and
+       "Takes:" wrapped under their own labels. Centre the row and let it size to
+       its content so Botti reads on one line like every other seat. */
+    .north-player {
+        left: 50% !important;
+        width: max-content !important;
+        max-width: calc(100% - 12px) !important;
+        gap: 10px !important;
+    }
+    .north-player .player-info { flex-shrink: 0 !important; }
+}
+
+/* The centred tray keeps its own transform, so the legacy interfaceSlideUp
+   (which animates to translate(-50%, 0)) would yank it off-centre. */
+@keyframes cr-trayIn {
+    from { opacity: 0; transform: translate(-50%, -44%) scale(.97); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 /* Short portrait phones (e.g. iPhone SE, ≤670 tall): the compact chrome above
@@ -503,6 +585,32 @@ body {
     .more-btn, .less-btn { padding: 5px 10px !important; font-size: .8em !important; }
     .prediction-list { gap: 2px 8px !important; }
     .prediction-item { font-size: .82em !important; }
+}
+
+/* ── 11c-b. Portrait: the tray is on the felt now, so it can afford to be big ─
+   §11c above shrank the controls to claw back height when the tray was docked in
+   the layout flow. In portrait it floats over the board instead, so the targets
+   go back up to a comfortable size — this is the panel the whole hand hinges on.
+   Landscape phones keep the compact §11c sizes (they have ~375px of height), and
+   so do short portrait phones (≤670 tall — the iPhone SE block above). */
+@media (orientation: portrait) and (max-width: 760px) and (min-height: 671px) {
+    .bidding-interface h3::after { font-size: 16px; }
+    .second-phase-bidding h3, .second-phase-bidding h4, .your-prediction h4 { font-size: .95em !important; margin: 2px 0 8px !important; }
+
+    .tricks-buttons, .suit-buttons { gap: 6px !important; margin-top: 8px !important; }
+    .trick-button, .suit-button { padding: 6px 4px !important; min-height: 40px !important; font-size: 17px !important; }
+    .suit-button { font-size: 26px !important; min-height: 42px !important; }
+    .suit-button[data-value="notrump"] { font-size: 17px !important; }
+    .bid-controls .input-row { gap: 12px !important; margin: 6px 0 !important; }
+    .bid-controls .button-row { gap: 12px !important; margin-top: 12px !important; }
+    #bid-btn, #pass-btn { padding: 11px 18px !important; font-size: 1em !important; min-width: 110px !important; }
+
+    /* Phase 2 "how many tricks". */
+    .trick-btn { width: 42px !important; min-width: 42px !important; height: 42px !important; font-size: 18px !important; }
+    .tricks-buttons-main, #tricks-buttons-main, .tricks-row { gap: 6px !important; }
+    .more-btn, .less-btn { padding: 9px 14px !important; font-size: .95em !important; }
+    .prediction-list { gap: 4px 10px !important; }
+    .prediction-item { font-size: .95em !important; }
 }
 
 /* ── 11d. No card highlighted until the player taps it ─────────────────────
