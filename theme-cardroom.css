@@ -53,6 +53,18 @@ body {
                 0 24px 60px -26px rgba(0,0,0,.7) !important;
 }
 
+/* The trick square is a brown "wooden table" left over from the pre-theme
+   design (styles.css §.trick-area: saddle-brown radial + gold hatching + a 3px
+   #8B4513 border). The reskin only replaced it inside the portrait-phone block,
+   so on tablets and desktop an orange slab still sat in the middle of the felt.
+   Same treatment everywhere: a faint brass pool where the trick lands. */
+.trick-area {
+    background: radial-gradient(ellipse at center, rgba(203,165,82,.12), rgba(203,165,82,0) 72%) !important;
+    border: 1px solid rgba(203,165,82,.30) !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
+}
+
 /* ── 3. Status bar: legible labels, trump pip, trick progress ──────────── */
 .game-status {
     background: rgba(14,28,21,.82) !important;
@@ -365,6 +377,14 @@ body {
    z-index:2000, which drew them straight across the centred bid tray on phones.
    Keep them above the felt but below the tray (1400) and the modals (2000). */
 .bid-animation { z-index: 1200 !important; }
+
+/* iPad-class touch screens: styles.css caps the score box at 200px to keep it
+   clear of the west nameplate, but that clipped the fourth seat's row off the
+   bottom. Four rows plus the header need ~250px, and 260 still ends well above
+   the plate (box top 165 + 260 = 425; the plate sits near 525). */
+@media (min-width: 700px) and (max-width: 1400px) and (hover: none) {
+    .total-score-box { max-height: 260px !important; }
+}
 
 /* ── 11. Mobile: portrait is playable, not blocked ─────────────────────── */
 /* Retire the hard rotate wall. The board scales to fit and the hand overlaps. */
