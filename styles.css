@@ -543,8 +543,11 @@ h1 {
 
 /* Card Styles */
 .card {
-    width: 60px;
-    height: 85px;
+    /* One knob per breakpoint: the corner index sizes both the rank and the
+       suit beneath it, so they always stay in proportion. */
+    --card-rank-size: 26px;
+    width: 78px;
+    height: 110px;
     background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 50%, #e8e8e8 100%);
     border: 2px solid #333;
     border-radius: 10px;
@@ -624,44 +627,51 @@ h1 {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 8px;
+    padding: 10px;
     pointer-events: none;
 }
 
 .card-top-section {
     position: absolute;
-    top: 8px;
-    left: 8px;
+    /* Inset scales with the index so the pair stays inside the visible sliver
+       of an overlapped card at every breakpoint. */
+    top: calc(var(--card-rank-size) * 0.3);
+    left: calc(var(--card-rank-size) * 0.28);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
 
 .card-rank {
-    font-size: 20px;
+    font-size: var(--card-rank-size);
     font-weight: 900;
     line-height: 1;
+    letter-spacing: -0.02em;
     pointer-events: none;
 }
 
+/* Suit of the corner index — sits directly under the rank, the way a bridge
+   deck prints it, so a card fanned behind its neighbour still shows both
+   marks in the visible sliver. */
 .card-suit {
-    font-size: 32px;
-    text-align: right;
+    font-size: calc(var(--card-rank-size) * 0.9);
+    text-align: left;
     line-height: 1;
-    margin-top: 0;
+    margin-top: 1px;
+    font-weight: 700;
     pointer-events: none;
 }
 
+/* Centre glyph is now a watermark behind the index, not the primary read. */
 .card-center-suit {
-    font-size: 42px;
+    font-size: 55px;
     text-align: center;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     font-weight: bold;
-    opacity: 0.8;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    opacity: 0.22;
     pointer-events: none;
 }
 
@@ -682,8 +692,8 @@ h1 {
     background-size: 20px 20px, 100% 100%;
     border: 2px solid #4a2b8a;
     border-radius: 10px;
-    width: 60px;
-    height: 85px;
+    width: 78px;
+    height: 110px;
     margin: 2px;
     display: inline-block;
     box-shadow: 
@@ -699,8 +709,8 @@ h1 {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 40px;
-    height: 40px;
+    width: 52px;
+    height: 52px;
     background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
     border-radius: 50%;
 }
@@ -716,7 +726,9 @@ h1 {
     flex-wrap: nowrap;
     max-width: 1400px;
     overflow-x: visible;
-    padding: 20px 60px;
+    /* Tighter vertical padding keeps the taller cards from pushing the south
+       nameplate up under the bidding tray. */
+    padding: 8px 30px;
     perspective: 1200px;
     margin-bottom: 30px;
     margin-top: -30px;
@@ -743,8 +755,8 @@ h1 {
     transform-origin: center bottom;
     
     position: relative;
-    width: 70px;
-    height: 98px;
+    width: 91px;
+    height: 127px;
     cursor: pointer;
     
     /* Force Safari 3D context */
@@ -962,8 +974,8 @@ h1 {
 
 .bot-cards {
     position: relative;
-    width: 60px;
-    height: 85px;
+    width: 78px;
+    height: 110px;
     perspective: 800px;
 }
 
@@ -1010,8 +1022,8 @@ h1 {
 
 .won-tricks {
     position: absolute;
-    width: 60px;
-    height: 85px;
+    width: 78px;
+    height: 110px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1044,8 +1056,8 @@ h1 {
 
 .won-tricks .card-back {
     position: absolute;
-    width: 50px;
-    height: 70px;
+    width: 65px;
+    height: 91px;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     border: 2px solid #ffd700;
     border-radius: 8px;
@@ -1097,8 +1109,8 @@ h1 {
 
 .played-card {
     position: absolute;
-    width: 70px;
-    height: 100px;
+    width: 78px;
+    height: 110px;
     transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: center center;
     /* Empty played-card placeholders must not intercept taps on underlying
@@ -1148,8 +1160,8 @@ h1 {
 
 /* Ensure played cards are always visible */
 .played-card {
-    min-width: 70px;
-    min-height: 100px;
+    min-width: 78px;
+    min-height: 110px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2255,24 +2267,31 @@ h1 {
     display: grid;
     grid-template-columns: auto auto auto;
     grid-template-rows: auto auto auto;
-    gap: 1px;
-    margin-bottom: 2px;
     justify-content: center;
     align-items: center;
-    max-width: 150px;
+    gap: 8px 12px;
     margin: 0 auto 2px auto;
 }
 
+/* Seat tile: the predicted number is the headline, the name is its label.
+   --pred-value-size is the single knob each breakpoint overrides. */
 .prediction-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 2px 4px;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 4px;
-    font-size: 1.1em;
-    min-width: 45px;
+    --pred-value-size: 27px;
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    min-width: 82px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.42);
+    border-radius: 9px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
+}
+
+/* The seat currently choosing gets the same brass ring the board uses. */
+.prediction-item.is-turn {
+    border-color: rgba(255, 215, 0, 0.75);
+    box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.75), 0 0 18px -4px rgba(255, 215, 0, 0.6);
 }
 
 .prediction-item:hover {
@@ -2307,14 +2326,17 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 36px;
-    min-height: 36px;
-    padding: 2px 6px;
+    /* Fixed box + centred in its cell: the seat tiles make the middle row
+       taller than the badge, and a stretched badge renders as an ellipse. */
+    width: 46px;
+    height: 46px;
+    place-self: center;
+    padding: 0;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(255, 215, 0, 0.35) 0%, rgba(255, 215, 0, 0.15) 70%, rgba(255, 215, 0, 0.05) 100%);
     border: 2px solid rgba(255, 215, 0, 0.6);
     box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
-    font-size: 1.6em;
+    font-size: 1.9em;
     font-weight: bold;
     line-height: 1;
     color: #FFD700;
@@ -2338,20 +2360,53 @@ h1 {
     font-weight: bold;
 }
 
+.prediction-item .player-name {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.75;
+}
+
 .prediction-value {
     color: #FFD700;
-    font-weight: bold;
+    font-weight: 800;
     min-width: 30px;
     text-align: center;
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
-    font-size: 1.1em;
+    font-size: var(--pred-value-size);
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
 }
 
+/* A seat that hasn't committed yet reads as absent, not as a value. */
+.prediction-item.is-pending .prediction-value {
+    opacity: 0.45;
+    text-shadow: none;
+}
+
+/* Running total — the number the over/under rule turns on. */
 .prediction-total {
-    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
     padding-top: 8px;
-    font-size: 1.2em;
-    font-weight: bold;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    font-size: 14px;
+}
+
+.prediction-total-label,
+.prediction-total-of {
+    opacity: 0.7;
+    font-weight: 600;
+}
+
+#prediction-total {
+    font-size: 18px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
 }
 
 #prediction-status {
@@ -3013,10 +3068,10 @@ h1 {
     .played-card .card {
         width: 48px !important;
         height: 68px !important;
+        --card-rank-size: 14px !important;
     }
 
     .played-card .card .card-rank {
-        font-size: 14px !important;
         font-weight: 900 !important;
         line-height: 1 !important;
     }
@@ -3203,10 +3258,10 @@ h1 {
         -webkit-transform: none !important;
         transform: none !important;
         position: relative !important;
+        --card-rank-size: 14px !important;
     }
 
     .human-cards .card .card-rank {
-        font-size: 16px !important;
         font-weight: 900 !important;
         line-height: 1 !important;
     }

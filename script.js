@@ -5572,6 +5572,15 @@ class IsraeliWhist {
         rank.style.color = this.getSuitColor(card.suit); // dynamic
         topSection.appendChild(rank);
 
+        // Corner index suit, directly under the rank. Kept as a sibling of
+        // .card-rank (never a child) because playCard() identifies the clicked
+        // card from .card-rank's textContent.
+        const indexSuit = document.createElement('div');
+        indexSuit.className = 'card-suit';
+        indexSuit.textContent = this.getSuitSymbol(card.suit);
+        indexSuit.style.color = this.getSuitColor(card.suit); // dynamic
+        topSection.appendChild(indexSuit);
+
         const centerSuit = document.createElement('div');
         centerSuit.className = 'card-center-suit';
         centerSuit.textContent = this.getSuitSymbol(card.suit);
@@ -6026,13 +6035,18 @@ class IsraeliWhist {
         const phase2Interface = document.querySelector('.second-phase-bidding');
         if (phase2Interface && phase2Interface.style.display !== 'none') {
             // Update predictions display
+            const seatToAct = this.players[this.currentBidder];
             this.players.forEach(player => {
                 const predictionElement = document.getElementById(`${player}-prediction`);
                 if (predictionElement) {
-                    if (this.phase2Bids[player] !== null && this.phase2Bids[player] !== undefined) {
-                        predictionElement.textContent = this.phase2Bids[player];
-                    } else {
-                        predictionElement.textContent = '-';
+                    const hasBid = this.phase2Bids[player] !== null && this.phase2Bids[player] !== undefined;
+                    predictionElement.textContent = hasBid ? this.phase2Bids[player] : '–';
+
+                    // Tile state: dim a seat that hasn't committed, ring the one choosing.
+                    const tile = predictionElement.closest('.prediction-item');
+                    if (tile) {
+                        tile.classList.toggle('is-pending', !hasBid);
+                        tile.classList.toggle('is-turn', player === seatToAct && !hasBid);
                     }
                 }
             });
@@ -6047,7 +6061,7 @@ class IsraeliWhist {
                 const statusElement = document.getElementById('prediction-status');
                 if (statusElement) {
                     if (currentTotal === 13) {
-                        statusElement.textContent = '⚠️ equals 13!';
+                        statusElement.textContent = "⚠️ can't be 13";
                         statusElement.style.color = '#FF6B6B';
                     } else {
                         statusElement.textContent = '';
@@ -8475,7 +8489,8 @@ class IsraeliWhist {
         // Update player name in phase 2 predictions
         const southPredictionLabel = document.getElementById('south-prediction-label');
         if (southPredictionLabel) {
-            southPredictionLabel.textContent = `${this.playerName}:`;
+            // No colon: the name is the tile's label, printed above the number.
+            southPredictionLabel.textContent = this.playerName;
         }
     }
 

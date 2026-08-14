@@ -242,7 +242,11 @@ body {
 .predictions-status *, .prediction-item, .prediction-item .player-name {
     color: var(--cr-ink) !important; text-shadow: none !important; opacity: 1 !important; font-family: var(--cr-sans) !important;
 }
-.prediction-value { color: var(--cr-brass) !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+.prediction-value { color: var(--cr-brass) !important; font-weight: 800 !important; font-variant-numeric: tabular-nums; }
+/* The seat name is the tile's label, so it sits back from the number. */
+.prediction-item .player-name { color: var(--cr-ink-soft) !important; }
+.prediction-total { color: var(--cr-ink-soft) !important; }
+.prediction-total #prediction-total { color: var(--cr-ink) !important; }
 .trump-reminder { background: rgba(203,165,82,.16) !important; border: 1px solid color-mix(in oklab,var(--cr-brass) 40%,transparent) !important; color: var(--cr-brass) !important; box-shadow: none !important; }
 .waiting-message p { color: var(--cr-ink-soft) !important; }
 
@@ -254,7 +258,7 @@ body {
    cards stay readable; z-index already increases L→R, so the covered edge is the
    right one. All id-scoped to beat the legacy per-card nth-child rules. */
 #south-cards.human-cards {
-    --cw: 70px;
+    --cw: 91px;
     display: flex !important;
     flex-wrap: nowrap !important;
     justify-content: center !important;
@@ -271,9 +275,9 @@ body {
     min-width: var(--cw) !important;
     height: calc(var(--cw) * 1.4) !important;
     margin: 0 !important;
-    /* Fit within the SMALLER of the viewport and the fixed 1000px board — the
-       board has overflow:hidden, so anything wider than it gets clipped. */
-    margin-left: min(6px, calc((min(100vw, 1000px) - 56px - 13 * var(--cw)) / 12)) !important;
+    /* Fit within the board, which is 1000px on desktop and 95vw below the
+       1050px breakpoint — it has overflow:hidden, so anything wider is clipped. */
+    margin-left: min(6px, calc((min(95vw, 1000px) - 56px - 13 * var(--cw)) / 12)) !important;
 }
 #south-cards.human-cards .card:first-child { margin-left: 0 !important; }
 /* Lift a card on hover so overlapped indices stay readable. */
@@ -492,7 +496,8 @@ body {
     .played-card, .played-card .card {
         width: 56px !important; height: 78px !important; min-width: 56px !important; min-height: 78px !important;
     }
-    .played-card .card .card-rank { font-size: 17px !important; font-weight: 800 !important; }
+    .played-card .card { --card-rank-size: 17px !important; }
+    .played-card .card .card-rank { font-weight: 800 !important; }
     .played-card .card .card-center-suit { font-size: 22px !important; }
     /* Nudge the N/S cards out to the square's edges so they don't pile on centre. */
     .north-played { top: -6px !important; }
@@ -500,9 +505,11 @@ body {
     .west-played { left: -6px !important; }
     .east-played { right: -6px !important; }
 
-    /* Bigger, more legible hand — larger, bolder rank digits. */
+    /* Hand: only ~22px of each card escapes its neighbour, so the corner index
+       has to fit inside that sliver — 21px clipped the "1" off a 10. */
     #south-cards.human-cards { --cw: 50px !important; padding: 0 6px 4px !important; align-items: flex-end !important; }
-    #south-cards.human-cards .card .card-rank { font-size: 21px !important; font-weight: 800 !important; }
+    #south-cards.human-cards .card { --card-rank-size: 16px !important; }
+    #south-cards.human-cards .card .card-rank { font-weight: 800 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 22px !important; }
 
     /* Bidding/prediction tray sits ON THE TABLE, centred over the felt. It used
@@ -559,7 +566,7 @@ body {
     /* Slimmer board + hand so the tray (incl. Bid/Pass) always fits. */
     .game-board { min-height: 96px !important; }
     #south-cards.human-cards { --cw: 42px !important; }
-    #south-cards.human-cards .card .card-rank { font-size: 17px !important; }
+    #south-cards.human-cards .card { --card-rank-size: 14px !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 18px !important; }
     /* Tighter bid tray. */
     .bidding-interface, .second-phase-bidding { max-height: 50vh !important; }
@@ -593,7 +600,8 @@ body {
     }
 
     #south-cards.human-cards { --cw: 46px !important; padding: 2px 6px !important; }
-    #south-cards.human-cards .card .card-rank { font-size: 16px !important; font-weight: 900 !important; }
+    #south-cards.human-cards .card { --card-rank-size: 15px !important; }
+    #south-cards.human-cards .card .card-rank { font-weight: 900 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 20px !important; }
     /* Safe areas (installed app): keep the fixed board, hand and corner chrome
        clear of the side notch and the home indicator. */
@@ -638,8 +646,33 @@ body {
     .tricks-buttons-main, #tricks-buttons-main, .tricks-row { gap: 4px !important; }
     .trick-btn { width: 34px !important; min-width: 34px !important; height: 34px !important; font-size: 15px !important; }
     .more-btn, .less-btn { padding: 5px 10px !important; font-size: .8em !important; }
-    .prediction-list { gap: 2px 8px !important; }
-    .prediction-item { font-size: .82em !important; }
+    /* Compact seats: the tray also carries the trick buttons and the Predict
+       action here, so the takes panel has to stay under ~150px tall or the
+       tray starts scrolling internally and hides the action. */
+    .prediction-list { gap: 4px 8px !important; }
+    .prediction-item { --pred-value-size: 19px !important; min-width: 60px !important; padding: 2px 6px !important; gap: 0 !important; }
+    .prediction-item .player-name { font-size: 10px !important; letter-spacing: .06em !important; }
+    .prediction-trump { width: 34px !important; height: 34px !important; font-size: 1.5em !important; }
+    .prediction-total { margin-top: 4px !important; padding-top: 4px !important; font-size: 11px !important; gap: 6px !important; }
+    .prediction-total #prediction-total { font-size: 15px !important; }
+}
+
+/* Short viewports (landscape phones, iPhone-SE-class portrait): height is the
+   scarce axis and width is plentiful, so the takes compass folds into a single
+   row — trump first, then the seats. The 3-row compass costs ~190px here, which
+   pushed the trick buttons and Predict out of the tray's max-height. */
+@media (orientation: landscape) and (max-height: 500px),
+       (orientation: portrait) and (max-width: 760px) and (max-height: 670px) {
+    .prediction-list {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        justify-content: center !important;
+        align-items: stretch !important;
+        gap: 6px !important;
+        max-width: none !important;
+    }
+    .prediction-trump { order: -1 !important; align-self: center !important; }
+    .prediction-item { min-width: 54px !important; }
 }
 
 /* ── 11c-b. Portrait: the tray is on the felt now, so it can afford to be big ─
@@ -664,8 +697,10 @@ body {
     .trick-btn { width: 42px !important; min-width: 42px !important; height: 42px !important; font-size: 18px !important; }
     .tricks-buttons-main, #tricks-buttons-main, .tricks-row { gap: 6px !important; }
     .more-btn, .less-btn { padding: 9px 14px !important; font-size: .95em !important; }
-    .prediction-list { gap: 4px 10px !important; }
-    .prediction-item { font-size: .95em !important; }
+    .prediction-list { gap: 8px 12px !important; }
+    .prediction-item { --pred-value-size: 27px !important; min-width: 82px !important; padding: 6px 8px !important; }
+    .prediction-item .player-name { font-size: 11px !important; letter-spacing: .1em !important; }
+    .prediction-trump { width: 46px !important; height: 46px !important; }
 }
 
 /* ── 11d. No card highlighted until the player taps it ─────────────────────
