@@ -2267,24 +2267,31 @@ h1 {
     display: grid;
     grid-template-columns: auto auto auto;
     grid-template-rows: auto auto auto;
-    gap: 1px;
-    margin-bottom: 2px;
     justify-content: center;
     align-items: center;
-    max-width: 150px;
+    gap: 8px 12px;
     margin: 0 auto 2px auto;
 }
 
+/* Seat tile: the predicted number is the headline, the name is its label.
+   --pred-value-size is the single knob each breakpoint overrides. */
 .prediction-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 2px 4px;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 4px;
-    font-size: 1.1em;
-    min-width: 45px;
+    --pred-value-size: 27px;
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    min-width: 82px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.42);
+    border-radius: 9px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
+}
+
+/* The seat currently choosing gets the same brass ring the board uses. */
+.prediction-item.is-turn {
+    border-color: rgba(255, 215, 0, 0.75);
+    box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.75), 0 0 18px -4px rgba(255, 215, 0, 0.6);
 }
 
 .prediction-item:hover {
@@ -2319,14 +2326,17 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 36px;
-    min-height: 36px;
-    padding: 2px 6px;
+    /* Fixed box + centred in its cell: the seat tiles make the middle row
+       taller than the badge, and a stretched badge renders as an ellipse. */
+    width: 46px;
+    height: 46px;
+    place-self: center;
+    padding: 0;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(255, 215, 0, 0.35) 0%, rgba(255, 215, 0, 0.15) 70%, rgba(255, 215, 0, 0.05) 100%);
     border: 2px solid rgba(255, 215, 0, 0.6);
     box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
-    font-size: 1.6em;
+    font-size: 1.9em;
     font-weight: bold;
     line-height: 1;
     color: #FFD700;
@@ -2350,20 +2360,53 @@ h1 {
     font-weight: bold;
 }
 
+.prediction-item .player-name {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.75;
+}
+
 .prediction-value {
     color: #FFD700;
-    font-weight: bold;
+    font-weight: 800;
     min-width: 30px;
     text-align: center;
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
-    font-size: 1.1em;
+    font-size: var(--pred-value-size);
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
 }
 
+/* A seat that hasn't committed yet reads as absent, not as a value. */
+.prediction-item.is-pending .prediction-value {
+    opacity: 0.45;
+    text-shadow: none;
+}
+
+/* Running total — the number the over/under rule turns on. */
 .prediction-total {
-    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
     padding-top: 8px;
-    font-size: 1.2em;
-    font-weight: bold;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    font-size: 14px;
+}
+
+.prediction-total-label,
+.prediction-total-of {
+    opacity: 0.7;
+    font-weight: 600;
+}
+
+#prediction-total {
+    font-size: 18px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
 }
 
 #prediction-status {
