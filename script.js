@@ -5572,6 +5572,15 @@ class IsraeliWhist {
         rank.style.color = this.getSuitColor(card.suit); // dynamic
         topSection.appendChild(rank);
 
+        // Corner index suit, directly under the rank. Kept as a sibling of
+        // .card-rank (never a child) because playCard() identifies the clicked
+        // card from .card-rank's textContent.
+        const indexSuit = document.createElement('div');
+        indexSuit.className = 'card-suit';
+        indexSuit.textContent = this.getSuitSymbol(card.suit);
+        indexSuit.style.color = this.getSuitColor(card.suit); // dynamic
+        topSection.appendChild(indexSuit);
+
         const centerSuit = document.createElement('div');
         centerSuit.className = 'card-center-suit';
         centerSuit.textContent = this.getSuitSymbol(card.suit);

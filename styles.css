@@ -543,8 +543,11 @@ h1 {
 
 /* Card Styles */
 .card {
-    width: 60px;
-    height: 85px;
+    /* One knob per breakpoint: the corner index sizes both the rank and the
+       suit beneath it, so they always stay in proportion. */
+    --card-rank-size: 26px;
+    width: 78px;
+    height: 110px;
     background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 50%, #e8e8e8 100%);
     border: 2px solid #333;
     border-radius: 10px;
@@ -624,44 +627,51 @@ h1 {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 8px;
+    padding: 10px;
     pointer-events: none;
 }
 
 .card-top-section {
     position: absolute;
-    top: 8px;
-    left: 8px;
+    /* Inset scales with the index so the pair stays inside the visible sliver
+       of an overlapped card at every breakpoint. */
+    top: calc(var(--card-rank-size) * 0.3);
+    left: calc(var(--card-rank-size) * 0.28);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
 
 .card-rank {
-    font-size: 20px;
+    font-size: var(--card-rank-size);
     font-weight: 900;
     line-height: 1;
+    letter-spacing: -0.02em;
     pointer-events: none;
 }
 
+/* Suit of the corner index — sits directly under the rank, the way a bridge
+   deck prints it, so a card fanned behind its neighbour still shows both
+   marks in the visible sliver. */
 .card-suit {
-    font-size: 32px;
-    text-align: right;
+    font-size: calc(var(--card-rank-size) * 0.9);
+    text-align: left;
     line-height: 1;
-    margin-top: 0;
+    margin-top: 1px;
+    font-weight: 700;
     pointer-events: none;
 }
 
+/* Centre glyph is now a watermark behind the index, not the primary read. */
 .card-center-suit {
-    font-size: 42px;
+    font-size: 55px;
     text-align: center;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     font-weight: bold;
-    opacity: 0.8;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    opacity: 0.22;
     pointer-events: none;
 }
 
@@ -682,8 +692,8 @@ h1 {
     background-size: 20px 20px, 100% 100%;
     border: 2px solid #4a2b8a;
     border-radius: 10px;
-    width: 60px;
-    height: 85px;
+    width: 78px;
+    height: 110px;
     margin: 2px;
     display: inline-block;
     box-shadow: 
@@ -699,8 +709,8 @@ h1 {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 40px;
-    height: 40px;
+    width: 52px;
+    height: 52px;
     background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
     border-radius: 50%;
 }
@@ -716,7 +726,9 @@ h1 {
     flex-wrap: nowrap;
     max-width: 1400px;
     overflow-x: visible;
-    padding: 20px 60px;
+    /* Tighter vertical padding keeps the taller cards from pushing the south
+       nameplate up under the bidding tray. */
+    padding: 8px 30px;
     perspective: 1200px;
     margin-bottom: 30px;
     margin-top: -30px;
@@ -743,8 +755,8 @@ h1 {
     transform-origin: center bottom;
     
     position: relative;
-    width: 70px;
-    height: 98px;
+    width: 91px;
+    height: 127px;
     cursor: pointer;
     
     /* Force Safari 3D context */
@@ -962,8 +974,8 @@ h1 {
 
 .bot-cards {
     position: relative;
-    width: 60px;
-    height: 85px;
+    width: 78px;
+    height: 110px;
     perspective: 800px;
 }
 
@@ -1010,8 +1022,8 @@ h1 {
 
 .won-tricks {
     position: absolute;
-    width: 60px;
-    height: 85px;
+    width: 78px;
+    height: 110px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1044,8 +1056,8 @@ h1 {
 
 .won-tricks .card-back {
     position: absolute;
-    width: 50px;
-    height: 70px;
+    width: 65px;
+    height: 91px;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     border: 2px solid #ffd700;
     border-radius: 8px;
@@ -1097,8 +1109,8 @@ h1 {
 
 .played-card {
     position: absolute;
-    width: 70px;
-    height: 100px;
+    width: 78px;
+    height: 110px;
     transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: center center;
     /* Empty played-card placeholders must not intercept taps on underlying
@@ -1148,8 +1160,8 @@ h1 {
 
 /* Ensure played cards are always visible */
 .played-card {
-    min-width: 70px;
-    min-height: 100px;
+    min-width: 78px;
+    min-height: 110px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3013,10 +3025,10 @@ h1 {
     .played-card .card {
         width: 48px !important;
         height: 68px !important;
+        --card-rank-size: 14px !important;
     }
 
     .played-card .card .card-rank {
-        font-size: 14px !important;
         font-weight: 900 !important;
         line-height: 1 !important;
     }
@@ -3203,10 +3215,10 @@ h1 {
         -webkit-transform: none !important;
         transform: none !important;
         position: relative !important;
+        --card-rank-size: 14px !important;
     }
 
     .human-cards .card .card-rank {
-        font-size: 16px !important;
         font-weight: 900 !important;
         line-height: 1 !important;
     }
