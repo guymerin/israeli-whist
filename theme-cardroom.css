@@ -758,3 +758,45 @@ body.turn-nudge #south-player .player-info {
 @media (prefers-reduced-motion: reduce) {
     .game-container h1, .player-info, #south-cards.human-cards .card, .trick-progress > i { animation: none !important; transition: none !important; }
 }
+
+/* ── 13. Card selection: lift, then drag or tap ────────────────────────────
+   §9's id-scoped hand rules and §11d's hover neutraliser both set `transform`
+   with !important, so the lifted / dragged states have to be declared at the
+   same weight and later in the cascade to win. The drag itself sets an inline
+   `transform` with priority `important` (see onCardPointerMove), which outranks
+   everything here — these rules cover the resting lifted state only.
+
+   Brass is the game's one accent: the lifted card wears the same ring as the
+   active seat, and the trick square lights up as the drop target. */
+#south-cards.human-cards .card.card-armed {
+    transform: translateY(-24px) scale(1.16) !important;
+    box-shadow:
+        0 16px 28px rgba(0,0,0,.55),
+        0 0 0 2px var(--cr-brass),
+        0 0 22px -2px rgba(203,165,82,.85) !important;
+    border-color: var(--cr-brass) !important;
+    z-index: 200 !important;
+}
+
+/* Illegal under follow-suit: dimmed, and the pointer layer refuses the lift. */
+#south-cards.human-cards .card.card-illegal {
+    filter: grayscale(.7) brightness(.62) !important;
+    cursor: not-allowed !important;
+}
+
+/* Nudge when a dimmed card is pressed — "not that one", without a toast. */
+#south-cards.human-cards .card.card-refused {
+    animation: cardRefuse .28s ease-in-out !important;
+}
+
+.trick-area.drop-active {
+    border-color: rgba(203,165,82,.95) !important;
+    box-shadow:
+        0 0 0 1px rgba(203,165,82,.5),
+        inset 0 0 34px -6px rgba(203,165,82,.75) !important;
+    background: radial-gradient(ellipse at center, rgba(203,165,82,.22), rgba(203,165,82,0) 74%) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #south-cards.human-cards .card.card-refused { animation: none !important; }
+}
