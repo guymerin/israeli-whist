@@ -54,7 +54,7 @@ RESPECTS YOU
 Whether you grew up playing Israeli Whist (Ashkelon Whist / "Oh Hell"-style bidding) or you're a Spades/Bridge player looking for your next obsession, this is a fast, brainy hand you'll keep coming back to.
 ```
 
-## What's New (version 1.1.0)
+## What's New (version 1.1)
 ```
 Bigger cards and a whole new way to play them.
 
@@ -68,7 +68,7 @@ Bigger cards and a whole new way to play them.
 ```
 
 <details>
-<summary>What's New (version 1.0.0)</summary>
+<summary>What's New (version 1.0)</summary>
 
 ```
 First release. Play Israeli Whist against three world-class AI opponents — offline, no ads, no accounts.
@@ -109,10 +109,15 @@ per size if you want to add more.
 
 ## Release history
 
-| Version | Build | Commit | Exported |
-|---|---|---|---|
-| 1.0.0 | 2 | `f67444b` | 2026-07-29 |
-| 1.1.0 | 3 | `main` @ merge of `feat/card-drag-and-flight` | 2026-08-15 |
+| Version | Build | Commit | Exported | Store state |
+|---|---|---|---|---|
+| 1.0 | 2 | `f67444b` | 2026-07-29 | READY_FOR_SALE |
+| 1.1 | 3 | `8406043` | 2026-08-15 | PREPARE_FOR_SUBMISSION |
+
+The version string must match the version page in App Store Connect exactly —
+a `1.1.0` build does not attach to a page created as `1.1`. Check with
+`xcrun altool --list-apps --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>` before
+archiving.
 
 ## Cutting a release
 
