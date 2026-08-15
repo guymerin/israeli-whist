@@ -142,9 +142,14 @@ for (const p of profiles) {
             continue;
         }
         if (state.southTurn) {
+            // Two taps per card: selection lifts a card first and only commits
+            // on the second tap (see "Card selection" in script.js). These
+            // profiles run with hasTouch, so there is no hover to do the lift.
             const before = await page.evaluate(() => (window.game.botMemory?.cardsPlayed?.south || []).length);
             for (const c of await page.$$('#south-cards .card')) {
-                await c.click({ force: true }).catch(() => {});
+                await c.click({ force: true }).catch(() => {});   // lift
+                await sleep(40);
+                await c.click({ force: true }).catch(() => {});   // commit
                 await sleep(70);
                 const after = await page.evaluate(() => (window.game.botMemory?.cardsPlayed?.south || []).length);
                 if (after > before) break;

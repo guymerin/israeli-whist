@@ -54,10 +54,26 @@ RESPECTS YOU
 Whether you grew up playing Israeli Whist (Ashkelon Whist / "Oh Hell"-style bidding) or you're a Spades/Bridge player looking for your next obsession, this is a fast, brainy hand you'll keep coming back to.
 ```
 
-## What's New (version 1.0.0)
+## What's New (version 1.1.0)
+```
+Bigger cards and a whole new way to play them.
+
+• Cards are 30% larger, with the rank and suit in the corner like a real deck — readable even with 13 of them fanned across a phone.
+• Play a card by dragging it onto the table, or tap to lift it and tap again. Nothing commits until you let go, so a mis-tap no longer costs you a trick.
+• Cards you can't legally play are dimmed before you touch them.
+• Played cards now flip onto the felt instead of appearing out of nowhere.
+• The takes round shows every player's prediction at a glance, with a running "committed of 13" total.
+• Bidding now happens on the table itself, and a single menu button frees up screen space.
+• The Hint button is back on the table, and the trump winner's takes start at their minimum bid.
+```
+
+<details>
+<summary>What's New (version 1.0.0)</summary>
+
 ```
 First release. Play Israeli Whist against three world-class AI opponents — offline, no ads, no accounts.
 ```
+</details>
 
 ## URLs
 - **Support URL:** `https://guymerin.github.io/israeli-whist/support.html`
@@ -91,12 +107,55 @@ per size if you want to add more.
 
 ---
 
-## Submission checklist (things only you can do)
+## Release history
 
-1. **Xcode → App target → Signing & Capabilities:** set **Team = Guy Merin (MWPU2838FB)**. (Bundle id, version 1.0.0, build 1, and `ITSAppUsesNonExemptEncryption=false` are already set.)
-2. **App Store Connect → My Apps → +** → create the app record with the bundle id `com.guymerin.israeliwhist` and the name above.
-3. Fill **App Information** (categories), **Pricing**, **App Privacy** (Data Not Collected), and the **1.0.0** version page (description, keywords, promo text, screenshots, support URL).
-4. **Xcode → Product → Archive** → **Distribute App → App Store Connect → Upload**.
-5. In App Store Connect, select the uploaded **build** on the 1.0.0 page, answer the age‑rating questionnaire (all "No"), then **Add for Review → Submit**.
+| Version | Build | Commit | Exported |
+|---|---|---|---|
+| 1.0.0 | 2 | `f67444b` | 2026-07-29 |
+| 1.1.0 | 3 | `main` @ merge of `feat/card-drag-and-flight` | 2026-08-15 |
 
-To push a future web change into the app before archiving: `npm run ios:sync`, then re‑archive.
+## Cutting a release
+
+Version and build live in `ios/App/App.xcodeproj/project.pbxproj`
+(`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`). Build number must increase
+on every upload, even for the same version string.
+
+```bash
+npm test                                   # unit + parity + cards + strength
+npm run test:smoke                         # one full gamlet in a browser
+node scripts/make-store-screenshots.mjs    # only if the UI changed
+npm run ios:sync                           # copy www/ into the iOS app
+
+xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+  -destination 'generic/platform=iOS' -archivePath build/App.xcarchive \
+  -allowProvisioningUpdates DEVELOPMENT_TEAM=MWPU2838FB archive
+
+xcodebuild -exportArchive -archivePath build/App.xcarchive \
+  -exportOptionsPlist build/ExportOptions.plist \
+  -exportPath build/ios-export -allowProvisioningUpdates
+```
+
+`ExportOptions.plist` uses `method: app-store-connect` and
+`manageAppVersionAndBuildNumber: false` — with it set to `true` (the Xcode
+default) Xcode silently bumps the build number at export time, which is how
+1.0.0 shipped as build 2 while the project still said 1.
+
+Upload the exported IPA with an App Store Connect API key (`.p8` in
+`~/.appstoreconnect/private_keys/`):
+
+```bash
+xcrun altool --upload-app -f build/ios-export/App.ipa -t ios \
+  --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>
+```
+
+…or open `build/App.xcarchive` in Xcode Organizer → **Distribute App**.
+
+## Then, in App Store Connect (things only you can do)
+
+1. **+ Version** → enter the new version number.
+2. Paste **What's New**, and re-upload screenshots if the UI changed.
+3. Select the processed **build** (processing takes a few minutes after upload).
+4. **Add for Review → Submit**.
+
+App Information, Pricing and App Privacy (Data Not Collected) carry over from
+the previous version and only need touching if something changed.
