@@ -108,22 +108,55 @@ for (const p of profiles) {
     await sleep(400);
     await shot('02-takes.png');
 
-    await page.evaluate(() => {
-        const btns = [...document.querySelectorAll('#your-prediction-controls .trick-btn')]
-            .filter(b => getComputedStyle(b).display !== 'none' && !b.disabled);
-        for (const pref of ['4', '3', '5', '2', '6']) {
-            const b = btns.find(x => x.dataset.value === pref);
-            if (b) { b.click(); if (window.game.phase2Bids.south != null) return; }
-        }
-        for (const b of btns) { b.click(); if (window.game.phase2Bids.south != null) return; }
-    });
+    // Submit south's takes prediction. Retried until the bid actually lands:
+    // one pass used to be enough, but if every candidate it tries happens to be
+    // the value the over/under rule forbids, the bid silently never registers
+    // and the run then sits in phase 2 until the play-shot window expires.
+    t = Date.now();
+    while (Date.now() - t < 20000) {
+        const placed = await page.evaluate(() => {
+            if (window.game.phase2Bids.south != null) return true;
+            const btns = [...document.querySelectorAll('#your-prediction-controls .trick-btn')]
+                .filter(b => getComputedStyle(b).display !== 'none' && !b.disabled);
+            for (const pref of ['4', '3', '5', '2', '6']) {
+                const b = btns.find(x => x.dataset.value === pref);
+                if (b) { b.click(); if (window.game.phase2Bids.south != null) return true; }
+            }
+            for (const b of btns) { b.click(); if (window.game.phase2Bids.south != null) return true; }
+            const predict = document.getElementById('predict-btn');
+            if (predict && getComputedStyle(predict).display !== 'none') predict.click();
+            return window.game.phase2Bids.south != null;
+        });
+        if (placed) break;
+        await sleep(200);
+    }
+    if (await page.evaluate(() => window.game.phase2Bids.south == null)) {
+        console.log(`  !! ${p.dir}: takes prediction never registered`);
+    }
 
-    // ── 03 — mid-trick, three cards down and the human to play ────────────
-    // Trick 3 keeps the hand looking full while the seat plates already carry
-    // real bid/takes numbers. South leads some tricks, so the "three cards
-    // down" frame never comes round for those — settle for two after a while.
+    // ── 03 — a complete trick on the felt, all four cards down ────────────
+    // Capturing mid-trick with the human to play means a suit has been led, so
+    // every card that can't follow it is dimmed — five of eight cards greyed
+    // out reads as "half my hand is disabled" to someone browsing the store.
+    // The moment after the fourth card lands has no such state: playing a card
+    // re-renders the hand fresh, and the trick is full so nothing is
+    // selectable. All four cards are on the table and every card is bright.
+    //
+    // completeTrick() clears the table one second later, which is a tight
+    // window to hit with a polling loop, so hold it until the shot is taken.
     const TARGET_TRICK = 3;
     let shot03 = false;
+    // Hold is armed only once the target trick is reached — arming it up front
+    // freezes the very first trick and the game never gets there.
+    await page.evaluate(() => {
+        const g = window.game;
+        g.__holdTrick = false;
+        const original = g.completeTrick.bind(g);
+        g.completeTrick = function () {
+            if (g.__holdTrick) { setTimeout(() => g.completeTrick(), 200); return; }
+            return original();
+        };
+    });
     t = Date.now();
     while (Date.now() - t < 120000 && !shot03) {
         const state = await page.evaluate(() => ({
@@ -134,29 +167,34 @@ for (const p of profiles) {
         }));
         if (state.phase !== 'phase3') { await sleep(150); continue; }
 
-        const need = state.trick >= TARGET_TRICK + 4 ? 2 : 3;
-        if (state.inTrick >= need && state.southTurn && state.trick >= TARGET_TRICK) {
-            await sleep(250);
+        if (state.trick >= TARGET_TRICK) {
+            await page.evaluate(() => { window.game.__holdTrick = true; });
+        }
+        if (state.inTrick === 4 && state.trick >= TARGET_TRICK) {
+            await sleep(700);                       // let the last card finish its flip
             await shot('03-play.png');
             shot03 = true;
+            await page.evaluate(() => { window.game.__holdTrick = false; });
             continue;
         }
         if (state.southTurn) {
-            // Two taps per card: selection lifts a card first and only commits
-            // on the second tap (see "Card selection" in script.js). These
-            // profiles run with hasTouch, so there is no hover to do the lift.
-            const before = await page.evaluate(() => (window.game.botMemory?.cardsPlayed?.south || []).length);
-            for (const c of await page.$$('#south-cards .card')) {
-                await c.click({ force: true }).catch(() => {});   // lift
-                await sleep(40);
-                await c.click({ force: true }).catch(() => {});   // commit
-                await sleep(70);
-                const after = await page.evaluate(() => (window.game.botMemory?.cardsPlayed?.south || []).length);
-                if (after > before) break;
-            }
+            // Play through the game API rather than synthetic taps. Selection
+            // is two-stage and the first tap LIFTS the card, which moves it —
+            // so on a phone, where the hand overlaps down to ~25px slivers, the
+            // second tap at the same coordinates lands on a different card and
+            // nothing ever commits. These are captures of game state, not of
+            // the interaction, so driving the model directly is both correct
+            // and deterministic. (tests/card-selection.mjs covers the gesture.)
+            await page.evaluate(() => {
+                const g = window.game;
+                const i = g.hands.south.findIndex(c => g.isValidCardPlay('south', c));
+                if (i >= 0) g.playCard('south', i);
+            });
+            await sleep(120);
         }
         await sleep(120);
     }
+    await page.evaluate(() => { window.game.__holdTrick = false; }).catch(() => {});
     if (!shot03) console.log(`  !! ${p.dir}: no play shot captured`);
     if (errs.length) console.log(`  !! ${p.dir} page errors: ${errs.join(' | ')}`);
     await page.close();
