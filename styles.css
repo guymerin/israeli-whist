@@ -429,7 +429,7 @@ h1 {
 
 .north-player {
     top: 0px;
-    left: calc(50% + 50px);
+    left: 50%;
     transform: translateX(-50%);
     z-index: 10;
     flex-direction: row;
@@ -439,21 +439,57 @@ h1 {
     text-align: center;
 }
 
+/* The face-down stacks hang off their nameplate instead of sharing its flex
+   line, so the plate is what sits on the seat's axis. Sharing the line makes
+   the ROW the centred thing, which pushed the north plate ~54px left of the
+   board's centre — visibly off against the south plate directly below it.
+   Centred with auto margins rather than a transform: the theme scales these
+   stacks with `transform: scale(.72) !important` on small screens, which
+   would otherwise cancel the centring. */
+.north-player .bot-cards {
+    position: absolute;
+    left: calc(100% + 15px);
+    /* Top-aligned, not centred: the seat sits flush with the top of the board
+       and the stack is taller than the plate, so centring it pushed the stack
+       over the board's edge, where overflow:hidden cropped it. */
+    top: 0;
+}
+
+.west-player .bot-cards,
+.east-player .bot-cards {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+}
+
 .south-player {
     bottom: -10px;
     left: 50%;
     transform: translateX(-50%);
 }
 
+/* Same vertical axis as the trick square (.center-area sits at 50% - 70px, the
+   hand below it taking the difference), so the two side plates line up with the
+   middle of the table — and with the Deal button centred inside it — instead of
+   with the board's geometric centre. The plate's bottom margin is dropped here
+   because it used to space the stack below it; the stack is positioned now, so
+   the margin only pushed the plate off that line. */
+.west-player .player-info,
+.east-player .player-info {
+    margin-bottom: 0;
+}
+
 .west-player {
     left: 15px;
-    top: 50%;
+    top: calc(50% - 80px);
     transform: translateY(-50%);
 }
 
 .east-player {
     right: 15px;
-    top: 50%;
+    top: calc(50% - 80px);
     transform: translateY(-50%);
 }
 
@@ -995,9 +1031,14 @@ h1 {
 }
 
 /* Center Area */
+/* The trick square's centre is the table's axis: the two side nameplates and
+   the Deal button all line up on it. -80 rather than -70 because .trick-area's
+   20px bottom margin moved to this offset — with the margin, .center-area was
+   20px taller than the square it holds, so the square sat 10px above this
+   element's centre and anything aligned to the element missed the square. */
 .center-area {
     position: absolute;
-    top: calc(50% - 70px);
+    top: calc(50% - 80px);
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
@@ -1076,7 +1117,9 @@ h1 {
     position: relative;
     width: 280px;
     height: 280px;
-    margin-bottom: 20px;
+    /* No bottom margin: it is folded into .center-area's offset above so this
+       element's box IS the square, and one number positions both. */
+    margin-bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1590,7 +1633,10 @@ h1 {
 /* Game Controls */
 .game-controls {
     position: absolute;
-    top: calc(50% - 5px);
+    /* Dead centre of the trick square: the side nameplates align to the same
+       line, and pre-deal the Deal button is the only thing on the felt, so any
+       offset here reads as the plates being crooked. */
+    top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 10;
@@ -3248,13 +3294,17 @@ h1 {
         gap: 4px !important;
     }
 
-    /* East/West: closer to edges */
+    /* East/West: closer to edges. This layout pins .center-area by top edge
+       rather than the shared -80 offset, so the seats keep the line they were
+       tuned to here instead of following the desktop/portrait anchor. */
     .east-player {
         right: 4px !important;
+        top: calc(50% - 70px) !important;
     }
 
     .west-player {
         left: 4px !important;
+        top: calc(50% - 70px) !important;
     }
 
     .south-player {
@@ -3607,12 +3657,17 @@ h1 {
     pointer-events: none;
 }
 
-/* Special styling for human player trick counter */
+/* North's counter used to sit `static` in the seat's flex row, which is fine
+   when it has content and a 10px shove off-centre when it doesn't — and it
+   never does: the visible count is "Takes: N" inside the plate, and the only
+   code that touches this element clears it. Out of flow like every other
+   seat's, so an empty element can't move the nameplate. */
 .north-player .trick-counter {
-    position: static;
-    transform: none;
+    position: absolute;
+    left: calc(100% + 6px);
+    top: 50%;
+    transform: translateY(-50%);
     display: inline-block;
-    margin-left: 10px;
     color: #FFD700;
     font-weight: bold;
     font-size: 1.0em;

@@ -144,7 +144,10 @@ for (const p of profiles) {
     //
     // completeTrick() clears the table one second later, which is a tight
     // window to hit with a polling loop, so hold it until the shot is taken.
-    const TARGET_TRICK = 3;
+    // Trick 2, not 3: the seat plates already carry real bid/takes numbers from
+    // trick 1 and the hand still looks full, and the shorter runway is what
+    // keeps the iPad profile inside the capture window instead of timing out.
+    const TARGET_TRICK = 2;
     let shot03 = false;
     // Hold is armed only once the target trick is reached — arming it up front
     // freezes the very first trick and the game never gets there.
@@ -195,7 +198,11 @@ for (const p of profiles) {
         await sleep(120);
     }
     await page.evaluate(() => { window.game.__holdTrick = false; }).catch(() => {});
-    if (!shot03) console.log(`  !! ${p.dir}: no play shot captured`);
+    // Intermittent: the gamlet occasionally ends (phase back to 'dealing')
+    // before the loop gets its full trick, and the window then expires. Re-run
+    // the profile — `node scripts/make-store-screenshots.mjs 6.5` — rather than
+    // shipping a stale shot. Never silently keeps the previous file.
+    if (!shot03) console.log(`  !! ${p.dir}: no play shot captured — re-run this profile`);
     if (errs.length) console.log(`  !! ${p.dir} page errors: ${errs.join(' | ')}`);
     await page.close();
 }
