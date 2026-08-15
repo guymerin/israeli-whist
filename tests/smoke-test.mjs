@@ -143,12 +143,19 @@ while (Date.now() < deadline) {
   }
 
   // Phase 3: when it's South's turn, play the first legal card.
+  //
+  // Selection is two-stage (see "Card selection" in script.js): the first tap
+  // lifts the card out of the fan and only the second one plays it, so each
+  // candidate is tapped twice. An illegal card refuses the lift, so tapping it
+  // twice is a no-op and the loop simply moves on to the next one.
   const isSouthTurn = await page.evaluate(() => document.getElementById('south-cards')?.classList.contains('player-turn'));
   if (isSouthTurn) {
     const before = await page.evaluate(() => (window.game.botMemory?.cardsPlayed?.south || []).length);
     const cards = await page.$$('#south-cards .card');
     for (const c of cards) {
-      await c.click({ force: true }).catch(() => {});
+      await c.click({ force: true }).catch(() => {});   // lift
+      await sleep(40);
+      await c.click({ force: true }).catch(() => {});   // commit
       await sleep(60);
       const after = await page.evaluate(() => (window.game.botMemory?.cardsPlayed?.south || []).length);
       if (after > before) break;

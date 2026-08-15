@@ -57,6 +57,12 @@ class IsraeliWhist {
         };
         this.currentDealer = 0; // North starts as dealer
         this.currentRound = 1; // Track current round
+        // Card selection (see "Card selection: lift, then drag or tap"). The
+        // armed card is held by identity, not by node, because the hand
+        // re-renders underneath it.
+        this.armedCard = null;      // {rank, suit} lifted out of the fan, or null
+        this._cardDrag = null;      // in-flight pointer drag, or null
+        this._pointerHandledAt = 0; // timestamp: suppress the click a pointer sequence synthesises
         // Deck and current-gamlet hands.
         this.deck = [];
         this.hands = {
@@ -1738,89 +1744,38 @@ class IsraeliWhist {
         }
     }
 
+    /**
+     * Marks it as south's turn and makes the hand interactive.
+     *
+     * Selection is two-stage (see setupCardInteraction): a press lifts a card
+     * out of the fan, and only a drag onto the trick area or a second tap
+     * commits it. Cards that would break follow-suit are dimmed and refuse the
+     * lift, so the rule is visible before the play instead of a toast after it.
+     *
+     * Interaction is bound once on the #south-cards container and delegated,
+     * so a hand re-render can't strand listeners on replaced nodes.
+     */
     enableCardSelection() {
-        const cards = document.querySelectorAll('#south-cards .card');
         const humanCardsContainer = document.getElementById('south-cards');
-        
+
         // Add class to indicate it's player's turn
         if (humanCardsContainer) {
             humanCardsContainer.classList.add('player-turn');
         }
-        // Remove any existing click handlers and add new ones
-        cards.forEach((card, index) => {
-            // Remove existing listeners by cloning the element
-            const newCard = card.cloneNode(true);
-            card.parentNode.replaceChild(newCard, card);
-            
-            // Basic card setup
-            newCard.style.cursor = 'pointer';
-            newCard.style.userSelect = 'none';
-            newCard.style.pointerEvents = 'auto';
-            
-            // Add multiple event handlers for Safari compatibility
-            const clickHandler = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.onCardClick(newCard);
-            };
-            
-            // Safari can swallow direct listeners on transformed touch cards, so it
-            // takes the document-level emergency path while other browsers use normal handlers.
-            const isSafari = navigator.userAgent.indexOf('Safari') > -1 && 
-                           navigator.userAgent.indexOf('Chrome') === -1 && 
-                           navigator.userAgent.indexOf('Edg') === -1;
-            
-            if (isSafari) {
-                // SAFARI: Minimal setup - let the global emergency fix handle clicks
-                dlog('🔥 Safari detected: Using emergency fix, minimal card setup');
-                
-                // Just ensure the card is clickable for the global listener
-                newCard.style.webkitTouchCallout = 'none';
-                newCard.style.webkitUserSelect = 'none';
-                newCard.style.touchAction = 'manipulation';
-                
-            } else {
-                // NON-SAFARI BROWSERS: Standard event handling
-                dlog('🌐 Applying standard event handlers for card index', index);
-                
-                // Standard event handling for non-Safari browsers
-                newCard.addEventListener('click', clickHandler);
-                newCard.addEventListener('touchend', clickHandler);
-                
-                // Enhanced touch handling
-                newCard.addEventListener('touchstart', (e) => {
-                    newCard.style.transform = 'translate3d(0, -10px, 0) scale(1.05)';
-                    newCard.style.zIndex = '150';
-                }, { passive: true });
-                
-                // Touch timing for fallback
-                let touchStartTime = 0;
-                newCard.addEventListener('touchstart', () => {
-                    touchStartTime = Date.now();
-                }, { passive: true });
-                
-                newCard.addEventListener('touchend', (e) => {
-                    const touchDuration = Date.now() - touchStartTime;
-                    if (touchDuration < 500) {
-                        setTimeout(() => {
-                            this.onCardClick(newCard);
-                        }, 50);
-                    }
-                }, { passive: true });
-                
-                // Additional event types
-                newCard.addEventListener('mousedown', clickHandler);
-                newCard.addEventListener('pointerdown', clickHandler);
-                
-                newCard.addEventListener('touchcancel', () => {
-                    newCard.style.transform = '';
-                    newCard.style.zIndex = '';
-                });
-            }
+
+        this.setupCardInteraction();
+
+        document.querySelectorAll('#south-cards .card').forEach(card => {
+            card.style.cursor = 'pointer';
+            card.style.userSelect = 'none';
+            card.style.pointerEvents = 'auto';
         });
 
-        // After click handlers are wired, highlight the suggested best card
-        // for the human player using the same AI used by bots.
+        this.refreshCardLegality();
+        this.restoreArmedCard();
+
+        // Highlight the suggested best card for the human player using the
+        // same AI used by bots.
         this.suggestBestCard();
     }
 
@@ -2032,99 +1987,350 @@ class IsraeliWhist {
     disableCardSelection() {
         const cards = document.querySelectorAll('#south-cards .card');
         const humanCardsContainer = document.getElementById('south-cards');
-        
+
         // Remove class to indicate it's not player's turn
         if (humanCardsContainer) {
             humanCardsContainer.classList.remove('player-turn');
         }
         // Clear any best-card suggestion
         this.clearSuggestedCard();
-        
-        // Remove click handlers and pointer cursor
+        this.clearArmedCard();
+
         cards.forEach(card => {
-            const newCard = card.cloneNode(true);
-            card.parentNode.replaceChild(newCard, card);
-            
-            // Safari-specific disable styling
-            newCard.style.cursor = 'default';
-            newCard.style.pointerEvents = 'none';
-            newCard.style.webkitUserSelect = 'none';
-            newCard.style.userSelect = 'none';
-            newCard.style.webkitTouchCallout = 'none';
-            newCard.style.transform = '';
-            
-            // Force Safari to recalculate styles
-            newCard.offsetHeight;
+            card.style.cursor = 'default';
+            card.style.pointerEvents = 'none';
+            card.style.webkitUserSelect = 'none';
+            card.style.userSelect = 'none';
+            card.style.webkitTouchCallout = 'none';
+            card.style.transform = '';
+            card.classList.remove('card-illegal');
         });
     }
-    
-    // Card highlighting methods removed
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Card selection: lift, then drag or tap
+
+       A card lifts clear of the fan before anything can happen to it — it
+       is ~22px wide on a phone, so you must be able to see what you have
+       before it commits. It lifts on hover with a mouse, and on touch by
+       pressing and sliding along the fan, which lifts each card the finger
+       passes over.
+
+       From there either gesture plays it:
+         - pull it up and drop it on the trick area — this starts the moment
+           the finger moves upward, so press-and-drag is one movement, or
+         - tap the lifted card again, or tap the trick area.
+       Releasing anywhere else snaps the card back but keeps it lifted, so
+       nothing is committed by sliding around and changing your mind. Only
+       playArmedCard() reaches playCard().
+
+       Everything is delegated from the #south-cards container, which
+       survives hand re-renders, and the armed card is tracked by identity
+       for the same reason.
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /** Binds the delegated pointer layer once. */
+    setupCardInteraction() {
+        if (this._cardInteractionBound) return;
+        const container = document.getElementById('south-cards');
+        if (!container) return;
+
+        container.addEventListener('pointerdown', e => this.onCardPointerDown(e));
+        container.addEventListener('pointermove', e => this.onCardPointerMove(e));
+        container.addEventListener('pointerup', e => this.onCardPointerUp(e));
+        container.addEventListener('pointercancel', e => this.onCardPointerUp(e));
+        // Mouse hover lifts the card under the cursor, so on a desktop you
+        // always see a card full-size before you click it.
+        container.addEventListener('pointerover', e => this.onCardPointerOver(e));
+
+        // Tapping the felt plays the lifted card — the other half of "drag it
+        // to the middle", for players who would rather tap twice.
+        //
+        // .game-controls (Deal) lives INSIDE .trick-area and covers the middle
+        // of the felt, so a tap has to be on actual felt: it is display:none
+        // once a hand is dealt, but a tap on a control must never double as a
+        // card commit.
+        const trickArea = document.querySelector('.trick-area');
+        if (trickArea) {
+            trickArea.addEventListener('pointerdown', e => {
+                if (!this.armedCard) return;
+                if (e.target.closest('button, .game-controls')) return;
+                this.playArmedCard();
+            });
+        }
+
+        // A tap on neither the hand nor the felt puts the card back down.
+        document.addEventListener('pointerdown', e => {
+            if (!this.armedCard) return;
+            if (e.target.closest('#south-cards') || e.target.closest('.trick-area')) return;
+            this.clearArmedCard();
+        });
+
+        this._cardInteractionBound = true;
+    }
+
+    /** True when south may act on a card right now. */
+    canSelectCards() {
+        return this.currentPhase === 'phase3'
+            && this.currentTrick.length < 4
+            && this.getCurrentPlayerIndex() === this.southIndex;
+    }
+
+    /** Reads {rank, suit} back off a rendered card element. */
+    getCardFromElement(cardElement) {
+        const rank = cardElement?.querySelector('.card-rank')?.textContent?.trim();
+        const symbol = cardElement?.querySelector('.card-center-suit')?.textContent?.trim();
+        const suits = { '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs' };
+        const suit = suits[symbol];
+        return (rank && suit) ? { rank, suit } : null;
+    }
+
+    /** Dims the cards that follow-suit forbids, so an illegal card can't be lifted. */
+    refreshCardLegality() {
+        const playable = this.canSelectCards();
+        document.querySelectorAll('#south-cards .card').forEach(el => {
+            const card = this.getCardFromElement(el);
+            const illegal = playable && card && !this.isValidCardPlay('south', card);
+            el.classList.toggle('card-illegal', !!illegal);
+        });
+    }
+
+    armCard(cardElement, { haptic = true } = {}) {
+        const card = this.getCardFromElement(cardElement);
+        if (!card) return;
+        this.clearArmedCard();
+        this.armedCard = card;
+        cardElement.classList.add('card-armed');
+        if (haptic) this.buzz();
+    }
+
+    clearArmedCard() {
+        this.armedCard = null;
+        document.querySelectorAll('#south-cards .card.card-armed').forEach(el => {
+            el.classList.remove('card-armed');
+            el.style.removeProperty('transform');
+            el.style.zIndex = '';
+        });
+        document.querySelector('.trick-area')?.classList.remove('drop-active');
+    }
+
+    /** Re-applies the lift after a hand re-render replaced the nodes. */
+    restoreArmedCard() {
+        if (!this.armedCard) return;
+        const el = this.findCardElement(this.armedCard);
+        if (el) el.classList.add('card-armed');
+        else this.armedCard = null;
+    }
+
+    findCardElement(card) {
+        for (const el of document.querySelectorAll('#south-cards .card')) {
+            const c = this.getCardFromElement(el);
+            if (c && c.rank === card.rank && c.suit === card.suit) return el;
+        }
+        return null;
+    }
+
+    isCardArmed(cardElement) {
+        const card = this.getCardFromElement(cardElement);
+        return !!(card && this.armedCard
+            && card.rank === this.armedCard.rank && card.suit === this.armedCard.suit);
+    }
+
+    /** Commits the lifted card. The single route from selection into playCard(). */
+    playArmedCard() {
+        if (!this.armedCard || !this.canSelectCards()) return;
+        const index = this.hands.south.findIndex(
+            c => c.rank === this.armedCard.rank && c.suit === this.armedCard.suit);
+        if (index === -1) { this.clearArmedCard(); return; }
+        const el = this.findCardElement(this.armedCard);
+        if (el) { el.style.removeProperty('transform'); el.style.zIndex = ''; }
+        this.armedCard = null;
+        document.querySelector('.trick-area')?.classList.remove('drop-active');
+        this.playCard('south', index);
+    }
 
     /**
-     * Translates a clicked south-hand DOM card into a hand index and calls playCard().
-     * Side effects: ignores stale/out-of-turn clicks before touching game state.
+     * Mouse hover lifts the card under the cursor. Touch has no hover, so a
+     * finger gets the same thing by pressing and sliding along the fan
+     * (see the scrub branch of onCardPointerMove).
+     */
+    onCardPointerOver(e) {
+        if (this._cardDrag) return;              // a press is in charge
+        if (e.pointerType !== 'mouse') return;
+        if (!this.canSelectCards()) return;
+        const el = e.target.closest('.card');
+        if (!el || el.parentElement?.id !== 'south-cards') return;
+        if (el.classList.contains('card-illegal')) return;
+        if (this.isCardArmed(el)) return;
+        this.armCard(el, { haptic: false });     // hovering is not a commitment
+    }
+
+    onCardPointerDown(e) {
+        if (!this.canSelectCards()) return;
+        const el = e.target.closest('.card');
+        if (!el || el.parentElement?.id !== 'south-cards') return;
+        if (el.classList.contains('card-illegal')) {
+            el.classList.remove('card-refused');
+            void el.offsetWidth;             // restart the nudge if it's still running
+            el.classList.add('card-refused');
+            return;
+        }
+
+        const wasArmed = this.isCardArmed(el);
+        if (!wasArmed) this.armCard(el);
+        this._cardDrag = {
+            el, wasArmed, pointerId: e.pointerId,
+            x0: e.clientX, y0: e.clientY,
+            moved: false,
+            pulledOut: false,   // finger has left the hand row, card follows it
+            grabX: 0, grabY: 0
+        };
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+
+    /**
+     * Two gestures share one press, told apart by direction:
+     *   - sliding ALONG the fan lifts whichever card is under the finger,
+     *     which is how touch gets the hover a mouse has, and
+     *   - pulling UP takes the card with you the moment you move, so press
+     *     and drag straight to the felt is one continuous movement.
+     */
+    onCardPointerMove(e) {
+        const drag = this._cardDrag;
+        if (!drag || e.pointerId !== drag.pointerId) return;
+        const dx = e.clientX - drag.x0;
+        const dy = e.clientY - drag.y0;
+        if (!drag.moved && Math.hypot(dx, dy) < 6) return;   // ignore thumb jitter
+        drag.moved = true;
+
+        // Which gesture is this? Direction decides, and it decides straight
+        // away: pull up off a card and it comes with you immediately, so a
+        // card can go press → table in one movement. Slide sideways instead
+        // and you are browsing the fan. Leaving the hand row upward always
+        // counts, for a drag that starts sideways and then heads for the felt.
+        const hand = document.getElementById('south-cards');
+        const handTop = hand ? hand.getBoundingClientRect().top : 0;
+        if (!drag.pulledOut) {
+            const liftedOff = dy < -10 && Math.abs(dy) > Math.abs(dx) * 0.6;
+            if (liftedOff || e.clientY < handTop - 4) {
+                drag.pulledOut = true;
+                drag.grabX = e.clientX;
+                drag.grabY = e.clientY;
+            }
+        }
+
+        if (drag.pulledOut) {
+            const el = this.findCardElement(this.armedCard) || drag.el;
+            drag.el = el;
+            el.style.setProperty(
+                'transform',
+                `translate(${e.clientX - drag.grabX}px, ${e.clientY - drag.grabY - 24}px) scale(1.22)`,
+                'important');
+            el.style.zIndex = '400';
+            document.querySelector('.trick-area')
+                ?.classList.toggle('drop-active', this.isOverTrickArea(e.clientX, e.clientY));
+            return;
+        }
+
+        // Scrubbing along the fan: lift whatever is under the finger now.
+        // The lifted card is scaled 1.16 and overhangs its neighbours' slivers,
+        // so it has to be skipped in the hit test or the lift sticks to it and
+        // the finger can never reach the next card.
+        const under = document.elementsFromPoint(e.clientX, e.clientY)
+            .map(el => el.closest('.card'))
+            .find(el => el && el !== drag.el && el.parentElement?.id === 'south-cards');
+        if (!under || under.parentElement?.id !== 'south-cards') return;
+        if (under.classList.contains('card-illegal') || this.isCardArmed(under)) return;
+        drag.el.style.removeProperty('transform');
+        drag.el.style.zIndex = '';
+        this.armCard(under);
+        drag.el = under;
+        drag.wasArmed = false;   // a card you scrubbed onto still needs a deliberate commit
+    }
+
+    onCardPointerUp(e) {
+        const drag = this._cardDrag;
+        if (!drag || e.pointerId !== drag.pointerId) return;
+        this._cardDrag = null;
+        this._pointerHandledAt = Date.now();
+        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+
+        const overTrick = this.isOverTrickArea(e.clientX, e.clientY);
+        drag.el.style.removeProperty('transform');
+        drag.el.style.zIndex = '';
+        document.querySelector('.trick-area')?.classList.remove('drop-active');
+
+        if (drag.pulledOut && overTrick) { this.playArmedCard(); return; }
+        // A press that never moved is a tap: the second one plays. (With a
+        // mouse the hover already armed it, so one deliberate click plays.)
+        if (!drag.moved && drag.wasArmed) this.playArmedCard();
+        // Anything else leaves the card lifted — nothing is committed by
+        // sliding around and letting go.
+    }
+
+    /** Generous hit box: the trick square plus a 30px margin. */
+    isOverTrickArea(x, y) {
+        const area = document.querySelector('.trick-area');
+        if (!area) return false;
+        const r = area.getBoundingClientRect();
+        const pad = 30;
+        return x > r.left - pad && x < r.right + pad && y > r.top - pad && y < r.bottom + pad;
+    }
+
+    /** Light haptic tick where the platform offers one (installed app). */
+    buzz() {
+        try {
+            const h = window.Capacitor?.Plugins?.Haptics;
+            if (h?.impact) h.impact({ style: 'LIGHT' });
+            else if (navigator.vibrate) navigator.vibrate(8);
+        } catch (_) {}
+    }
+
+    /**
+     * Click fallback for the two-stage selection: arms the card, or plays it
+     * when it is already armed. The pointer layer (setupCardInteraction) owns
+     * the interaction on every browser that delivers pointer events; this is
+     * the path Safari's emergency listener uses when it swallows them, so it
+     * must mirror the same arm-then-commit rule rather than play on one tap.
      * @param {HTMLElement} cardElement Rendered card element from #south-cards.
      */
     onCardClick(cardElement) {
         dlog('🎯 onCardClick called with element:', cardElement);
-        dlog('🎯 Browser:', navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1 ? 'Safari' : 'Other');
-        dlog('🎯 Current phase:', this.currentPhase);
-        dlog('🎯 Player turn enabled:', document.querySelector('.human-cards')?.classList.contains('player-turn'));
+
+        // A pointer sequence that just resolved also synthesises a click.
+        // Ignore it, or a single tap would arm and immediately play.
+        if (Date.now() - this._pointerHandledAt < 500) {
+            dlog('🎯 Click follows a handled pointer sequence, ignoring');
+            return;
+        }
 
         // Guard against stale / duplicate clicks (e.g., mobile double-tap, or
         // a click that arrives after the card was already removed from the
         // hand). Without these checks the game logs noisy errors and can
         // race with completeTrick() leaving currentTrick.length > 4.
-        if (this.currentPhase !== 'phase3') {
+        if (!this.canSelectCards()) {
             return;
         }
-        if (this.currentTrick.length >= 4) {
-            // Trick is already complete and waiting to be resolved.
-            return;
-        }
-        if (this.getCurrentPlayerIndex() !== this.southIndex) {
-            // Not south's turn — ignore stale clicks left over from the
-            // previous player-turn window.
+        if (cardElement.classList.contains('card-illegal')) {
             return;
         }
 
-        // Get the card data from the element's content using correct selectors
-        const cardRankElement = cardElement.querySelector('.card-rank');
-        const cardSuitElement = cardElement.querySelector('.card-center-suit');
-        
-        if (!cardRankElement || !cardSuitElement) {
+        const card = this.getCardFromElement(cardElement);
+        if (!card) {
             console.error('Could not find rank or suit elements in clicked card');
             dlog('🔍 Card element structure:', cardElement.innerHTML);
             return;
         }
-        
-        const cardRank = cardRankElement.textContent?.trim();
-        const suitSymbol = cardSuitElement.textContent?.trim();
-        
-        // Determine suit from the symbol
-        let cardSuit = null;
-        if (suitSymbol === '♠') cardSuit = 'spades';
-        else if (suitSymbol === '♥') cardSuit = 'hearts';
-        else if (suitSymbol === '♦') cardSuit = 'diamonds';
-        else if (suitSymbol === '♣') cardSuit = 'clubs';
-        
-        if (!cardRank || !cardSuit) {
-            console.error(`Could not determine card from clicked element. Rank: "${cardRank}", Suit: "${suitSymbol}"`);
+        if (!this.hands.south.some(c => c.rank === card.rank && c.suit === card.suit)) {
+            console.error(`Card ${card.rank} of ${card.suit} not found in player's hand`);
             return;
         }
-        
-        // Find the exact card in the player's hand
-        const hand = this.hands.south;
-        const cardIndex = hand.findIndex(card => card.rank === cardRank && card.suit === cardSuit);
-        
-        if (cardIndex === -1) {
-            console.error(`Card ${cardRank} of ${cardSuit} not found in player's hand`);
 
-            return;
+        if (this.isCardArmed(cardElement)) {
+            this.playArmedCard();
+        } else {
+            this.armCard(cardElement);
         }
-        
-
-        this.playCard('south', cardIndex);
     }
 
     /**
@@ -2201,14 +2407,18 @@ class IsraeliWhist {
             });
         }
         
+        // Where the card flies FROM — measured before the hand loses it and
+        // re-renders, otherwise the element is gone by animation time.
+        this._flightOrigin = this.captureFlightOrigin(player, card);
+
         // Add card to current trick
         this.currentTrick.push({ player, card });
-        
+
         // Log the card play
         const cardDisplay = `${card.rank}${this.getSuitSymbol(card.suit)}`;
         const trickPosition = this.currentTrick.length;
         this.logPlayer(`🃏 ${this.getPlayerDisplayName(player)} plays ${cardDisplay} (position ${trickPosition}/4)`, player);
-        
+
         // Remove card from hand
         hand.splice(cardIndex, 1);
         
@@ -2281,16 +2491,84 @@ class IsraeliWhist {
         
         // Create card element for the table
         const cardElement = this.createCardElement(card);
-        cardElement.classList.add('card-throwing');
-        
+
         // Clear any previous card and add the new one
         playedCardDiv.innerHTML = '';
         playedCardDiv.appendChild(cardElement);
-        
+
+        // Fly it in from wherever it came from (the seat's hand), rather than
+        // popping it into place. captureFlightOrigin() measured that in
+        // playCard(), before the hand re-rendered.
+        const origin = this._flightOrigin;
+        this._flightOrigin = null;
+        this.flyCardIntoSlot(cardElement, origin);
+
         // Track the card in bot memory
         this.trackPlayedCard(player, card);
     }
-    
+
+    /**
+     * Rectangle a played card should appear to come from: the human's actual
+     * card in the fan, or the seat's face-down stack for a bot.
+     * @param {string} player Compass player key.
+     * @param {{rank:string,suit:string}} card The card being played.
+     * @returns {DOMRect|null} Viewport rect, or null when the source isn't on screen.
+     */
+    captureFlightOrigin(player, card) {
+        const source = player === 'south'
+            ? (this.findCardElement(card) || document.getElementById('south-cards'))
+            : document.getElementById(`${player}-cards`);
+        if (!source) return null;
+        const rect = source.getBoundingClientRect();
+        return rect.width && rect.height ? rect : null;
+    }
+
+    /**
+     * Flips a card into its slot along the path from `origin`.
+     *
+     * The card turns twice on the Y axis so it lands face-up, scaling from
+     * hand size to table size and settling into the slot's seat rotation. A
+     * fixed-position clone does the travelling, so nothing in the trick-area
+     * layout has to move. Duration goes through getDelay(), so Turbo divides
+     * it like every other delay, and reduced-motion skips straight to the
+     * landed state.
+     * @param {HTMLElement} cardElement The card already placed in its slot.
+     * @param {DOMRect|null} origin Where it flies from; no flight when null.
+     */
+    flyCardIntoSlot(cardElement, origin) {
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        if (!origin || reduceMotion || typeof cardElement.animate !== 'function') return;
+
+        const to = cardElement.getBoundingClientRect();
+        if (!to.width || !to.height) return;
+
+        const seatRotation = getComputedStyle(cardElement.parentElement)
+            .getPropertyValue('--card-rotation').trim() || '0deg';
+        const dx = (origin.left + origin.width / 2) - (to.left + to.width / 2);
+        const dy = (origin.top + origin.height / 2) - (to.top + to.height / 2);
+        const scale = Math.min(origin.width / to.width, 1.6) || 1;
+
+        cardElement.animate([
+            {
+                transform: `translate(${dx}px, ${dy}px) scale(${scale}) rotateY(0deg) rotate(0deg)`,
+                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)'
+            },
+            {
+                transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 26}px) scale(${(1 + scale) / 2 * 1.06}) rotateY(180deg) rotate(0deg)`,
+                boxShadow: '0 22px 34px rgba(0, 0, 0, 0.5)',
+                offset: 0.5
+            },
+            {
+                transform: `translate(0, 0) scale(1) rotateY(360deg) rotate(${seatRotation})`,
+                boxShadow: '0 8px 16px rgba(0, 0, 0, 0.5)'
+            }
+        ], {
+            duration: this.getDelay(520),
+            easing: 'cubic-bezier(0.3, 0.8, 0.35, 1)'
+        });
+    }
+
+
     /**
      * Updates hand-scoped card trackers after a played card is rendered on the table.
      * @param {string} player Compass player key.
@@ -9413,58 +9691,18 @@ class IsraeliWhist {
                 }
 
                 dlog('🚨 Safari: Valid card click detected!');
-                
-                // Find the card index by its position in the container
-                const allCards = Array.from(humanCardsContainer.querySelectorAll('.card'));
-                const cardIndex = allCards.indexOf(cardElement);
-                
-                if (cardIndex === -1) {
-                    dlog('🚨 Safari: Could not determine card index');
-                    return;
-                }
-                
-                // Debug: Show detailed card information
-                dlog('🚨 Safari: Card details:');
-                dlog('  - Visual position in DOM:', cardIndex);
-                dlog('  - Total cards in DOM:', allCards.length);
-                dlog('  - Total cards in hand:', this.hands.south ? this.hands.south.length : 'undefined');
-                dlog('  - Clicked card element:', cardElement);
-                
-                // Try to get the actual card data from the element
-                const cardRank = cardElement.querySelector('.card-rank')?.textContent;
-                const cardSuit = cardElement.querySelector('.card-center-suit')?.textContent;
-                dlog('  - Card visual: rank =', cardRank, ', suit =', cardSuit);
-                
-                // Find the matching card in the hand array
-                let actualCardIndex = -1;
-                if (this.hands.south && cardRank && cardSuit) {
-                    actualCardIndex = this.hands.south.findIndex(card => {
-                        const suitSymbols = { clubs: '♣', diamonds: '♦', hearts: '♥', spades: '♠' };
-                        return card.rank === cardRank && suitSymbols[card.suit] === cardSuit;
-                    });
-                }
-                
-                dlog('  - Actual card index in hand:', actualCardIndex);
-                
-                const finalIndex = actualCardIndex !== -1 ? actualCardIndex : cardIndex;
-                dlog('🚨 Safari: Using final index', finalIndex, 'to play card');
-                
-                // Add immediate visual feedback
-                cardElement.style.opacity = '0.6';
-                cardElement.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    cardElement.style.opacity = '';
-                    cardElement.style.transform = '';
-                }, 300);
-                
+
                 // Prevent any other event handling
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
-                
-                // Play the card directly
-                this.playCard('south', finalIndex);
-                
+
+                // Route through the same two-stage selection everything else
+                // uses: this arms the card, and only a second tap plays it.
+                // (Previously this played the card outright, which would now
+                // bypass the lift entirely.)
+                this.onCardClick(cardElement);
+
             }, { capture: true, passive: false });
             
             dlog('✅ Safari emergency fix installed');

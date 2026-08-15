@@ -662,17 +662,12 @@ h1 {
     pointer-events: none;
 }
 
-/* Centre glyph is now a watermark behind the index, not the primary read. */
+/* The centre glyph is not drawn — the corner index carries the card. The
+   element stays in the DOM because it is how the code reads a card's suit
+   back off its element (getCardFromElement, suggestBestCard, the Safari
+   click path all query .card-center-suit's textContent). */
 .card-center-suit {
-    font-size: 55px;
-    text-align: center;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-weight: bold;
-    opacity: 0.22;
-    pointer-events: none;
+    display: none;
 }
 
 /* Card Colors */
@@ -1208,6 +1203,53 @@ h1 {
 .human-cards .card.played {
     pointer-events: none;
     opacity: 0.5;
+}
+
+/* ═══ Two-stage card selection: lift, then drag or tap ═══════════════════
+   A press lifts the card clear of the fan; only a drag onto the trick area
+   or a second tap commits it. See "Card selection" in script.js. */
+.human-cards .card.card-armed {
+    transform: translateY(-24px) scale(1.16);
+    box-shadow:
+        0 16px 28px rgba(0, 0, 0, 0.55),
+        0 0 0 2px #FFD700,
+        0 0 22px -2px rgba(255, 215, 0, 0.85);
+    z-index: 200;
+}
+
+/* A card that would break follow-suit can't be lifted at all. */
+.human-cards .card.card-illegal {
+    filter: grayscale(0.7) brightness(0.62);
+    cursor: not-allowed;
+}
+
+.human-cards .card.card-refused {
+    animation: cardRefuse 0.28s ease-in-out;
+}
+
+@keyframes cardRefuse {
+    0%, 100% { transform: translateX(0); }
+    30% { transform: translateX(-3px); }
+    70% { transform: translateX(3px); }
+}
+
+/* Drop target for the drag half of the gesture. */
+.trick-area.drop-active {
+    border-color: rgba(255, 215, 0, 0.9);
+    box-shadow:
+        0 0 0 1px rgba(255, 215, 0, 0.5),
+        inset 0 0 34px -6px rgba(255, 215, 0, 0.75);
+}
+
+/* The played card turns over on its way to the table (flyCardIntoSlot), so
+   it needs depth, and its mid-flight backface must stay visible. */
+.played-card {
+    perspective: 800px;
+}
+
+.played-card .card {
+    -webkit-backface-visibility: visible;
+    backface-visibility: visible;
 }
 
 @keyframes cardPlayed {
