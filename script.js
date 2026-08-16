@@ -6555,13 +6555,27 @@ class IsraeliWhist {
         const state = { lastFocus: document.activeElement };
         this._modalA11yState.set(modalEl, state);
 
-        // Focus first interactive element on the next frame so any
-        // display transition can settle first.
+        // Move focus into the dialog on the next frame (so any display
+        // transition settles first) — but never onto a text field. Focusing
+        // one raises the software keyboard the instant the dialog opens, which
+        // is how the name card greeted every launch with half a screen of
+        // keyboard. A dialog can mark its preferred target with
+        // data-initial-focus; otherwise the first non-text control wins, and
+        // failing that the dialog itself takes focus.
         requestAnimationFrame(() => {
             const focusables = this._modalFocusables(modalEl);
-            if (focusables.length) {
-                try { focusables[0].focus(); } catch (_) {}
-            }
+            const isTextEntry = el => {
+                if (el.tagName === 'TEXTAREA') return true;
+                if (el.tagName !== 'INPUT') return false;
+                return !['button', 'submit', 'checkbox', 'radio', 'range', 'reset'].includes(el.type);
+            };
+            const target = modalEl.querySelector('[data-initial-focus]')
+                || focusables.find(el => !isTextEntry(el))
+                || modalEl;
+            try {
+                if (target === modalEl && !modalEl.hasAttribute('tabindex')) modalEl.setAttribute('tabindex', '-1');
+                target.focus({ preventScroll: true });
+            } catch (_) {}
         });
 
         // Trap Tab cycling inside the modal.
@@ -8826,8 +8840,11 @@ class IsraeliWhist {
             const cachedName = localStorage.getItem('israeliWhist_playerName');
             if (cachedName && playerNameInput) {
                 playerNameInput.value = cachedName;
-                playerNameInput.focus();
-                playerNameInput.select(); // Select the text so user can easily change it
+                // Deliberately NOT focused. Focusing raises the keyboard over
+                // half the screen on every single launch — for a field that
+                // already contains the right answer and a card whose only
+                // action is "Start Game". Tapping the field is how you change
+                // it, and that is when the keyboard belongs.
             }
         }
     }
