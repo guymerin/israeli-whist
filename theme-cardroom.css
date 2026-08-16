@@ -505,9 +505,32 @@ body {
     .west-played { left: -6px !important; }
     .east-played { right: -6px !important; }
 
-    /* Hand: only ~22px of each card escapes its neighbour, so the corner index
-       has to fit inside that sliver — 21px clipped the "1" off a 10. */
-    #south-cards.human-cards { --cw: 50px !important; padding: 0 6px 4px !important; align-items: flex-end !important; }
+    /* Hand on TWO rows. One row of 13 leaves ~22px of each card showing —
+       narrower than a fingertip (~45px), which is why players kept grabbing
+       the wrong card. Seven up, six below: the card width is whatever makes
+       exactly seven fit, so every card is ~50px on a 402px phone and the
+       overlap disappears entirely. */
+    #south-cards.human-cards {
+        --cw: min(56px, calc((100vw - 40px) / 7)) !important;
+        /* The seat is absolutely positioned, so it shrink-to-fits — and a
+           wrapping flex child inside one collapses to its smallest line,
+           which put 3 cards on 5 rows. An explicit width makes the wrap
+           deliberate: exactly seven per row. (.player centres its children,
+           so a full-width hand keeps the nameplate centred.) */
+        width: 100vw !important;
+        max-width: 100vw !important;
+        flex-wrap: wrap !important;
+        align-content: flex-end !important;
+        align-items: flex-end !important;
+        gap: 4px 2px !important;
+        padding: 0 6px 4px !important;
+        /* §.human-cards pulls the hand up 30px to tuck a single row under the
+           nameplate; two rows are tall enough that the pull ran into it. */
+        margin-top: 0 !important;
+    }
+    /* §9's overlap margin has nothing to do here — the cards no longer stack. */
+    #south-cards.human-cards .card,
+    #south-cards.human-cards .card:first-child { margin-left: 0 !important; }
     #south-cards.human-cards .card { --card-rank-size: 16px !important; }
     #south-cards.human-cards .card .card-rank { font-weight: 800 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 22px !important; }
@@ -565,7 +588,7 @@ body {
     .score-item { font-size: .68em !important; }
     /* Slimmer board + hand so the tray (incl. Bid/Pass) always fits. */
     .game-board { min-height: 96px !important; }
-    #south-cards.human-cards { --cw: 42px !important; }
+    #south-cards.human-cards { --cw: min(46px, calc((100vw - 36px) / 7)) !important; gap: 3px 2px !important; }
     #south-cards.human-cards .card { --card-rank-size: 14px !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 18px !important; }
     /* Tighter bid tray. */
@@ -799,4 +822,158 @@ body.turn-nudge #south-player .player-info {
 
 @media (prefers-reduced-motion: reduce) {
     #south-cards.human-cards .card.card-refused { animation: none !important; }
+}
+
+/* ── 14. Bids total: "15/13 · Over" ────────────────────────────────────────
+   The status bar used to read "Bid: 15 (Over)" — "Bid" means the trump bid
+   everywhere else in the game, and 15 means nothing without the 13 beside it.
+   The state is a chip so it reads as a condition of the hand, not as part of
+   the number. announceBidTotal() says it once in full when bidding closes. */
+#turn-indicator { display: inline-flex; align-items: center; gap: 5px; }
+#turn-indicator .bid-total { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--cr-ink) !important; }
+#turn-indicator .bid-state {
+    /* display/height are forced explicitly: the status bar lays its spans out
+       as flex items, which stretched this chip into a 45x40 disc. */
+    display: inline-block !important;
+    width: auto !important; height: auto !important; min-height: 0 !important;
+    font-size: .72em; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    padding: 1px 7px; border-radius: 999px; line-height: 1.7;
+}
+#turn-indicator .bid-state.over  { background: rgba(194,96,79,.9);  color: #1b0f0c; }
+#turn-indicator .bid-state.under { background: rgba(143,208,166,.9); color: #0c1a12; }
+#turn-indicator .bid-state.exact { background: var(--cr-brass);      color: #241c07; }
+
+/* ── 15. Scoreboard: a ranking, not four numbers ───────────────────────────
+   The strip used to be four name/number pairs in the handwriting face, evenly
+   spaced, in no order — nothing said who was ahead, nothing said what the last
+   hand cost, and your own score looked like everyone else's. Now: sorted, the
+   leader lit, your row marked, and the swing from the hand just scored sitting
+   beside the total until the next deal. */
+.total-score-box .score-item {
+    display: grid !important;
+    grid-template-columns: 12px 1fr auto auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-family: var(--cr-sans) !important;
+    padding: 5px 9px !important;
+    border-radius: 7px !important;
+}
+.total-score-box .score-item + .score-item { border-top: 1px solid var(--cr-line) !important; }
+.total-score-box .score-rank {
+    font-size: 10px; color: var(--cr-ink-soft); font-variant-numeric: tabular-nums; opacity: .8;
+}
+.total-score-box .player-label {
+    font-family: var(--cr-sans) !important; font-size: 13px !important;
+    color: var(--cr-ink) !important; white-space: nowrap;
+}
+.total-score-box .score-value {
+    font-family: var(--cr-sans) !important; font-size: 15px !important; font-weight: 700 !important;
+    font-variant-numeric: tabular-nums; color: var(--cr-ink) !important; text-shadow: none !important;
+}
+.total-score-box .score-delta {
+    font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+    padding: 1px 6px; border-radius: 999px; line-height: 1.6;
+}
+.total-score-box .score-delta.gain { background: rgba(143,208,166,.16); color: #8fd0a6; }
+.total-score-box .score-delta.loss { background: rgba(194,96,79,.18); color: #e0907f; }
+
+/* The leader, and you. */
+.total-score-box .score-item.first-place { background: rgba(203,165,82,.10) !important; }
+.total-score-box .score-item.first-place .score-value,
+.total-score-box .score-item.first-place .player-label { color: var(--cr-brass) !important; }
+.total-score-box .score-item.is-you .player-label::after {
+    content: "you"; margin-left: 6px; font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+    color: #241c07; background: var(--cr-brass); border-radius: 999px; padding: 1px 6px; vertical-align: 1px;
+}
+
+/* Phones keep the score as a single strip (a four-row list would cost ~90px of
+   board), so the ranking is carried by the order — the seats are already sorted
+   leader-first — and the rank digit is dropped. The swing still shows; your
+   seat is underlined in brass rather than tagged, which costs no width. */
+@media (orientation: portrait) and (max-width: 760px) {
+    /* Two short lines per seat — name above, total and swing below. On one
+       line the four seats needed 499px against 372px of strip; stacked they
+       need ~270px, and the strip only grows by a dozen pixels. */
+    .total-score-box .score-item {
+        display: grid !important;
+        grid-template-columns: auto auto !important;
+        grid-template-areas: "name name" "value delta" !important;
+        justify-items: start !important;
+        align-items: baseline !important;
+        gap: 0 5px !important;
+        border-radius: 0 !important;
+    }
+    /* 375px wide and 372 available: the strip has no slack, so the gap
+       between seats does the fitting. */
+    #total-score-content { gap: 0 6px !important; }
+    .total-score-box .player-label { grid-area: name; }
+    .total-score-box .score-value  { grid-area: value; }
+    .total-score-box .score-delta  { grid-area: delta; }
+    .total-score-box .score-rank { display: none !important; }
+    .total-score-box .player-label { font-size: 11.5px !important; }
+    .total-score-box .score-value { font-size: 12.5px !important; }
+    .total-score-box .score-delta { font-size: 9px !important; padding: 0 4px !important; line-height: 1.5; }
+    .total-score-box .score-item.first-place { background: none !important; }
+    .total-score-box .score-item.is-you .player-label::after { display: none !important; }
+    .total-score-box .score-item.is-you .player-label {
+        text-decoration: underline; text-decoration-color: var(--cr-brass);
+        text-underline-offset: 3px; text-decoration-thickness: 1.5px;
+    }
+}
+
+/* iPhone-SE-class widths: the same strip with a little less air. */
+@media (orientation: portrait) and (max-width: 390px) {
+    #total-score-content { gap: 0 4px !important; }
+    .total-score-box .player-label { font-size: 10.5px !important; }
+    .total-score-box .score-value { font-size: 11.5px !important; }
+    .total-score-box .score-delta { font-size: 8.5px !important; padding: 0 3px !important; }
+}
+
+/* ── 16. The name card, above the keyboard ────────────────────────────────
+   setupNameModalViewport() sizes the modal to visualViewport, so the card
+   centres in what the keyboard leaves rather than behind it. The card itself
+   also gets shorter on a phone: with ~340px of visible height there is no
+   room for 30px of padding and a two-line greeting. */
+@media (max-width: 760px) {
+    .name-content { padding: 18px 16px !important; width: 92% !important; }
+    .name-header h2 { font-size: 1.05em !important; margin: 0 0 4px !important; }
+    .name-body p { font-size: .82em !important; margin: 0 0 10px !important; }
+    #player-name-input { padding: 10px 12px !important; font-size: 16px !important; }
+    #start-game-btn { margin-top: 12px !important; padding: 11px 22px !important; }
+}
+
+/* Phones: the chip already says what the number is, so the "Bids:" label is
+   dropped — with it the bar needed 443px against 390. font-size:0 on the
+   wrapper hides the bare text node; the value restores its own size. */
+@media (orientation: portrait) and (max-width: 760px) {
+    .current-turn { font-size: 0 !important; }
+    #turn-indicator { font-size: 13px !important; }
+    #turn-indicator .bid-state { font-size: 8px !important; padding: 1px 5px !important; letter-spacing: .06em !important; }
+    /* The chip is wider than the "(Over)" it replaces, so the rest of the bar
+       gives back the difference: it has to hold Round, trump, bids and Gamlet
+       inside 390px. */
+    /* The bar spread its items edge-to-edge, which put the first and last of
+       them under the Hint and menu buttons once the bids block grew. Centre
+       the group instead, and drop the trick counter — of the four readouts it
+       is the one the felt itself already tells you. */
+    .game-status { justify-content: center !important; gap: 10px !important; padding: 2px 6px !important; }
+    .game-status > div { font-size: .72em !important; margin: 0 !important; }
+    .tricks-counter { display: none !important; }
+    .trump-suit span { width: 22px !important; height: 22px !important; font-size: .9em !important; }
+}
+
+/* Bid summary in the Card Room palette. */
+.bid-summary {
+    border-color: var(--cr-brass) !important;
+    background: linear-gradient(180deg, rgba(22,44,30,.97), rgba(13,26,18,.98)) !important;
+    -webkit-backdrop-filter: blur(8px) !important; backdrop-filter: blur(8px) !important;
+}
+.bid-summary-total { font-family: var(--cr-serif) !important; color: var(--cr-brass) !important; font-weight: 600 !important; }
+.bid-summary-verdict { font-family: var(--cr-sans) !important; color: var(--cr-ink) !important; }
+.bid-summary.is-over { border-color: #d98a78 !important; }
+.bid-summary.is-over .bid-summary-total { color: #eaa08d !important; }
+@media (orientation: portrait) and (max-width: 760px) {
+    .bid-summary { padding: 11px 15px !important; }
+    .bid-summary-total { font-size: 16px !important; }
+    .bid-summary-verdict { font-size: 11.5px !important; }
 }

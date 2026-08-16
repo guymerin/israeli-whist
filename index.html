@@ -96,13 +96,20 @@ Israeli Whist DOM map:
             <div class="tricks-counter">Round: <span id="tricks-indicator">0</span></div>
             <div class="bid-trump-container">
                 <div class="trump-suit"><span id="trump-indicator">-</span></div>
-                <div class="current-turn">Bid: <span id="turn-indicator">-</span></div>
+                <div class="current-turn">Bids: <span id="turn-indicator">-</span></div>
             </div>
             <div class="round-counter">Gamlet: <span id="round-indicator">1</span></div>
             <div class="total-bids" id="total-bids" style="display: none;">Total Bids: <span id="total-bids-value">0</span></div>
         </div>
 
 
+
+        <!-- Bid summary: one line on the felt the moment the fourth
+             prediction lands (see announceBidTotal). -->
+        <div class="bid-summary" id="bid-summary" role="status" aria-live="polite" style="display: none;">
+            <span class="bid-summary-total" id="bid-summary-total"></span>
+            <span class="bid-summary-verdict" id="bid-summary-verdict"></span>
+        </div>
 
         <!-- Total Score Box -->
         <div class="total-score-box">

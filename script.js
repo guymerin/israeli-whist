@@ -61,6 +61,7 @@ class IsraeliWhist {
         // armed card is held by identity, not by node, because the hand
         // re-renders underneath it.
         this.armedCard = null;      // {rank, suit} lifted out of the fan, or null
+        this.lastGamletDelta = null; // per-seat swing from the gamlet just scored
         this._cardDrag = null;      // in-flight pointer drag, or null
         this._pointerHandledAt = 0; // timestamp: suppress the click a pointer sequence synthesises
         // Deck and current-gamlet hands.
@@ -278,7 +279,9 @@ class IsraeliWhist {
         // Check if we have a cached name
         const cachedName = localStorage.getItem('israeliWhist_playerName');
 
-        // Show name modal first (it will auto-fill the cached name if available)
+        // Show name modal first (it will auto-fill the cached name if available),
+        // sized to the space the on-screen keyboard leaves.
+        this.setupNameModalViewport();
         this.showNameModal();
         
         // Initialize hint system
@@ -1271,7 +1274,9 @@ class IsraeliWhist {
                // Calculate total bids for analysis
                const totalBids = Object.values(this.phase2Bids).reduce((sum, bid) => sum + bid, 0);
                dlog(`📊 PHASE 2 COMPLETE: Total bids = ${totalBids} (${totalBids === 13 ? 'EXACT' : totalBids > 13 ? 'OVER' : 'UNDER'})`);
-               
+
+               this.announceBidTotal(totalBids);
+
                // Small delay to show the final bid before transitioning
                setTimeout(() => this.startPhase3(), this.getDelay(1000));
               return;
@@ -1735,6 +1740,14 @@ class IsraeliWhist {
         this.currentTrick = [];
          // According to official rules, trump winner leads first trick
          this.trickLeader = this.players.indexOf(this.trumpWinner);
+         if (this.trickLeader < 0) {
+             // No trump winner on record (a phase that ended in an odd state).
+             // Leading from south keeps the hand moving; without this the -1
+             // index makes botPlayCard dereference hands[undefined] and the
+             // whole turn loop dies with a TypeError.
+             dwarn('startTrick: no trump winner recorded — leading from south');
+             this.trickLeader = this.southIndex;
+         }
         
          if (this.trickLeader === this.southIndex) { // South (human player)
             this.enableCardSelection();
@@ -3278,6 +3291,70 @@ class IsraeliWhist {
         }
     }
 
+    /**
+     * Keeps the name card inside the part of the screen the keyboard leaves.
+     *
+     * The modal is position:fixed at 100% height, which means the LAYOUT
+     * viewport — the keyboard doesn't shrink it, so centring put the card
+     * behind the keyboard on a phone and the input was invisible while you
+     * typed into it. visualViewport reports what is actually visible, so the
+     * modal is sized and offset to that instead.
+     */
+    setupNameModalViewport() {
+        const modal = document.getElementById('name-modal');
+        const vv = window.visualViewport;
+        if (!modal || !vv) return;          // desktop Safari <13 keeps the old behaviour
+
+        const fit = () => {
+            if (!modal || getComputedStyle(modal).display === 'none') return;
+            modal.style.height = `${vv.height}px`;
+            modal.style.top = `${vv.offsetTop}px`;
+        };
+        vv.addEventListener('resize', fit);
+        vv.addEventListener('scroll', fit);
+        fit();
+        this._fitNameModal = fit;
+    }
+
+    /**
+     * Says out loud what the four predictions add up to, the moment the last
+     * one lands. The total decides the shape of the whole hand — over means
+     * somebody is going to miss, under means there are spare tricks going
+     * begging — and it used to be readable only as "Bid: 15 (Over)" in the
+     * status bar, where "Bid" means the trump bid everywhere else in the game.
+     * @param {number} totalBids Sum of the four Phase 2 predictions.
+     */
+    announceBidTotal(totalBids) {
+        const over = totalBids > 13;
+        const spare = Math.abs(totalBids - 13);
+        const verdict = over
+            ? `Over hand — ${spare} more trick${spare === 1 ? '' : 's'} claimed than exist. Somebody misses.`
+            : `Under hand — ${spare} trick${spare === 1 ? '' : 's'} nobody claimed. There are points lying around.`;
+        const banner = document.getElementById('bid-summary');
+        const totalEl = document.getElementById('bid-summary-total');
+        const verdictEl = document.getElementById('bid-summary-verdict');
+        if (banner && totalEl && verdictEl) {
+            totalEl.textContent = `All bids in — ${totalBids} of 13`;
+            verdictEl.textContent = verdict;
+            banner.classList.toggle('is-over', over);
+            banner.style.display = 'flex';
+            banner.classList.remove('is-leaving');
+            clearTimeout(this._bidSummaryTimer);
+            this._bidSummaryTimer = setTimeout(() => {
+                banner.classList.add('is-leaving');
+                setTimeout(() => { banner.style.display = 'none'; }, 400);
+                // Not getDelay(): Turbo speeds up the bots' pacing, but this is a
+                // sentence a person has to read, and /10 left it on screen for
+                // 380ms. It stays put for as long as it takes either way.
+            }, 3800);
+        } else {
+            // No banner element (older markup): fall back to the toast.
+            this.showGameNotification(`All bids in — ${totalBids} of 13. ${verdict}`,
+                over ? 'warning' : 'info', this.getDelay(4200));
+        }
+        this.logPlayer(`📊 All bids in: ${totalBids} of 13 (${over ? 'over' : 'under'})`, 'south');
+    }
+
     allPhase2BidsComplete() {
         // Check if all players have made their Phase 2 bids
         return this.players.every(player => 
@@ -3503,7 +3580,7 @@ class IsraeliWhist {
 
         
         const hand = this.hands[playerName];
-        if (hand.length === 0) return;
+        if (!hand || hand.length === 0) return;
         
         // Smart card selection that follows suit rules
         let cardIndex = this.selectValidBotCard(playerName);
@@ -6108,12 +6185,14 @@ class IsraeliWhist {
             }, 0);
             
             if (totalBids > 0) {
-                // Show Phase 2 bid totals and over/under status
+                // "15/13 · Over" — the total needs the 13 beside it to mean
+                // anything, and the word needs to read as a state, not as part
+                // of the number.
                 const status = totalBids > 13 ? 'Over' : totalBids < 13 ? 'Under' : 'Exact';
-                const color = totalBids > 13 ? '#FF6B6B' : totalBids < 13 ? '#4CAF50' : '#FFD700';
-                
-                turnIndicator.innerHTML = `${totalBids} (${status})`;
-                turnIndicator.style.color = color;
+                turnIndicator.innerHTML =
+                    `<span class="bid-total">${totalBids}/13</span>` +
+                    `<span class="bid-state ${status.toLowerCase()}">${status}</span>`;
+                turnIndicator.style.color = '';
             } else {
                 // Show 0 when no bids yet
                 turnIndicator.textContent = '0';
@@ -6187,8 +6266,16 @@ class IsraeliWhist {
                 scoreItem.classList.add(rankingClass);
             }
             
+            const delta = this.lastGamletDelta ? this.lastGamletDelta[playerData.player] : null;
+            const deltaHTML = (delta === null || delta === undefined)
+                ? ''
+                : `<span class="score-delta ${delta >= 0 ? 'gain' : 'loss'}">${delta >= 0 ? '+' : '\u2212'}${Math.abs(delta)}</span>`;
+            if (playerData.player === 'south') scoreItem.classList.add('is-you');
+
             scoreItem.innerHTML = `
-                <span class="player-label">${playerData.displayName}:</span>
+                <span class="score-rank">${index + 1}</span>
+                <span class="player-label">${playerData.displayName}</span>
+                ${deltaHTML}
                 <span class="score-value" id="${playerData.player}-total-score">${playerData.score}</span>
             `;
             
@@ -7829,6 +7916,8 @@ class IsraeliWhist {
      */
     resetForNewHand() {
         this.currentPhase = 'dealing';
+        // Last hand's swing stops being news once a new one is dealt.
+        this.lastGamletDelta = null;
         
         // Ensure hands are completely cleared and reset
         this.hands = { 
@@ -8068,6 +8157,12 @@ class IsraeliWhist {
          
          // Always save gamlet to history after completion
          this.saveGamletToHistory(gamletScores);
+
+         // The scoreboard shows what each seat just gained or lost beside the
+         // running total: four constants tell you nobody's story, four
+         // constants and a swing tell you the hand's. Cleared when the next
+         // gamlet is dealt (resetForNewHand).
+         this.lastGamletDelta = { ...gamletScores };
          
                  // Check for full game completion (200 points OR 10 gamlets)
         const winnerBy200 = this.players.find(player => this.gameScores[player] >= 200);

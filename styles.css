@@ -4849,3 +4849,48 @@ h1 {
 .extended-score-content::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #b8941f, #9d7f1a);
 }
+
+/* ═══ Bid summary banner ══════════════════════════════════════════════════
+   Said once, on the felt, the moment the fourth prediction lands: the total
+   and what it means for the hand. The status bar keeps the number afterwards
+   (see #turn-indicator), but the meaning of "over" deserves one plain
+   sentence at the moment it becomes true. */
+.bid-summary {
+    position: absolute;
+    left: 50%;
+    top: calc(50% - 80px);
+    transform: translate(-50%, -50%);
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    text-align: center;
+    max-width: min(88%, 420px);
+    padding: 14px 20px;
+    border-radius: 14px;
+    border: 1px solid #FFD700;
+    background: linear-gradient(180deg, rgba(30, 55, 38, .97), rgba(16, 32, 22, .98));
+    box-shadow: 0 22px 50px -24px rgba(0, 0, 0, .9);
+    animation: bidSummaryIn .34s cubic-bezier(.22, .9, .3, 1);
+    pointer-events: none;
+}
+
+.bid-summary.is-leaving { animation: bidSummaryOut .4s ease forwards; }
+
+.bid-summary-total { font-size: 19px; font-weight: 700; color: #FFD700; }
+.bid-summary-verdict { font-size: 13px; line-height: 1.45; color: rgba(255, 255, 255, .88); }
+.bid-summary.is-over { border-color: #e0907f; }
+.bid-summary.is-over .bid-summary-total { color: #f0a898; }
+
+@keyframes bidSummaryIn {
+    from { opacity: 0; transform: translate(-50%, -58%) scale(.96); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes bidSummaryOut {
+    from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    to   { opacity: 0; transform: translate(-50%, -46%) scale(.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .bid-summary, .bid-summary.is-leaving { animation: none; }
+}
