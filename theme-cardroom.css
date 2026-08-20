@@ -280,6 +280,9 @@ body {
     margin-left: min(6px, calc((min(95vw, 1000px) - 56px - 13 * var(--cw)) / 12)) !important;
 }
 #south-cards.human-cards .card:first-child { margin-left: 0 !important; }
+/* layoutHumanHand() always emits the row break; only the two-row portrait
+   layout wants it. Everywhere else the hand is one nowrap row. */
+#south-cards .hand-break { display: none; }
 /* Lift a card on hover so overlapped indices stay readable. */
 #south-cards.human-cards .card:hover { transform: translateY(-14px) !important; z-index: 40 !important; }
 @media (max-width: 900px) { #south-cards.human-cards { --cw: 58px; } }
@@ -431,14 +434,19 @@ body {
        only that compact row and a thin score strip sit in flow above the board. */
     .game-container h1 { display: none !important; }
 
+    /* The two corner buttons and the status bar share one 40px band. They used
+       to disagree: the buttons were pinned 2px below the safe area while the
+       bar, a flow item, started at the container's 6px padding and stood 38px
+       tall — so the trump pip and the values rode ~7px below the glyphs. Same
+       top edge, same height, one centre line. */
     .game-control-buttons {
         position: absolute !important; z-index: 1300 !important;
-        top: calc(env(safe-area-inset-top) + 2px) !important; right: calc(env(safe-area-inset-right) + 6px) !important;
+        top: calc(env(safe-area-inset-top) + 6px) !important; right: calc(env(safe-area-inset-right) + 6px) !important;
         transform: none !important; margin: 0 !important;
     }
     .quick-actions {
         position: absolute !important; z-index: 1300 !important;
-        top: calc(env(safe-area-inset-top) + 2px) !important; left: calc(env(safe-area-inset-left) + 6px) !important;
+        top: calc(env(safe-area-inset-top) + 6px) !important; left: calc(env(safe-area-inset-left) + 6px) !important;
         transform: none !important; margin: 0 !important;
     }
     .menu-btn, .quick-actions .hint-btn {
@@ -450,8 +458,11 @@ body {
        for the ☰ button that floats over its right end and keeps the values
        optically centred. */
     .game-status {
-        flex: 0 0 auto !important; order: 1 !important; min-height: 38px !important;
-        margin: 0 !important; padding: 3px 50px !important;
+        flex: 0 0 auto !important; order: 1 !important;
+        /* Exactly the button height (see above) — not a min-height, which grew
+           with the trump pip and pushed the values off the buttons' centre. */
+        height: 40px !important; min-height: 40px !important;
+        margin: 0 !important; padding: 0 50px !important;
         flex-wrap: nowrap !important; justify-content: center !important;
         align-items: center !important;
     }
@@ -507,11 +518,15 @@ body {
 
     /* Hand on TWO rows. One row of 13 leaves ~22px of each card showing —
        narrower than a fingertip (~45px), which is why players kept grabbing
-       the wrong card. Seven up, six below: the card width is whatever makes
-       exactly seven fit, so every card is ~50px on a 402px phone and the
-       overlap disappears entirely. */
+       the wrong card. The break is placed by layoutHumanHand() on a suit
+       boundary rather than at a fixed seventh card, so no suit is ever torn
+       across the two rows; --hand-cols is the LONGER of the two rows it
+       produced, and the card width is whatever makes that row fit. A 4-3-3-3
+       hand still comes out 7 + 6 at ~50px on a 402px phone; a 5-3-3-2 splits
+       8 + 5 at ~45px. Seven is the floor, so a hand played down to its last
+       few cards doesn't inflate them. */
     #south-cards.human-cards {
-        --cw: min(56px, calc((100vw - 40px) / 7)) !important;
+        --cw: min(56px, calc((100vw - 40px) / var(--hand-cols, 7))) !important;
         /* The seat is absolutely positioned, so it shrink-to-fits — and a
            wrapping flex child inside one collapses to its smallest line,
            which put 3 cards on 5 rows. An explicit width makes the wrap
@@ -531,6 +546,15 @@ body {
     /* §9's overlap margin has nothing to do here — the cards no longer stack. */
     #south-cards.human-cards .card,
     #south-cards.human-cards .card:first-child { margin-left: 0 !important; }
+    /* The row break: a zero-height full-width flex item. Wrapping each row in
+       its own element would have broken every `parentElement.id` check in the
+       card-gesture code, so the break is a sibling of the cards instead. */
+    #south-cards.human-cards .hand-break {
+        display: block !important;
+        flex: 0 0 100% !important;
+        width: 100% !important; height: 0 !important;
+        margin: 0 !important; padding: 0 !important;
+    }
     #south-cards.human-cards .card { --card-rank-size: 16px !important; }
     #south-cards.human-cards .card .card-rank { font-weight: 800 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 22px !important; }
@@ -588,7 +612,7 @@ body {
     .score-item { font-size: .68em !important; }
     /* Slimmer board + hand so the tray (incl. Bid/Pass) always fits. */
     .game-board { min-height: 96px !important; }
-    #south-cards.human-cards { --cw: min(46px, calc((100vw - 36px) / 7)) !important; gap: 3px 2px !important; }
+    #south-cards.human-cards { --cw: min(46px, calc((100vw - 36px) / var(--hand-cols, 7))) !important; gap: 3px 2px !important; }
     #south-cards.human-cards .card { --card-rank-size: 14px !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 18px !important; }
     /* Tighter bid tray. */
@@ -600,32 +624,68 @@ body {
 
 /* ── 11b. Landscape on a phone ─────────────────────────────────────────────
    styles.css already ships a solid landscape-phone layout (fixed full-viewport
-   board, hidden score box, hand pinned at the bottom). We DON'T re-lay-it-out —
-   we only correct the one thing our own theme broke: the id-scoped hand rules in
-   §9 use --cw (default 70 / 58) which oversized the cards for the short landscape
-   viewport, so they overlapped the seats. Match the legacy landscape card size
-   (~46px) and let the original structure stand; §1–10 keep the Card Room look. */
+   board, hidden score box, hand pinned at the bottom) and we DON'T re-lay-it-out.
+   What we do fix is scale. Both the legacy landscape rules and our own §9
+   override were tuned against a 667px iPhone SE and then applied unchanged to a
+   956px Pro Max: 13 cards at a hard 46px used barely half the width, and the
+   seat plates sat at 0.6em. Card width is now driven by the viewport, so the
+   wide phone gets its 64px and the SE keeps the ~46px it always had; the plates
+   and status pill grow with it. §1–10 keep the Card Room look. */
 @media (orientation: landscape) and (max-height: 500px) {
     /* styles.css scales the control cluster to 0.6, which left the single ☰ a
-       24px tap target. With one button per corner there's room for full size. */
+       24px tap target. With one button per corner there's room for full size.
+       Both corners share the status pill's centre line: the pill hangs from the
+       top edge at 40px tall, so a 36px button 2px down centres with it. */
     .game-control-buttons {
-        transform: none !important; top: 4px !important;
+        transform: none !important; top: 2px !important;
         right: calc(env(safe-area-inset-right) + 6px) !important;
     }
     .quick-actions {
         position: fixed !important; z-index: 1300 !important;
-        transform: none !important; top: 4px !important;
+        transform: none !important; top: 2px !important;
         left: calc(env(safe-area-inset-left) + 6px) !important;
     }
     .menu-btn, .quick-actions .hint-btn {
         width: 38px !important; height: 36px !important; min-height: 36px !important;
         padding: 0 !important; font-size: 18px !important;
     }
+    /* The label is hidden below 760px, but a landscape phone is wider than that
+       and the button is still icon-sized — "Hint" spilled out of its own box. */
+    .btn-label { display: none !important; }
 
-    #south-cards.human-cards { --cw: 46px !important; padding: 2px 6px !important; }
-    #south-cards.human-cards .card { --card-rank-size: 15px !important; }
+    /* styles.css zeroes the container padding for this layout, but a later
+       max-width:768px block puts 10px back — which on a narrow landscape phone
+       pushed the status bar 10px below the corner buttons it is supposed to
+       sit level with. Everything else here is fixed or absolutely positioned,
+       so the padding has nothing left to do. */
+    .game-container { padding: 0 !important; }
+
+    /* The status pill: readable at arm's length, and tall enough to hold the
+       trump pip on the same line as the buttons. 38vw was set when a scaled
+       Turbo control still sat in the left corner; one 38px button does not
+       need 300px of clearance. */
+    .game-status {
+        font-size: .78em !important;
+        height: 40px !important; min-height: 40px !important;
+        padding: 0 12px !important; align-items: center !important;
+        max-width: 72vw !important;
+    }
+
+    /* Seat plates carry the bid and takes — the only score on screen here, the
+       total-score box being hidden in landscape. 0.6em was too small to read
+       without leaning in. */
+    .player-info { font-size: .78em !important; }
+
+    /* 13 cards, an explicit 3px between them, and whatever width is left over —
+       capped at 64px so they never outgrow the short viewport's height. */
+    #south-cards.human-cards {
+        --cw: min(64px, calc((100vw - 72px) / 13)) !important;
+        padding: 2px 6px !important;
+    }
+    #south-cards.human-cards .card { --card-rank-size: 18px !important; margin-left: 3px !important; }
+    #south-cards.human-cards .card:first-child { margin-left: 0 !important; }
     #south-cards.human-cards .card .card-rank { font-weight: 900 !important; }
-    #south-cards.human-cards .card .card-center-suit { font-size: 20px !important; }
+    #south-cards.human-cards .card .card-center-suit { font-size: 26px !important; }
     /* Safe areas (installed app): keep the fixed board, hand and corner chrome
        clear of the side notch and the home indicator. */
     .game-board {
@@ -824,11 +884,13 @@ body.turn-nudge #south-player .player-info {
     #south-cards.human-cards .card.card-refused { animation: none !important; }
 }
 
-/* ── 14. Bids total: "15/13 · Over" ────────────────────────────────────────
+/* ── 14. Bids total: "15 · OVER" ───────────────────────────────────────────
    The status bar used to read "Bid: 15 (Over)" — "Bid" means the trump bid
-   everywhere else in the game, and 15 means nothing without the 13 beside it.
-   The state is a chip so it reads as a condition of the hand, not as part of
-   the number. announceBidTotal() says it once in full when bidding closes. */
+   everywhere else in the game. The state is a chip so it reads as a condition
+   of the hand, not as part of the number. The "/13" that used to follow the
+   total is gone: the denominator never changes and the chip already says which
+   side of it the hand fell on, so the width goes to making the chip legible.
+   announceBidTotal() says it once in full — "16 of 13" — when bidding closes. */
 #turn-indicator { display: inline-flex; align-items: center; gap: 5px; }
 #turn-indicator .bid-total { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--cr-ink) !important; }
 #turn-indicator .bid-state {
@@ -944,11 +1006,13 @@ body.turn-nudge #south-player .player-info {
 
 /* Phones: the chip already says what the number is, so the "Bids:" label is
    dropped — with it the bar needed 443px against 390. font-size:0 on the
-   wrapper hides the bare text node; the value restores its own size. */
+   wrapper hides the bare text node; the value restores its own size. The chip
+   spends the width the dropped "/13" gave back: at 8px it was the smallest
+   thing on the bar and the one carrying the verdict. */
 @media (orientation: portrait) and (max-width: 760px) {
     .current-turn { font-size: 0 !important; }
-    #turn-indicator { font-size: 13px !important; }
-    #turn-indicator .bid-state { font-size: 8px !important; padding: 1px 5px !important; letter-spacing: .06em !important; }
+    #turn-indicator { font-size: 15px !important; }
+    #turn-indicator .bid-state { font-size: 11px !important; padding: 2px 9px !important; letter-spacing: .09em !important; }
     /* The chip is wider than the "(Over)" it replaces, so the rest of the bar
        gives back the difference: it has to hold Round, trump, bids and Gamlet
        inside 390px. */

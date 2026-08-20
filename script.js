@@ -312,7 +312,7 @@ class IsraeliWhist {
         this.shuffleDeck();
         
         // Update botNames for south player before updating displays
-        this.botNames.south = `${this.playerName} (S)`;
+        this.botNames.south = this.playerName;
         
         this.updateDisplay();
         this.updateScoresDisplay();
@@ -3264,20 +3264,77 @@ class IsraeliWhist {
         });
     }
     
+    /**
+     * Lays the human hand out with every suit whole.
+     *
+     * Portrait phones wrap the hand onto two rows. A fixed break at card 7 cut
+     * whichever suit happened to straddle it — a five-card diamond holding split
+     * 4 + 1, with the ace stranded at the far left of the lower row. The break
+     * now lands on a suit boundary: of the three in a four-suit hand, whichever
+     * comes closest to halving it. Cards are then sized to the LONGER row via
+     * --hand-cols, so 5-3-3-2 splits 8 + 5 with slightly narrower cards while
+     * 4-3-3-3 still splits 7 + 6 at full size.
+     *
+     * The break is a zero-height flex item rather than a wrapper per row: every
+     * card gesture in this file identifies a card by
+     * `parentElement.id === 'south-cards'`, and nesting the rows would break all
+     * of them. Landscape hides it (one nowrap row there) and the CSS falls back
+     * to seven columns when --hand-cols is absent.
+     *
+     * @param {HTMLElement} container The #south-cards element.
+     * @param {Array<{suit: string, rank: string}>} cards Suit-sorted hand.
+     */
+    layoutHumanHand(container, cards) {
+        container.innerHTML = '';
+        const split = this.findHandRowSplit(cards);
+        cards.forEach((card, index) => {
+            if (index === split) {
+                const rowBreak = document.createElement('div');
+                rowBreak.className = 'hand-break';
+                rowBreak.setAttribute('aria-hidden', 'true');
+                container.appendChild(rowBreak);
+            }
+            container.appendChild(this.createCardElement(card));
+        });
+        // Never below seven: a hand down to its last few cards would otherwise
+        // inflate them to fill the row.
+        const longestRow = split ? Math.max(split, cards.length - split) : cards.length;
+        container.style.setProperty('--hand-cols', String(Math.max(7, longestRow)));
+    }
+
+    /**
+     * Where to break the hand into two rows — always between two suits.
+     *
+     * @param {Array<{suit: string}>} cards Suit-sorted hand.
+     * @returns {number} Index of the first card of the second row, or 0 for a
+     *   single row (a short hand, or one long suit that cannot be split).
+     */
+    findHandRowSplit(cards) {
+        const ROW_MAX = 7;                       // what fits at full card size
+        if (cards.length <= ROW_MAX) return 0;
+
+        const boundaries = [];
+        for (let i = 1; i < cards.length; i++) {
+            if (cards[i].suit !== cards[i - 1].suit) boundaries.push(i);
+        }
+        if (!boundaries.length) return 0;
+
+        let best = 0;
+        let bestLongest = Infinity;
+        for (const at of boundaries) {
+            const longest = Math.max(at, cards.length - at);
+            // <= so a tie takes the later boundary: the top row stays the longer
+            // of the two, which is how the hand has always sat.
+            if (longest <= bestLongest) { bestLongest = longest; best = at; }
+        }
+        return best;
+    }
+
     updateHumanPlayerCards() {
         // Immediately update the human player's card display
         const southCardsDiv = document.getElementById('south-cards');
         if (southCardsDiv && this.hands.south && Array.isArray(this.hands.south)) {
-            southCardsDiv.innerHTML = '';
-            const sortedCards = this.sortCards(this.hands.south);
-            
-            // Display remaining cards
-            sortedCards.forEach(card => {
-                const cardElement = this.createCardElement(card);
-                southCardsDiv.appendChild(cardElement);
-            });
-            
-
+            this.layoutHumanHand(southCardsDiv, this.sortCards(this.hands.south));
             
             // Re-enable card selection if it's still the human player's turn
             if (this.currentPhase === 'phase3' && this.currentTrick.length < 4) {
@@ -5879,14 +5936,8 @@ class IsraeliWhist {
         // Display human player cards (sorted)
         const southCardsDiv = document.getElementById('south-cards');
         if (southCardsDiv && this.hands.south && Array.isArray(this.hands.south)) {
-            southCardsDiv.innerHTML = '';
-            const sortedCards = this.sortCards(this.hands.south);
             // Ensure we only display up to 13 cards
-            const cardsToDisplay = sortedCards.slice(0, 13);
-            cardsToDisplay.forEach((card, index) => {
-                const cardElement = this.createCardElement(card);
-                southCardsDiv.appendChild(cardElement);
-            });
+            this.layoutHumanHand(southCardsDiv, this.sortCards(this.hands.south).slice(0, 13));
         }
         
         // Display bot player cards (face down)
@@ -6185,12 +6236,13 @@ class IsraeliWhist {
             }, 0);
             
             if (totalBids > 0) {
-                // "15/13 · Over" — the total needs the 13 beside it to mean
-                // anything, and the word needs to read as a state, not as part
-                // of the number.
+                // "15 · OVER". The denominator is a constant and the chip beside
+                // it already says which side of 13 the hand fell on, so the
+                // "/13" only cost width the chip could use to be readable.
+                // announceBidTotal() still says "16 of 13" in full, once.
                 const status = totalBids > 13 ? 'Over' : totalBids < 13 ? 'Under' : 'Exact';
                 turnIndicator.innerHTML =
-                    `<span class="bid-total">${totalBids}/13</span>` +
+                    `<span class="bid-total">${totalBids}</span>` +
                     `<span class="bid-state ${status.toLowerCase()}">${status}</span>`;
                 turnIndicator.style.color = '';
             } else {
@@ -6221,7 +6273,7 @@ class IsraeliWhist {
          updateScoresDisplay() {
         // Ensure botNames.south is up to date with current player name
         if (this.playerName && this.playerName !== 'Player') {
-            this.botNames.south = `${this.playerName} (S)`;
+            this.botNames.south = this.playerName;
         }
         
         // Create an array of players with their scores for sorting
@@ -8861,13 +8913,14 @@ class IsraeliWhist {
      }
 
          updatePlayerNameDisplay() {
-        // Update the botNames mapping for south player with position
-        this.botNames.south = `${this.playerName} (S)`;
+        // Your seat is named, not lettered: the bots show "Botti", not
+        // "Botti (N)", so the human's "(S)" was the odd one out.
+        this.botNames.south = this.playerName;
 
         // Update player name in the game board
         const southPlayerName = document.getElementById('south-player-name');
         if (southPlayerName) {
-            southPlayerName.textContent = `${this.playerName} (S)`;
+            southPlayerName.textContent = this.playerName;
         }
 
         // Update player name in score display
