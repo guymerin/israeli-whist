@@ -54,7 +54,21 @@ RESPECTS YOU
 Whether you grew up playing Israeli Whist (Ashkelon Whist / "Oh Hell"-style bidding) or you're a Spades/Bridge player looking for your next obsession, this is a fast, brainy hand you'll keep coming back to.
 ```
 
-## What's New (version 1.1)
+## What's New (version 1.2)
+```
+Your hand, easier to read and easier to hit.
+
+• Thirteen cards now sit on two rows instead of one overlapping fan — and the rows break between suits, so a suit is never split across both.
+• In landscape, the cards and the seat labels scale to your screen instead of staying phone-sized.
+• The scoreboard is a ranking: sorted with the leader lit, your seat marked, and the swing from the hand just scored (+14 / −30) beside each total.
+• When the last prediction lands, the table says plainly whether the hand is over or under 13 and what that means — and the status bar keeps the count for the rest of the hand.
+• The name card stays above the keyboard instead of behind it, and no longer opens the keyboard before you ask for it.
+• Tidier top bar: the trump, the bid count and the menu finally sit on one line.
+```
+
+<details>
+<summary>What's New (version 1.1)</summary>
+
 ```
 Bigger cards and a whole new way to play them.
 
@@ -66,6 +80,7 @@ Bigger cards and a whole new way to play them.
 • Bidding now happens on the table itself, and a single menu button frees up screen space.
 • The Hint button is back on the table, and the trump winner's takes start at their minimum bid.
 ```
+</details>
 
 <details>
 <summary>What's New (version 1.0)</summary>
@@ -112,7 +127,22 @@ per size if you want to add more.
 | Version | Build | Commit | Exported | Store state |
 |---|---|---|---|---|
 | 1.0 | 2 | `f67444b` | 2026-07-29 | READY_FOR_SALE |
-| 1.1 | 3 | `8406043` | 2026-08-15 | PREPARE_FOR_SUBMISSION |
+| 1.1 | 3 | `8406043` | 2026-08-15 | approved — train closed to new builds |
+| 1.2 | 4 | `1dfa519` | 2026-08-24 | uploaded, awaiting build processing |
+
+**Keep this table honest.** 1.1 was left here as PREPARE_FOR_SUBMISSION long
+after it had actually been approved, and a build 4 was cut against `1.1` on the
+strength of it. App Store Connect refused it, which is the only reason the
+mistake surfaced:
+
+```
+90186  Invalid Pre-Release Train. The train version '1.1' is closed for new build submissions
+90062  CFBundleShortVersionString [1.1] must be higher than the previously approved version [1.1]
+```
+
+An approved version's train is closed forever — the next upload always needs a
+higher `MARKETING_VERSION`, never just a higher build. `--validate-app` catches
+it in about thirty seconds and costs nothing, so run it before every upload.
 
 The version string must match the version page in App Store Connect exactly —
 a `1.1.0` build does not attach to a page created as `1.1`. Check with
@@ -139,6 +169,19 @@ xcodebuild -exportArchive -archivePath build/App.xcarchive \
   -exportOptionsPlist build/ExportOptions.plist \
   -exportPath build/ios-export -allowProvisioningUpdates
 ```
+
+The export step re-signs the archive for distribution, so it needs an **iOS
+Distribution** certificate in the login keychain — the archive itself is happy
+with the Development one. Check before you start:
+
+```bash
+security find-identity -v -p codesigning     # want an "Apple Distribution" line
+```
+
+If it isn't there, export fails with `No signing certificate "iOS Distribution"
+found` / `No Accounts`: automatic signing can only mint one when an Apple
+Developer account is signed in under Xcode → Settings → Accounts. Signing in and
+re-running the same export command is the fix; there is no CLI substitute.
 
 `ExportOptions.plist` uses `method: app-store-connect` and
 `manageAppVersionAndBuildNumber: false` — with it set to `true` (the Xcode

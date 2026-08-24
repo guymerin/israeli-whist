@@ -60,53 +60,72 @@ for (const p of profiles) {
         // Park the virtual cursor off-canvas: it otherwise sits wherever the
         // last click landed and leaves a :hover ring on whatever is under it.
         await page.mouse.move(1, 1);
-        // Transient overlays: the "Fast Mode Enabled!" toast and the floating
-        // "Pass / 3 ♥" bid badges, both of which land over the table.
+        // Transient overlays: the "Fast Mode Enabled!" toast, the floating
+        // "Pass / 3 ♥" bid badges, and the "All bids in — 12 of 13" banner,
+        // all of which land over the table. The banner is on a fixed dwell that
+        // Turbo deliberately does not shorten, so on a fast run it is still up
+        // when the trick shot fires and it covers two seats and half the felt.
         await page.evaluate(() => document
-            .querySelectorAll('.game-notification, .bid-animation')
+            .querySelectorAll('.game-notification, .bid-animation, .bid-summary')
             .forEach(n => n.remove()));
         await sleep(120);
         await page.screenshot({ path: path.join(dir, name) });
         console.log(`  ${p.dir}/${name}  ${p.width * p.scale}x${p.height * p.scale}`);
     };
 
-    await page.goto(served.url, { waitUntil: 'load' });
-    await page.waitForFunction(() => !!window.game, null, { timeout: 15000 });
-    await page.evaluate(() => localStorage.clear());
-    await page.fill('#player-name-input', 'Guy');
-    await page.click('#start-game-btn');
-    await sleep(300);
-    await page.evaluate(() => { const m = document.getElementById('rules-modal'); if (m) m.style.display = 'none'; });
-    // Turbo: cuts the bot delays 10x so a capture run takes seconds, not minutes.
-    await page.evaluate(() => {
-        const cb = document.getElementById('fast-mode-checkbox');
-        if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
-    });
-    await page.click('#deal-btn').catch(() => {});
+    // The takes shot wants the other three predictions already on the felt and
+    // the value the over/under rule forbids greyed out — which only happens
+    // when south predicts LAST. Phase 2 starts at the trump winner and runs in
+    // players order (north, east, south, west), so south is last exactly when
+    // WEST wins the trump. South passes, so the winner is one of the three
+    // bots: about a third of deals. Rather than ship a board of dashes, redeal
+    // until west takes it. 01 is recaptured each attempt, which costs nothing.
+    let t;
+    for (let attempt = 1; ; attempt++) {
+        await page.goto(served.url, { waitUntil: 'load' });
+        await page.waitForFunction(() => !!window.game, null, { timeout: 15000 });
+        await page.evaluate(() => localStorage.clear());
+        await page.fill('#player-name-input', 'Guy');
+        await page.click('#start-game-btn');
+        await sleep(300);
+        await page.evaluate(() => { const m = document.getElementById('rules-modal'); if (m) m.style.display = 'none'; });
+        // Turbo: cuts the bot delays 10x so a capture run takes seconds, not minutes.
+        await page.evaluate(() => {
+            const cb = document.getElementById('fast-mode-checkbox');
+            if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+        });
+        await page.click('#deal-btn').catch(() => {});
 
-    // ── 01 — the trump-bidding tray, on the felt ──────────────────────────
-    let t = Date.now();
-    while (Date.now() - t < 30000) { if (await visible('#bidding-interface')) break; await sleep(120); }
-    await page.evaluate(() => {
-        document.querySelector('.trick-button[data-value="6"]')?.click();
-        document.querySelector('.suit-button[data-value="hearts"]')?.click();
-    });
-    await sleep(400);
-    await shot('01-bidding.png');
+        // ── 01 — the trump-bidding tray, on the felt ──────────────────────
+        t = Date.now();
+        while (Date.now() - t < 30000) { if (await visible('#bidding-interface')) break; await sleep(120); }
+        await page.evaluate(() => {
+            document.querySelector('.trick-button[data-value="6"]')?.click();
+            document.querySelector('.suit-button[data-value="hearts"]')?.click();
+        });
+        await sleep(400);
+        await shot('01-bidding.png');
 
-    // ── 02 — the takes phase, with the four predictions on the felt ───────
-    // Pass rather than bid, so a bot wins the trump and bids takes first: by
-    // the time it's south's turn the prediction list has real numbers in it
-    // instead of four dashes.
-    await page.click('#pass-btn').catch(() => {});
-    t = Date.now();
-    while (Date.now() - t < 40000) {
-        if (await visible('#your-prediction-controls')) break;
-        if (await visible('#pass-btn')) await page.click('#pass-btn').catch(() => {});
-        await sleep(150);
+        // ── 02 — the takes phase, with the four predictions on the felt ───
+        await page.click('#pass-btn').catch(() => {});
+        t = Date.now();
+        while (Date.now() - t < 40000) {
+            if (await visible('#your-prediction-controls')) break;
+            if (await visible('#pass-btn')) await page.click('#pass-btn').catch(() => {});
+            await sleep(150);
+        }
+        const board = await page.evaluate(() => {
+            const g = window.game;
+            return { winner: g.trumpWinner, in: Object.values(g.phase2Bids).filter(v => v != null).length };
+        });
+        if (board.in >= 3 || attempt >= 8) {
+            if (board.in < 3) console.log(`  !! ${p.dir}: settling for ${board.in} of 3 predictions on the felt`);
+            await sleep(400);
+            await shot('02-takes.png');
+            break;
+        }
+        console.log(`  .. ${p.dir}: ${board.winner} won the trump, redealing for a full takes board`);
     }
-    await sleep(400);
-    await shot('02-takes.png');
 
     // Submit south's takes prediction. Retried until the bid actually lands:
     // one pass used to be enough, but if every candidate it tries happens to be
