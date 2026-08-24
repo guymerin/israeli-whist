@@ -128,7 +128,7 @@ per size if you want to add more.
 |---|---|---|---|---|
 | 1.0 | 2 | `f67444b` | 2026-07-29 | READY_FOR_SALE |
 | 1.1 | 3 | `8406043` | 2026-08-15 | approved — train closed to new builds |
-| 1.2 | 4 | `eb06fc2` | 2026-08-24 | uploaded, awaiting build processing |
+| 1.2 | 4 | `eb06fc2` | 2026-08-24 | WAITING_FOR_REVIEW (submitted 2026-08-24) |
 
 **Keep this table honest.** 1.1 was left here as PREPARE_FOR_SUBMISSION long
 after it had actually been approved, and a build 4 was cut against `1.1` on the
