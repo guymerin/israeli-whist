@@ -743,6 +743,147 @@ With ☰ → 🃏 Fanned hand on:
 
 ---
 
+### Task 6: Every breakpoint the fan claims, tested
+
+**Added after Task 4**, which exposed both halves of this gap: the fan's
+magnitudes live only inside the two phone media queries, so (a) the desktop
+menu toggle flips a class and changes nothing visible, and (b) the landscape
+arc has no permanent test — `tests/hand-fan.mjs` runs portrait-only.
+
+**Files:**
+- Modify: `theme-cardroom.css` — the section 12 fan block
+- Modify: `tests/hand-fan.mjs`
+
+**Interfaces:**
+- Consumes: `--fan-t` (Task 1), `body.hand-fanned` (Task 2), `setHandLayout()` (Task 3).
+- Produces: nothing new. This task closes gaps in existing work.
+
+**The design decision:** do NOT add a third media query negating the two phone
+ones. Instead move the desktop magnitudes to the **unscoped** `body.hand-fanned
+#south-cards.human-cards` rule as defaults, and let the existing portrait and
+landscape blocks override them. Every viewport then has magnitudes and no
+range can fall through the gap.
+
+**Desktop geometry, measured:** `--cw: 91px` (so cards are 91×127), dropping to
+58px under 900px wide and 48px under 560px. `margin-left` is a `min()` that goes
+negative when space is tight, so the desktop hand is one overlapping nowrap row
+with a step of roughly 71px. The row is centred inside a board that is 1000px
+(or 95vw) wide **with `overflow: hidden`**, leaving ~28px of slack each side —
+so the rotation swing must stay under that or the end cards get clipped by the
+board, which is the failure this task must not ship.
+
+- [ ] **Step 1: Write the failing test**
+
+Replace the single-viewport geometry check in `tests/hand-fan.mjs` with one
+that runs across all three breakpoints. Add this helper and checks, keeping the
+existing portrait checks intact:
+
+```javascript
+/* ── 7. the fan applies, and stays inside the board, at every breakpoint ── */
+const BREAKPOINTS = [
+  { label: 'desktop',   w: 1280, h: 900 },
+  { label: 'portrait',  w: 420,  h: 912 },
+  { label: 'landscape', w: 844,  h: 390 }
+];
+
+for (const bp of BREAKPOINTS) {
+  await page.setViewportSize({ width: bp.w, height: bp.h });
+  const r = await page.evaluate(() => {
+    document.body.classList.add('hand-fanned');
+    const el = document.getElementById('south-cards');
+    window.game.layoutHumanHand(el, window.HAND_FIXTURE);
+    const cards = [...el.querySelectorAll('.card')];
+    const cs = getComputedStyle(el);
+    const board = document.querySelector('.game-board').getBoundingClientRect();
+    const distinct = new Set(cards.map(c => getComputedStyle(c).transform));
+    let clipped = 0;
+    for (const c of cards) {
+      const b = c.getBoundingClientRect();
+      if (b.left < board.left - 0.5 || b.right > board.right + 0.5) clipped++;
+    }
+    return {
+      n: cards.length,
+      distinct: distinct.size,
+      tilt: cs.getPropertyValue('--fan-tilt').trim(),
+      bow: cs.getPropertyValue('--fan-bow').trim(),
+      clipped
+    };
+  });
+  check(`[${bp.label}] the fan is actually applied`,
+    r.n === 13 && r.distinct > 1 && r.tilt !== '' && r.bow !== '',
+    `${r.distinct} distinct transforms, tilt "${r.tilt}", bow "${r.bow}"`);
+  check(`[${bp.label}] no card is clipped by the board`, r.clipped === 0,
+    `${r.clipped} clipped`);
+}
+await page.setViewportSize({ width: 420, height: 912 });
+```
+
+The `distinct > 1` and non-empty `tilt`/`bow` assertions are the point: they
+fail if a viewport has no magnitudes, which is exactly the bug that shipped
+past Task 4's review.
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `node tests/hand-fan.mjs`
+Expected: FAIL on `[desktop] the fan is actually applied` — `1 distinct
+transforms, tilt "", bow ""`, because no rule defines the magnitudes at 1280×900.
+
+- [ ] **Step 3: Move the magnitudes so desktop is the default**
+
+In `theme-cardroom.css` section 12, add the desktop defaults to the existing
+unscoped container rule (create the rule if the section has none), so it reads:
+
+```css
+/* Desktop and tablets: one overlapping nowrap row of big cards. These are the
+   DEFAULTS — the phone blocks below override them. Declaring them unscoped is
+   what guarantees no viewport is left without magnitudes, which is how the
+   menu toggle came to do nothing on desktop.
+
+   8deg is bounded by the board, not by taste: the row is centred in a
+   1000px/95vw board with overflow:hidden and about 28px of slack each side,
+   and the swing at this card height eats roughly 19px of it. */
+body.hand-fanned #south-cards.human-cards {
+    --fan-tilt: 8deg;
+    --fan-bow: -14px;
+}
+```
+
+Leave both phone media blocks exactly as they are — they already override
+these.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `node tests/hand-fan.mjs`
+Expected: all three breakpoints report the fan applied and nothing clipped.
+
+If `[desktop] no card is clipped` fails, reduce `--fan-tilt` a degree at a time
+until it passes — do **not** loosen the assertion. Report the value you landed on.
+
+- [ ] **Step 5: Run the whole suite**
+
+Run: `npm test`
+Expected: exit 0.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add theme-cardroom.css tests/hand-fan.mjs
+git commit -m "fix(hand): give every breakpoint fan magnitudes, and test them
+
+The magnitudes lived only inside the two phone media queries, so the menu
+toggle flipped a class and changed nothing on desktop, and the landscape arc
+had no permanent test. Desktop values are now the unscoped default with the
+phone blocks overriding, so no viewport can fall through the gap.
+
+The test now asserts, at all three breakpoints, that the transforms actually
+differ per card and that nothing is clipped by the board -- the check that
+would have caught the fanned card-selection pass running unfanned.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage**
