@@ -206,7 +206,66 @@ for (const bp of BREAKPOINTS) {
     `${r.distinct} distinct transforms, tilt "${r.tilt}", bow "${r.bow}"`);
   check(`[${bp.label}] no card is clipped by the board`, r.clipped === 0,
     `${r.clipped} clipped`);
+
+  /* The hand must arc the way it is DRAWN, not the way it is stored. Every
+     breakpoint but portrait hides the row break, so the two logical rows are
+     drawn as one row — and that row has to be one sweep. Two sweeps inside a
+     single drawn row is a W, not a hand of cards, and the two inner ends
+     collide where they meet. */
+  const shape = await page.evaluate(() => {
+    const el = document.getElementById('south-cards');
+    const brk = el.querySelector('.hand-break');
+    const drawnRows = brk && getComputedStyle(brk).display !== 'none' ? 2 : 1;
+    const angles = [...el.querySelectorAll('.card')].map(c => {
+      const m = new DOMMatrixReadOnly(getComputedStyle(c).transform);
+      return Math.atan2(m.b, m.a) * 180 / Math.PI;
+    });
+    let restarts = 0;
+    for (let i = 1; i < angles.length; i++) if (angles[i] < angles[i - 1] - 0.01) restarts++;
+    return {
+      drawnRows, restarts,
+      first: angles[0], last: angles[angles.length - 1],
+      tilt: parseFloat(getComputedStyle(el).getPropertyValue('--fan-tilt'))
+    };
+  });
+  check(`[${bp.label}] one sweep per DRAWN row`,
+    shape.restarts === shape.drawnRows - 1,
+    `${shape.drawnRows} drawn row(s), ${shape.restarts + 1} sweep(s)`);
+  check(`[${bp.label}] the sweep reaches the full tilt at both ends`,
+    Math.abs(shape.first + shape.tilt) < 0.2 && Math.abs(shape.last - shape.tilt) < 0.2,
+    `${shape.first.toFixed(2)}deg … ${shape.last.toFixed(2)}deg of ${shape.tilt}deg`);
 }
+
+/* ── 8. the notch: a landscape phone's hand fits BETWEEN the safe areas ──
+   The board is inset by the safe areas in landscape, but the card width was
+   budgeted from 100vw, so on a notched phone the row was wider than the board
+   it sits in — and the board clips, so the end cards were cut in half. The
+   insets come through --sa-l / --sa-r so a test can stand in for a notch that
+   Chromium has no way to emulate. */
+await page.setViewportSize({ width: 912, height: 420 });
+for (const fanned of [false, true]) {
+  const r = await page.evaluate((fan) => {
+    document.body.classList.toggle('hand-fanned', fan);
+    const root = document.documentElement;
+    root.style.setProperty('--sa-l', '62px');
+    root.style.setProperty('--sa-r', '62px');
+    const el = document.getElementById('south-cards');
+    window.game.layoutHumanHand(el, window.HAND_FIXTURE);
+    const board = document.querySelector('.game-board').getBoundingClientRect();
+    let clipped = 0, worst = 0;
+    for (const c of el.querySelectorAll('.card')) {
+      const b = c.getBoundingClientRect();
+      const over = Math.max(board.left - b.left, b.right - board.right);
+      if (over > 0.5) { clipped++; worst = Math.max(worst, over); }
+    }
+    root.style.removeProperty('--sa-l');
+    root.style.removeProperty('--sa-r');
+    return { clipped, worst, board: board.width };
+  }, fanned);
+  check(`[notched landscape${fanned ? ', fanned' : ''}] every card clears the notch`,
+    r.clipped === 0, `${r.clipped} cut, worst ${r.worst.toFixed(1)}px over a ${r.board.toFixed(0)}px board`);
+}
+
 await page.setViewportSize({ width: 420, height: 912 });
 
 console.log('\n=== RESULT ===');

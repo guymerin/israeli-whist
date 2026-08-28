@@ -24,6 +24,13 @@
     --cr-black:   #20242a;
     --cr-serif: "Fraunces", "Iowan Old Style", Palatino, Georgia, serif;
     --cr-sans:  "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+    /* The side safe areas, named. Layout that has to fit BETWEEN the notch and
+       the home indicator reads these instead of env() directly, so a test can
+       stand in for a notched phone -- Chromium has no way to emulate one, and
+       the landscape hand is sized against exactly this budget. */
+    --sa-l: env(safe-area-inset-left, 0px);
+    --sa-r: env(safe-area-inset-right, 0px);
 }
 
 /* ── 1. Ground + type ──────────────────────────────────────────────────── */
@@ -679,7 +686,11 @@ body {
     /* 13 cards, an explicit 3px between them, and whatever width is left over —
        capped at 64px so they never outgrow the short viewport's height. */
     #south-cards.human-cards {
-        --cw: min(64px, calc((100vw - 72px) / 13)) !important;
+        /* The board is inset by the side safe areas above, so the row's budget
+           is the space BETWEEN them -- not 100vw. Budgeting from 100vw made
+           the row wider than the board that clips it, which cut ~40px off the
+           end card on a notched phone held sideways. */
+        --cw: min(64px, calc((100vw - var(--sa-l) - var(--sa-r) - 72px) / 13)) !important;
         padding: 2px 6px !important;
     }
     #south-cards.human-cards .card { --card-rank-size: 22px !important; margin-left: 3px !important; }
@@ -689,8 +700,8 @@ body {
     /* Safe areas (installed app): keep the fixed board, hand and corner chrome
        clear of the side notch and the home indicator. */
     .game-board {
-        left: env(safe-area-inset-left) !important;
-        width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+        left: var(--sa-l) !important;
+        width: calc(100vw - var(--sa-l) - var(--sa-r)) !important;
     }
     .south-player { bottom: env(safe-area-inset-bottom) !important; }
     .fast-mode-container { left: env(safe-area-inset-left) !important; }
@@ -1101,8 +1112,12 @@ body.hand-fanned #south-cards.human-cards {
     }
 }
 
+/* --fan-t-all, not --fan-t: the hand is drawn as ONE row everywhere except
+   portrait phones (the break is display:none), so one sweep is what a drawn
+   row gets. The portrait block below, which is the only place the break is
+   drawn, switches back to the per-row number. */
 body.hand-fanned #south-cards.human-cards .card {
-    --t: var(--fan-t, 0);
+    --t: var(--fan-t-all, 0);
     transform:
         translateY(calc((1 - var(--t) * var(--t)) * var(--fan-bow, 0px)))
         rotate(calc(var(--t) * var(--fan-tilt, 0deg))) !important;
@@ -1131,6 +1146,11 @@ body.hand-fanned #south-cards.human-cards .card.card-armed {
         --fan-bow: -9px;
         --cw: min(52px, calc((100vw - 52px) / var(--hand-cols, 7))) !important;
     }
+    /* The only breakpoint that draws the row break, so the only one that wants
+       a sweep per row rather than one across the hand. */
+    body.hand-fanned #south-cards.human-cards .card {
+        --t: var(--fan-t, 0);
+    }
 }
 
 /* Landscape: one row of 13 with width to spare, so it can take the full
@@ -1139,6 +1159,8 @@ body.hand-fanned #south-cards.human-cards .card.card-armed {
     body.hand-fanned #south-cards.human-cards {
         --fan-tilt: 11deg;
         --fan-bow: -16px;
-        --cw: min(60px, calc((100vw - 96px) / 13)) !important;
+        /* Same notch budget as the unfanned row above, minus the wider margin
+           the rotation swing needs. */
+        --cw: min(60px, calc((100vw - var(--sa-l) - var(--sa-r) - 96px) / 13)) !important;
     }
 }

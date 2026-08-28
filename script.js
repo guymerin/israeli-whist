@@ -3342,6 +3342,18 @@ class IsraeliWhist {
                 el.style.setProperty('--fan-t', t.toFixed(4));
             }
         }
+        // The same place, measured across the whole hand instead of its row.
+        // The split is a LOGICAL one: only portrait phones draw the break, so
+        // everywhere else the two rows are drawn as a single row, and a single
+        // drawn row has to be a single sweep -- two sweeps in one row is a W
+        // whose inner ends collide. Which of the two numbers to arc by is a
+        // question about the breakpoint, so CSS answers it (section 12).
+        const all = (total - 1) / 2;
+        for (let i = 0; i < total; i++) {
+            const el = cards[i];
+            if (!el) continue;
+            el.style.setProperty('--fan-t-all', (all > 0 ? (i - all) / all : 0).toFixed(4));
+        }
     }
 
     /**
