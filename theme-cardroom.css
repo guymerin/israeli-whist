@@ -1068,12 +1068,11 @@ body.turn-nudge #south-player .player-info {
    menu toggle came to do nothing on desktop.
 
    --fan-bow is left at the same -14px used before the --cw narrowing below:
-   as a fraction of card height (--cw * 1.4) it was already ~11% at the old
-   91px width, and ~15% at the new 68px width — both sit inside the ~11-19%
-   band the portrait/landscape values below imply, so it doesn't need to move
-   just because the tilt did. */
+   as a fraction of card height (--cw * 1.4) it's ~11.9% at the 84px width
+   below, matching portrait's ~12.4% (-9px / (52px * 1.4)) closely enough that
+   it doesn't need to move just because the tilt did. */
 body.hand-fanned #south-cards.human-cards {
-    --fan-tilt: 6deg;
+    --fan-tilt: 5deg;
     --fan-bow: -14px;
 }
 
@@ -1082,18 +1081,23 @@ body.hand-fanned #south-cards.human-cards {
    is what the phone blocks do too (56->52px, 64->60px) — it's the same lever
    pointed at the same problem: the rotation swing comes out of the card's own
    height, so a slightly narrower card buys the swing room the tilt spends.
-   68px is the largest width that keeps zero clipping at every desktop
-   viewport (measured 901px through 1920px, both the 95vw-scaled board below
-   ~1053px and the fixed-1000px board above it) — 70px still clips by ~4px at
-   the narrow end of that range, and going narrower still (<=67px) flips the
-   card row's margin-left onto a different branch of its min() that stops
-   scaling with the viewport, which would make the fan's reach inconsistent
-   across desktop widths rather than just smaller. 6deg is, in turn, the
-   largest whole degree 68px buys with zero clipping — 7deg still clips by
-   ~2px even at 68px. */
+
+   84px (an 8% cut from the unfanned 91px) is the width picked to reach 5deg
+   with zero measured board clipping across the whole desktop range (901px
+   through 1920px+, both the 95vw-scaled board below ~1053px and the
+   fixed-1000px board above it) while costing the player as little of their
+   own card as the tilt gain is worth: a narrower 68px card would reach 6deg,
+   but only by shrinking the card a full 25% instead of 8% for one more
+   degree, and it also crosses the row's margin-left: min(6px, calc(...))
+   formula onto its other branch at wide-enough windows (~992px and up for
+   68px), which flips the row from overlapping to non-overlapping and changes
+   the hand's visual character — 84px stays on the same (tight/overlapping)
+   branch as the unfanned 91px at every desktop width, so only the tilt and
+   card size change, nothing else does. 6deg still clips at 84px, so 5deg is
+   the ceiling this width buys. */
 @media (min-width: 901px) {
     body.hand-fanned #south-cards.human-cards {
-        --cw: 68px !important;
+        --cw: 84px !important;
     }
 }
 
