@@ -89,6 +89,45 @@ check('a 5-card hand is a single sweep',
 const one = await fanValues(page, 1);
 check('a lone card is centred, not tilted', one.length === 1 && near(one[0], 0), String(one[0]));
 
+/* ── 4. with the fan on, nothing overlaps and nothing escapes ────────── */
+
+/** Turns the fan on, lays out 13 cards, and measures what the user can hit. */
+async function fanGeometry(page) {
+  return page.evaluate(() => {
+    document.body.classList.add('hand-fanned');
+    const el = document.getElementById('south-cards');
+    window.game.layoutHumanHand(el, window.HAND_FIXTURE);
+    const cards = [...el.querySelectorAll('.card')];
+    const host = el.getBoundingClientRect();
+    let escaped = 0, mishit = 0, tilted = 0;
+    for (const c of cards) {
+      const b = c.getBoundingClientRect();
+      if (b.left < host.left - 0.5 || b.right > host.right + 0.5) escaped++;
+      // The point a thumb aims at must resolve to this card, not a neighbour.
+      const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      if (!hit || hit.closest('.card') !== c) mishit++;
+      if (getComputedStyle(c).transform !== 'none') tilted++;
+    }
+    return { n: cards.length, escaped, mishit, tilted };
+  });
+}
+
+const geo = await fanGeometry(page);
+check('the fan actually applies a transform', geo.tilted === geo.n, `${geo.tilted}/${geo.n} transformed`);
+check('no card escapes the hand box', geo.escaped === 0, `${geo.escaped} escaped`);
+check('every card centre hits that card', geo.mishit === 0, `${geo.mishit} mis-hits`);
+
+/* ── 5. the lift still works when fanned ─────────────────────────────── */
+const liftWorks = await page.evaluate(() => {
+  const el = document.getElementById('south-cards');
+  const card = el.querySelector('.card');
+  card.classList.add('card-armed');
+  const m = new DOMMatrixReadOnly(getComputedStyle(card).transform);
+  card.classList.remove('card-armed');
+  return m.m42;   // translateY in px; the armed lift is -24
+});
+check('an armed card still rises', liftWorks < -20, `translateY ${liftWorks.toFixed(1)}px`);
+
 console.log('\n=== RESULT ===');
 const failed = results.filter(r => !r.pass);
 if (errors.length) console.log('page errors:', errors);

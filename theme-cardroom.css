@@ -1041,3 +1041,77 @@ body.turn-nudge #south-player .player-info {
     .bid-summary-total { font-size: 16px !important; }
     .bid-summary-verdict { font-size: 11.5px !important; }
 }
+
+/* ── 12. Fanned hand (opt-in) ───────────────────────────────────────────────
+   A second hand layout that reads as a hand being held: the same rows the
+   unfanned layout produces, bowed on an arc. Nothing overlaps — a single
+   13-card portrait arc leaves a 22px sliver per card, which is the mis-tap
+   problem the two-row split was built to fix.
+
+   The whole arc is driven by --fan-t, the card's place in its own row that
+   layoutHumanHand() stamps (-1 … +1). `1 - t*t` is the bow: it peaks at the
+   row's centre and falls to zero at both ends. Two knobs — --fan-tilt and
+   --fan-bow — are all that separates portrait from landscape.
+
+   Why !important, and why the states below are re-declared: the landscape
+   block in styles.css sets `transform: none !important` on .human-cards
+   .card, so the fan rule has to shout to exist at all. Shouting makes it
+   outrank .card-armed's lift (which carries no !important), so that lift is
+   restored here explicitly — otherwise switching the fan on silently breaks
+   two-stage card selection. The drag path needs no help: it writes its
+   transform inline with !important, which outranks any stylesheet rule, and
+   removeProperty() falls back here. */
+body.hand-fanned #south-cards.human-cards .card {
+    --t: var(--fan-t, 0);
+    transform:
+        translateY(calc((1 - var(--t) * var(--t)) * var(--fan-bow, 0px)))
+        rotate(calc(var(--t) * var(--fan-tilt, 0deg))) !important;
+    transform-origin: 50% 160% !important;
+}
+
+/* Pulling a card out of a real hand straightens it, so the lifted states
+   carry no rotation. These re-declare what the fan rule would otherwise
+   outrank.
+
+   transition: none is not decorative either: .human-cards .card (styles.css)
+   carries an un-scoped `transition: transform .3s ease`. Once anything has
+   forced a style/layout pass on a fanned card (any getBoundingClientRect,
+   any reflow-triggering read — routine elsewhere in script.js), the next
+   transform change on that card becomes a genuine CSS transition, and
+   Chromium resolves getComputedStyle() to the transition's start value, not
+   its end value, for a synchronous read on the very next tick. Arming a
+   card is exactly that: a synchronous class add. Left alone, the two-stage
+   lift would intermittently read (and occasionally render) as the un-lifted
+   angle for a frame — worse, unpredictably, than just snapping. */
+body.hand-fanned #south-cards.human-cards .card.card-armed {
+    transform: translateY(-24px) scale(1.16) !important;
+    transition: none !important;
+}
+@media (hover: hover) and (pointer: fine) {
+    body.hand-fanned #south-cards.human-cards .card:hover {
+        transform: translateY(-15px) scale(1.06) !important;
+        transition: none !important;
+    }
+}
+
+/* Portrait phones: two rows, so each row only needs a gentle bow. The card
+   width cap drops 56 -> 52px because rotating about a pivot below the card
+   swings the end cards sideways, and that swing has to come out of the
+   row's width or the outermost card hangs off the screen. */
+@media (orientation: portrait) and (max-width: 760px) {
+    body.hand-fanned #south-cards.human-cards {
+        --fan-tilt: 6deg;
+        --fan-bow: -9px;
+        --cw: min(52px, calc((100vw - 52px) / var(--hand-cols, 7))) !important;
+    }
+}
+
+/* Landscape: one row of 13 with width to spare, so it can take the full
+   sweep and still leave every card wider than a fingertip. */
+@media (orientation: landscape) and (max-height: 500px) {
+    body.hand-fanned #south-cards.human-cards {
+        --fan-tilt: 11deg;
+        --fan-bow: -16px;
+        --cw: min(60px, calc((100vw - 96px) / 13)) !important;
+    }
+}
