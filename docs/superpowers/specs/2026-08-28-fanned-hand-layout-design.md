@@ -118,18 +118,33 @@ Safari.
 The swing cost is paid by lowering the card-width cap in the fanned portrait
 block only, so the unfanned layout is bit-for-bit unchanged.
 
-### Interaction states compose for free
+### Interaction states must be restored explicitly
 
-The existing rules turn out to do the right thing without modification:
+An earlier draft of this spec claimed these compose for free. Tested in a
+browser, they do not, and the reason is worth writing down.
 
-- `.human-cards .card.card-armed` sets
-  `transform: translateY(-24px) scale(1.16)` with no rotation
-  (`styles.css:1254`). A lifted card therefore **straightens** — exactly what
-  pulling a card out of a real hand looks like. No override needed.
-- The drag path's inline transform straightens the card while it's in flight,
-  and restores the fan on release.
-- `.card:hover` is scoped to `@media (hover: hover)`, so desktop hover
-  straightens too, consistently.
+The landscape block at `styles.css:3350` sets `transform: none !important` on
+`.human-cards .card`. To survive that, the fan rule needs `!important` *and*
+an ID in its selector — which then also makes it outrank
+`.human-cards .card.card-armed` (`styles.css:1254`), whose lift carries no
+`!important`. Left alone, turning the fan on would silently kill the
+two-stage card lift: the armed card would tilt but never rise.
+
+So each interaction state is restored deliberately, at higher specificity:
+
+- **Armed** — re-declare `translateY(-24px) scale(1.16)` with `!important`
+  inside the fanned scope. It carries no rotation, so a lifted card
+  straightens, which is what pulling a card out of a real hand looks like.
+- **Hover** (desktop only, `@media (hover: hover)`) — same treatment, so
+  hover and press behave alike.
+- **Drag** — needs nothing. The drag path writes its transform inline *with*
+  `!important` (`script.js:2240`), and an important inline style outranks any
+  important stylesheet rule; `removeProperty('transform')` then drops back to
+  the fan rule. Verified, not assumed.
+
+The lesson generalises: this stylesheet uses `!important` widely, so any new
+rule that sets `transform` on a hand card has to be checked against the
+`.card-armed`, `:hover`, and landscape rules rather than reasoned about.
 
 Follow-suit dimming (`.card-illegal`) touches opacity only, so it is unaffected.
 
