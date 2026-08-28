@@ -3300,6 +3300,40 @@ class IsraeliWhist {
         // inflate them to fill the row.
         const longestRow = split ? Math.max(split, cards.length - split) : cards.length;
         container.style.setProperty('--hand-cols', String(Math.max(7, longestRow)));
+        this.stampFanPositions(container, split, cards.length);
+    }
+
+    /**
+     * Stamps each card with its place in its OWN row as --fan-t, a number
+     * running -1 at the left end, through 0 at the centre, to +1 at the right.
+     *
+     * That single value is the whole JS side of the fanned layout: the CSS
+     * derives both the tilt and the 1 - t² arc lift from it. Nothing here
+     * knows about degrees, pixels, or the viewport, which is precisely why
+     * the fan needs no resize or orientation listener — the magnitudes live
+     * in CSS, where the breakpoints already are.
+     *
+     * Stamped unconditionally, whether or not the fan is switched on: it is
+     * two multiplications per card, and it means toggling the setting is a
+     * class flip with no re-layout.
+     *
+     * @param {HTMLElement} container The #south-cards element.
+     * @param {number} split Index of the first card of row 2, or 0 for one row.
+     * @param {number} total Number of cards in the hand.
+     */
+    stampFanPositions(container, split, total) {
+        const cards = container.querySelectorAll('.card');
+        const rows = split ? [[0, split], [split, total]] : [[0, total]];
+        for (const [from, to] of rows) {
+            const mid = (to - from - 1) / 2;
+            for (let i = from; i < to; i++) {
+                const el = cards[i];
+                if (!el) continue;
+                // A one-card row has no spread to divide by; it sits upright.
+                const t = mid > 0 ? (i - from - mid) / mid : 0;
+                el.style.setProperty('--fan-t', t.toFixed(4));
+            }
+        }
     }
 
     /**
