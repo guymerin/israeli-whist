@@ -171,6 +171,44 @@ const survives = await page.evaluate(() => {
 });
 check('clearing the session keeps the layout choice', survives);
 
+/* ── 7. the fan applies, and stays inside the board, at every breakpoint ── */
+const BREAKPOINTS = [
+  { label: 'desktop',   w: 1280, h: 900 },
+  { label: 'portrait',  w: 420,  h: 912 },
+  { label: 'landscape', w: 844,  h: 390 }
+];
+
+for (const bp of BREAKPOINTS) {
+  await page.setViewportSize({ width: bp.w, height: bp.h });
+  const r = await page.evaluate(() => {
+    document.body.classList.add('hand-fanned');
+    const el = document.getElementById('south-cards');
+    window.game.layoutHumanHand(el, window.HAND_FIXTURE);
+    const cards = [...el.querySelectorAll('.card')];
+    const cs = getComputedStyle(el);
+    const board = document.querySelector('.game-board').getBoundingClientRect();
+    const distinct = new Set(cards.map(c => getComputedStyle(c).transform));
+    let clipped = 0;
+    for (const c of cards) {
+      const b = c.getBoundingClientRect();
+      if (b.left < board.left - 0.5 || b.right > board.right + 0.5) clipped++;
+    }
+    return {
+      n: cards.length,
+      distinct: distinct.size,
+      tilt: cs.getPropertyValue('--fan-tilt').trim(),
+      bow: cs.getPropertyValue('--fan-bow').trim(),
+      clipped
+    };
+  });
+  check(`[${bp.label}] the fan is actually applied`,
+    r.n === 13 && r.distinct > 1 && r.tilt !== '' && r.bow !== '',
+    `${r.distinct} distinct transforms, tilt "${r.tilt}", bow "${r.bow}"`);
+  check(`[${bp.label}] no card is clipped by the board`, r.clipped === 0,
+    `${r.clipped} clipped`);
+}
+await page.setViewportSize({ width: 420, height: 912 });
+
 console.log('\n=== RESULT ===');
 const failed = results.filter(r => !r.pass);
 if (errors.length) console.log('page errors:', errors);

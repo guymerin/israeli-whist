@@ -1061,6 +1061,21 @@ body.turn-nudge #south-player .player-info {
    two-stage card selection. The drag path needs no help: it writes its
    transform inline with !important, which outranks any stylesheet rule, and
    removeProperty() falls back here. */
+
+/* Desktop and tablets: one overlapping nowrap row of big cards. These are the
+   DEFAULTS — the phone blocks below override them. Declaring them unscoped is
+   what guarantees no viewport is left without magnitudes, which is how the
+   menu toggle came to do nothing on desktop.
+
+   4deg is bounded by the board, not by taste: the row is centred in a
+   1000px/95vw board with overflow:hidden and about 28px of slack each side,
+   and the swing at this card height eats that slack faster than the bow
+   does — 5deg already clips the end cards, so 4deg is the ceiling. */
+body.hand-fanned #south-cards.human-cards {
+    --fan-tilt: 4deg;
+    --fan-bow: -14px;
+}
+
 body.hand-fanned #south-cards.human-cards .card {
     --t: var(--fan-t, 0);
     transform:
