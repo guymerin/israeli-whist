@@ -94,8 +94,11 @@ check('a lone card is centred, not tilted', one.length === 1 && near(one[0], 0),
 /** Turns the fan on, lays out 13 cards, and measures what the user can hit. */
 async function fanGeometry(page) {
   return page.evaluate(() => {
-    document.body.classList.add('hand-fanned');
     const el = document.getElementById('south-cards');
+    document.body.classList.remove('hand-fanned');
+    window.game.layoutHumanHand(el, window.HAND_FIXTURE);
+    const plainPeak = Math.min(...[...el.querySelectorAll('.card')].map(c => c.getBoundingClientRect().top));
+    document.body.classList.add('hand-fanned');
     window.game.layoutHumanHand(el, window.HAND_FIXTURE);
     const cards = [...el.querySelectorAll('.card')];
     const host = el.getBoundingClientRect();
@@ -181,8 +184,11 @@ const BREAKPOINTS = [
 for (const bp of BREAKPOINTS) {
   await page.setViewportSize({ width: bp.w, height: bp.h });
   const r = await page.evaluate(() => {
-    document.body.classList.add('hand-fanned');
     const el = document.getElementById('south-cards');
+    document.body.classList.remove('hand-fanned');
+    window.game.layoutHumanHand(el, window.HAND_FIXTURE);
+    const plainPeak = Math.min(...[...el.querySelectorAll('.card')].map(c => c.getBoundingClientRect().top));
+    document.body.classList.add('hand-fanned');
     window.game.layoutHumanHand(el, window.HAND_FIXTURE);
     const cards = [...el.querySelectorAll('.card')];
     const cs = getComputedStyle(el);
@@ -264,6 +270,106 @@ for (const fanned of [false, true]) {
   }, fanned);
   check(`[notched landscape${fanned ? ', fanned' : ''}] every card clears the notch`,
     r.clipped === 0, `${r.clipped} cut, worst ${r.worst.toFixed(1)}px over a ${r.board.toFixed(0)}px board`);
+}
+
+
+/* ── 9. landscape is a HELD fan, not a curved row ───────────────────────
+   One row of 13 with room to spare is the only place a real fan fits, so
+   landscape overlaps its cards, sweeps them 36deg end to end and pivots them
+   about a point far below the felt. The three things that can go wrong with a
+   fan that size, at every landscape phone: it runs off the board's sides, it
+   drops its end cards off the bottom edge, or its peak rises into the trick
+   square, which paints above the seats and would swallow the taps. */
+const LANDSCAPES = [
+  { label: 'Air',      w: 912, h: 420, l: 62, r: 62, b: 21, deep: true },
+  { label: '16',       w: 874, h: 402, l: 59, r: 59, b: 21, deep: true },
+  { label: '14',       w: 844, h: 390, l: 47, r: 47, b: 21, deep: false },
+  { label: 'SE-ish',   w: 780, h: 360, l: 47, r: 34, b: 21, deep: false },
+  { label: 'no-notch', w: 667, h: 375, l: 0, r: 0, b: 0, deep: false }
+];
+
+/* Every measurement below is taken right after a class flip or a viewport
+   change, and the seats and cards both carry transitions -- a synchronous read
+   would catch the transition's START value and quietly measure the old layout.
+   (Section 5 hits the same trap.) */
+await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
+
+for (const lp of LANDSCAPES) {
+  await page.setViewportSize({ width: lp.w, height: lp.h });
+  const r = await page.evaluate((sa) => {
+    const root = document.documentElement;
+    root.style.setProperty('--sa-l', sa.l + 'px');
+    root.style.setProperty('--sa-r', sa.r + 'px');
+    root.style.setProperty('--sa-b', sa.b + 'px');
+    const el = document.getElementById('south-cards');
+    document.body.classList.remove('hand-fanned');
+    window.game.layoutHumanHand(el, window.HAND_FIXTURE);
+    const plainPeak = Math.min(...[...el.querySelectorAll('.card')].map(c => c.getBoundingClientRect().top));
+    document.body.classList.add('hand-fanned');
+    window.game.layoutHumanHand(el, window.HAND_FIXTURE);
+    const cards = [...el.querySelectorAll('.card')];
+    const rects = cards.map(c => c.getBoundingClientRect());
+    const board = document.querySelector('.game-board').getBoundingClientRect();
+    const safeBottom = innerHeight - sa.b;
+    let clipped = 0, mishit = 0, centreBelow = 0;
+    rects.forEach((b, i) => {
+      if (b.left < board.left - 0.5 || b.right > board.right + 0.5) clipped++;
+      const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+      if (cy > safeBottom) centreBelow++;
+      const hit = document.elementFromPoint(cx, cy);
+      if (!hit || hit.closest('.card') !== cards[i]) mishit++;
+    });
+    let pitch = Infinity;
+    for (let i = 0; i < rects.length - 1; i++) pitch = Math.min(pitch, rects[i + 1].left - rects[i].left);
+    // A fan this tall is one lift away from covering the two things above it:
+    // the player's own bid/takes chip, and the trick square.
+    const plate = document.querySelector('.south-player .player-info').getBoundingClientRect();
+    const trick = document.querySelector('.trick-area').getBoundingClientRect();
+    const peak = Math.min(...rects.map(r => r.top));
+    // The chip sits directly on top of the row, so its bottom edge and the
+    // fan's peak touch by construction; what must not happen is the fan
+    // rising INTO it.
+    const coversPlate = peak < plate.bottom - 4;
+    const coversTrick = peak < trick.bottom - 0.5;
+    root.style.removeProperty('--sa-l');
+    root.style.removeProperty('--sa-r');
+    root.style.removeProperty('--sa-b');
+    // offsetWidth, not the rect: a rotated card's bounding box is wider than
+    // the card, which would read as overlap on a row that has none.
+    return { clipped, mishit, centreBelow, pitch, width: cards[0].offsetWidth, n: cards.length,
+             coversPlate, coversTrick, peak: +peak.toFixed(0), plainPeak: +plainPeak.toFixed(0),
+             bow: parseFloat(getComputedStyle(el).getPropertyValue('--fan-bow')) || 0,
+             plateBottom: +plate.bottom.toFixed(0), trickBottom: +trick.bottom.toFixed(0) };
+  }, lp);
+
+  if (lp.deep) {
+    check(`[landscape ${lp.label}] the cards overlap like a held fan`,
+      r.pitch < r.width - 4, `${r.pitch.toFixed(1)}px of a ${r.width.toFixed(1)}px card showing`);
+  } else {
+    // Too short for the held fan: it keeps the gentle arc, and the cards it
+    // leaves apart must stay wide enough to hit.
+    check(`[landscape ${lp.label}] the short-screen arc keeps full-width cards`,
+      r.pitch >= r.width - 4 && r.width >= 40,
+      `${r.pitch.toFixed(1)}px pitch, ${r.width.toFixed(1)}px cards`);
+  }
+  check(`[landscape ${lp.label}] no card is clipped by the board`, r.clipped === 0, `${r.clipped} clipped`);
+  check(`[landscape ${lp.label}] no card's centre falls off the bottom`, r.centreBelow === 0,
+    `${r.centreBelow} below the safe area`);
+  check(`[landscape ${lp.label}] every card centre still hits that card`, r.mishit === 0,
+    `${r.mishit}/${r.n} mis-hits`);
+  check(`[landscape ${lp.label}] the fan clears your own bid/takes chip`, !r.coversPlate,
+    `peak ${r.peak} vs chip bottom ${r.plateBottom}`);
+  if (lp.deep) {
+    check(`[landscape ${lp.label}] the fan clears the trick square`, !r.coversTrick,
+      `peak ${r.peak} vs trick bottom ${r.trickBottom}`);
+  } else {
+    // A short screen's plain row already sits within a few px of the trick
+    // square, so the guard here is that the arc lifts the row by its declared
+    // bow and not a pixel more -- a far pivot can raise a row all on its own.
+    check(`[landscape ${lp.label}] the arc rises by its bow, no more`,
+      r.peak >= r.plainPeak + r.bow - 4,
+      `peak ${r.peak} vs plain row ${r.plainPeak} with a ${r.bow}px bow`);
+  }
 }
 
 await page.setViewportSize({ width: 420, height: 912 });
