@@ -109,10 +109,16 @@ const state = () => page.evaluate(() => ({
   trick: window.game.currentTrick.length
 }));
 
-/** Click point on a card's visible sliver — its centre is under its neighbour. */
+/**
+ * Point to tap/click a card at. Aims at the bounding box's centre rather
+ * than a fixed offset from its left edge: a rotated (fanned) card's
+ * axis-aligned bounding box is larger than the card itself, so a corner-ish
+ * offset can land off the card entirely, while the centre is inside the
+ * card at any tilt.
+ */
 async function cardPoint(i) {
   const box = await (await page.$$('#south-cards .card'))[i].boundingBox();
-  return { x: box.x + 8, y: box.y + box.height / 2 };
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 /**
  * A point on actual felt. .game-controls (the Deal button) is a child of
@@ -166,8 +172,33 @@ async function trickPoint() {
 
 for (const layout of ['rows', 'fan']) {
   layoutLabel = layout;
+  // The fan's magnitude (--fan-tilt / --fan-bow) only exists inside the
+  // portrait-phone and short-landscape media queries in theme-cardroom.css —
+  // at the desktop viewport used for the rows pass it resolves to 0deg/0px,
+  // i.e. no rotation at all. Switch to a portrait phone size for the fan
+  // pass so the cards are genuinely tilted and hit-testing is exercised for
+  // real; the rows pass keeps the original desktop size unchanged.
+  await page.setViewportSize(layout === 'fan'
+    ? { width: 420, height: 912 }
+    : { width: 1280, height: 900 });
   await page.evaluate((l) => window.game.setHandLayout(l === 'fan'), layout);
   await setUp();
+
+  if (layout === 'fan') {
+    // Non-vacuity guard: prove the fan is actually applying a rotation
+    // before trusting any of the cases below. Without this, a viewport or
+    // breakpoint change could silently turn the "fanned" pass back into a
+    // second unrotated run of the rows pass.
+    const fanActive = await page.evaluate(() => {
+      const el = document.getElementById('south-cards');
+      const cards = [...el.querySelectorAll('.card')];
+      const distinct = new Set(cards.map(c => getComputedStyle(c).transform));
+      return { n: cards.length, distinct: distinct.size,
+               tilt: getComputedStyle(el).getPropertyValue('--fan-tilt').trim() };
+    });
+    check('the fanned pass is actually fanned', fanActive.distinct > 1 && fanActive.tilt !== '',
+      `${fanActive.distinct} distinct transforms, tilt "${fanActive.tilt}"`);
+  }
 
   /* ── 1. one TAP arms, plays nothing (touch has no hover) ─────────────── */
   await parkMouse();
@@ -340,6 +371,7 @@ for (const layout of ['rows', 'fan']) {
   check('centre suit is not drawn but still readable by the code', watermarkHidden);
 }
 await page.evaluate(() => window.game.setHandLayout(false));
+await page.setViewportSize({ width: 1280, height: 900 });
 
 console.log('\n=== RESULT ===');
 const failed = results.filter(r => !r.pass);
