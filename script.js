@@ -6764,17 +6764,19 @@ class IsraeliWhist {
 
         // Fast mode checkbox
         const fastModeCheckbox = document.getElementById('fast-mode-checkbox');
-        const fastModeLabel = document.querySelector('.fast-mode-label');
+        // The label wrapping THIS checkbox. A bare querySelector('.fast-mode-label')
+        // also matches the Fanned hand toggle, so it was right only by markup order.
+        const fastModeLabel = fastModeCheckbox?.closest('.fast-mode-label');
         
         if (fastModeCheckbox) {
             fastModeCheckbox.addEventListener('change', (e) => {
                 this.fastMode = e.target.checked;
                 
                 if (this.fastMode) {
-                    fastModeLabel.classList.add('active');
+                    fastModeLabel?.classList.add('active');
                     this.showGameNotification('⚡ Fast Mode Enabled! All animations 10x faster', 'success', 1000);
                 } else {
-                    fastModeLabel.classList.remove('active');
+                    fastModeLabel?.classList.remove('active');
                     this.showGameNotification('🐌 Normal Speed Restored', 'info', 1000);
                 }
                 

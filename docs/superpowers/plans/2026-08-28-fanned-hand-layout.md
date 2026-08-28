@@ -220,7 +220,7 @@ Change to:
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `node tests/hand-fan.mjs`
-Expected: `HAND FAN PASSED ✅ (6 checks: per-row sweep, symmetry, short hands)`
+Expected: `HAND FAN PASSED ✅ (7 checks: per-row sweep, symmetry, short hands)`
 
 - [ ] **Step 6: Register the test in package.json**
 
@@ -387,7 +387,7 @@ body.hand-fanned #south-cards.human-cards .card.card-armed {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `node tests/hand-fan.mjs`
-Expected: `HAND FAN PASSED ✅ (10 checks: …)` — all four new checks green, in particular "an armed card still rises" at roughly `-24px`.
+Expected: `HAND FAN PASSED ✅ (11 checks: …)` — all four new checks green, in particular "an armed card still rises" at roughly `-24px`.
 
 - [ ] **Step 5: Verify landscape too**
 
@@ -586,7 +586,7 @@ In the menu wiring, directly after the `fastModeCheckbox` block that begins at `
 - [ ] **Step 8: Run the test to verify it passes**
 
 Run: `node tests/hand-fan.mjs`
-Expected: `HAND FAN PASSED ✅ (16 checks: …)`
+Expected: `HAND FAN PASSED ✅ (17 checks: …)`
 
 - [ ] **Step 9: Commit**
 
