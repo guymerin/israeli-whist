@@ -3395,21 +3395,13 @@ class IsraeliWhist {
         const ROW_MAX = 7;                       // what fits at full card size
         if (cards.length <= ROW_MAX) return 0;
 
-        const boundaries = [];
-        for (let i = 1; i < cards.length; i++) {
-            if (cards[i].suit !== cards[i - 1].suit) boundaries.push(i);
-        }
-        if (!boundaries.length) return 0;
-
-        let best = 0;
-        let bestLongest = Infinity;
-        for (const at of boundaries) {
-            const longest = Math.max(at, cards.length - at);
-            // <= so a tie takes the later boundary: the top row stays the longer
-            // of the two, which is how the hand has always sat.
-            if (longest <= bestLongest) { bestLongest = longest; best = at; }
-        }
-        return best;
+        // Straight down the middle: a full hand is 6 over 7. It used to break
+        // on a suit boundary so no suit was torn across the rows, but that let
+        // the shape of the deal decide the rows -- a 4-4-2-3 hand came out 8
+        // over 5, and the longer row is what sets the card width, so the whole
+        // hand shrank to fit a row nobody asked for. Even rows read better and
+        // keep the cards as wide as thirteen of them can be.
+        return Math.floor(cards.length / 2);
     }
 
     updateHumanPlayerCards() {

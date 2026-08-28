@@ -6,7 +6,8 @@
  * (centre) to +1 (right end). These tests pin two things:
  *
  *   1. --fan-t is stamped per ROW, not across the whole hand, so a two-row
- *      portrait hand gets two independent -1 … +1 sweeps
+ *      portrait hand gets two independent -1 … +1 sweeps, and the rows the
+ *      hand is broken into are even (6 + 7), not suit-shaped
  *   2. with the fan on, no card overlaps its neighbour and no card escapes
  *      the hand's box — the whole point of arcing the existing rows rather
  *      than collapsing them into one overlapping sweep
@@ -27,7 +28,7 @@ const check = (name, pass, detail = '') => {
   console.log(`${pass ? '  ok  ' : '  FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
 };
 
-/** A 13-card hand that splits 6 + 7 on a suit boundary. */
+/** A 13-card hand; every hand splits 6 + 7, straight down the middle. */
 const HAND = [
   { rank: '4', suit: 'clubs' }, { rank: '5', suit: 'clubs' },
   { rank: '8', suit: 'clubs' }, { rank: '9', suit: 'clubs' },
@@ -78,6 +79,24 @@ check('each row is symmetric about 0',
 check('values increase left to right',
   rowA.every((v, i) => i === 0 || v > rowA[i - 1]) &&
   rowB.every((v, i) => i === 0 || v > rowB[i - 1]));
+
+/* ── 1b. the two rows are even, whatever the suits do ────────────────── */
+const splits = await page.evaluate(() => {
+  const g = window.game;
+  const S = ['clubs', 'diamonds', 'spades', 'hearts'];
+  /** Builds a hand with the given suit lengths, e.g. [4,4,2,3]. */
+  const hand = lens => lens.flatMap((n, i) =>
+    Array.from({ length: n }, (_, k) => ({ rank: String(2 + k), suit: S[i] })));
+  const shapes = [[4, 4, 2, 3], [6, 4, 2, 1], [13, 0, 0, 0], [5, 3, 3, 2], [4, 3, 3, 3]];
+  return shapes.map(sh => {
+    const cards = hand(sh);
+    const at = g.findHandRowSplit(cards);
+    return { shape: sh.join('-'), top: at, bottom: cards.length - at };
+  });
+});
+check('a 13-card hand always splits 6 + 7',
+  splits.every(s => s.top === 6 && s.bottom === 7),
+  splits.map(s => `${s.shape}: ${s.top}+${s.bottom}`).join(', '));
 
 /* ── 2. a short hand is one row ──────────────────────────────────────── */
 const five = await fanValues(page, 5);

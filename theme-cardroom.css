@@ -527,13 +527,14 @@ body {
 
     /* Hand on TWO rows. One row of 13 leaves ~22px of each card showing —
        narrower than a fingertip (~45px), which is why players kept grabbing
-       the wrong card. The break is placed by layoutHumanHand() on a suit
-       boundary rather than at a fixed seventh card, so no suit is ever torn
-       across the two rows; --hand-cols is the LONGER of the two rows it
-       produced, and the card width is whatever makes that row fit. A 4-3-3-3
-       hand still comes out 7 + 6 at ~50px on a 402px phone; a 5-3-3-2 splits
-       8 + 5 at ~45px. Seven is the floor, so a hand played down to its last
-       few cards doesn't inflate them. */
+       the wrong card. layoutHumanHand() breaks the hand down the middle -- 6
+       over 7 -- rather than on a suit boundary: --hand-cols is the LONGER of
+       the two rows and the card width is whatever makes that row fit, so
+       letting the deal's shape pick the break made a 4-4-2-3 hand 8 over 5 and
+       shrank every card to fit a row nobody asked for. Even rows keep all
+       thirteen as wide as they can be (~52px on a 402px phone). Seven is the
+       floor, so a hand played down to its last few cards doesn't inflate
+       them. */
     #south-cards.human-cards {
         --cw: min(56px, calc((100vw - 40px) / var(--hand-cols, 7))) !important;
         /* The seat is absolutely positioned, so it shrink-to-fits — and a
