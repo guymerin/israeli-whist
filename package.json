@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "serve": "python3 -m http.server 8000",
-    "test": "npm run test:unit && npm run test:parity && npm run test:cards && npm run test:strength",
+    "test": "npm run test:unit && npm run test:parity && npm run test:cards && npm run test:smoke && npm run test:strength",
     "test:unit": "node tests/mc-engine.test.mjs",
     "test:parity": "node tests/mc-parity.mjs",
     "test:cards": "node tests/card-selection.mjs",
