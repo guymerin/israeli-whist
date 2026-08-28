@@ -404,6 +404,9 @@ await p.goto(served.url, { waitUntil: 'load' });
 await p.waitForFunction(() => !!window.game);
 const r = await p.evaluate(() => {
   window.game.startGameWithName('Tester');
+  // startGameWithName does NOT deal — without this the hand is empty and the
+  // check passes vacuously against zero cards.
+  window.game.dealCards();
   document.body.classList.add('hand-fanned');
   const el = document.getElementById('south-cards');
   window.game.layoutHumanHand(el, window.game.hands.south || []);
@@ -417,7 +420,8 @@ EOF
 cp /tmp/land.mjs ./_land.mjs && node ./_land.mjs; rm -f ./_land.mjs /tmp/land.mjs
 ```
 
-Expected: `flat` is `0` — no card was flattened by the landscape rule.
+Expected: `n` is 13 and `flat` is `0` — a real hand was laid out, and no card
+was flattened by the landscape rule. If `n` is 0 the check proved nothing.
 
 - [ ] **Step 6: Commit**
 
