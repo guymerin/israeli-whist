@@ -118,12 +118,21 @@ check('no card escapes the hand box', geo.escaped === 0, `${geo.escaped} escaped
 check('every card centre hits that card', geo.mishit === 0, `${geo.mishit} mis-hits`);
 
 /* ── 5. the lift still works when fanned ─────────────────────────────── */
-const liftWorks = await page.evaluate(() => {
+const liftWorks = await page.evaluate(async () => {
+  // The hand carries `transition: transform .3s ease` (styles.css), so a
+  // synchronous read right after the class flip can catch the transition's
+  // start value. Suppress transitions for the measurement only — the real
+  // app keeps its glide.
+  const kill = document.createElement('style');
+  kill.textContent = '#south-cards .card { transition: none !important; }';
+  document.head.appendChild(kill);
   const el = document.getElementById('south-cards');
   const card = el.querySelector('.card');
   card.classList.add('card-armed');
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   const m = new DOMMatrixReadOnly(getComputedStyle(card).transform);
   card.classList.remove('card-armed');
+  kill.remove();
   return m.m42;   // translateY in px; the armed lift is -24
 });
 check('an armed card still rises', liftWorks < -20, `translateY ${liftWorks.toFixed(1)}px`);

@@ -1071,26 +1071,13 @@ body.hand-fanned #south-cards.human-cards .card {
 
 /* Pulling a card out of a real hand straightens it, so the lifted states
    carry no rotation. These re-declare what the fan rule would otherwise
-   outrank.
-
-   transition: none is not decorative either: .human-cards .card (styles.css)
-   carries an un-scoped `transition: transform .3s ease`. Once anything has
-   forced a style/layout pass on a fanned card (any getBoundingClientRect,
-   any reflow-triggering read — routine elsewhere in script.js), the next
-   transform change on that card becomes a genuine CSS transition, and
-   Chromium resolves getComputedStyle() to the transition's start value, not
-   its end value, for a synchronous read on the very next tick. Arming a
-   card is exactly that: a synchronous class add. Left alone, the two-stage
-   lift would intermittently read (and occasionally render) as the un-lifted
-   angle for a frame — worse, unpredictably, than just snapping. */
+   outrank. */
 body.hand-fanned #south-cards.human-cards .card.card-armed {
     transform: translateY(-24px) scale(1.16) !important;
-    transition: none !important;
 }
 @media (hover: hover) and (pointer: fine) {
     body.hand-fanned #south-cards.human-cards .card:hover {
         transform: translateY(-15px) scale(1.06) !important;
-        transition: none !important;
     }
 }
 
