@@ -24,6 +24,15 @@
     --cr-black:   #20242a;
     --cr-serif: "Fraunces", "Iowan Old Style", Palatino, Georgia, serif;
     --cr-sans:  "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+    /* The side safe areas, named. Layout that has to fit BETWEEN the notch and
+       the home indicator reads these instead of env() directly, so a test can
+       stand in for a notched phone -- Chromium has no way to emulate one, and
+       the landscape hand is sized against exactly this budget. */
+    --sa-t: env(safe-area-inset-top, 0px);
+    --sa-b: env(safe-area-inset-bottom, 0px);
+    --sa-l: env(safe-area-inset-left, 0px);
+    --sa-r: env(safe-area-inset-right, 0px);
 }
 
 /* ── 1. Ground + type ──────────────────────────────────────────────────── */
@@ -421,10 +430,10 @@ body {
         /* Keep chrome + hand clear of the notch and home indicator (installed app,
            viewport-fit=cover). */
         padding:
-            calc(6px + env(safe-area-inset-top))
-            calc(6px + env(safe-area-inset-right))
-            env(safe-area-inset-bottom)
-            calc(6px + env(safe-area-inset-left)) !important;
+            calc(6px + var(--sa-t))
+            calc(6px + var(--sa-r))
+            var(--sa-b)
+            calc(6px + var(--sa-l)) !important;
         gap: 3px !important;
         box-sizing: border-box !important; overflow: hidden !important;
     }
@@ -441,12 +450,12 @@ body {
        top edge, same height, one centre line. */
     .game-control-buttons {
         position: absolute !important; z-index: 1300 !important;
-        top: calc(env(safe-area-inset-top) + 6px) !important; right: calc(env(safe-area-inset-right) + 6px) !important;
+        top: calc(var(--sa-t) + 6px) !important; right: calc(var(--sa-r) + 6px) !important;
         transform: none !important; margin: 0 !important;
     }
     .quick-actions {
         position: absolute !important; z-index: 1300 !important;
-        top: calc(env(safe-area-inset-top) + 6px) !important; left: calc(env(safe-area-inset-left) + 6px) !important;
+        top: calc(var(--sa-t) + 6px) !important; left: calc(var(--sa-l) + 6px) !important;
         transform: none !important; margin: 0 !important;
     }
     .menu-btn, .quick-actions .hint-btn {
@@ -567,12 +576,38 @@ body {
        thinner than the hand below. */
     .bidding-interface, .second-phase-bidding {
         position: fixed !important;
-        left: 50% !important; top: 51% !important;
-        right: auto !important; bottom: auto !important;
-        transform: translate(-50%, -50%) !important;
+        left: 50% !important;
+        right: auto !important;
+        /* Centred in the band BETWEEN the chrome and the hand, not on the raw
+           viewport. Everything else in portrait lives inside .game-container,
+           which is padded by the safe areas; a tray centred on the viewport is
+           the one thing that isn't, so on a phone with a notch and a home
+           indicator the hand rose, the chrome dropped, and the takes tray --
+           the tallest of the two -- came down on the top row of the hand and
+           hid the ranks. Cards are never coverable: they are the one thing a
+           player must see while bidding.
+
+           top:    the chrome above the board measures ~110px below the notch
+                   at every phone size (title strip + status + compact score).
+           bottom: the hand's own band. Two rows of --cw * 1.4, the 4px row gap,
+                   and ~29px of seat padding below: 190px at the 56px card cap,
+                   less on a narrower phone, where the extra just becomes air.
+           Both top and bottom set, `height: fit-content` and `margin: auto 0`
+           centre the tray in what's left and clamp it to that band -- so a tray
+           too tall for a small phone scrolls inside itself instead of growing
+           over the hand. */
+        top: calc(var(--sa-t) + 110px) !important;
+        bottom: calc(var(--sa-b) + 190px) !important;
+        transform: translateX(-50%) !important;
+        height: fit-content !important;
         width: min(90vw, 400px) !important; max-width: none !important; min-width: 0 !important;
-        margin: 0 !important;
-        max-height: 68vh !important; overflow: auto !important;
+        margin: auto 0 !important;
+        /* fit-content alone can't shrink below the tray's min-content height,
+           and a tray that big would grow back over the hand -- so the band is
+           also an explicit cap, and the content scrolls inside it. */
+        max-height: calc(100vh - var(--sa-t) - var(--sa-b) - 300px) !important;
+        max-height: calc(100dvh - var(--sa-t) - var(--sa-b) - 300px) !important;
+        overflow: auto !important;
         padding: 12px 14px 14px !important;
         border-radius: 16px !important;
         border: 1px solid color-mix(in oklab, var(--cr-brass) 45%, transparent) !important;
@@ -638,12 +673,12 @@ body {
        top edge at 40px tall, so a 36px button 2px down centres with it. */
     .game-control-buttons {
         transform: none !important; top: 2px !important;
-        right: calc(env(safe-area-inset-right) + 6px) !important;
+        right: calc(var(--sa-r) + 6px) !important;
     }
     .quick-actions {
         position: fixed !important; z-index: 1300 !important;
         transform: none !important; top: 2px !important;
-        left: calc(env(safe-area-inset-left) + 6px) !important;
+        left: calc(var(--sa-l) + 6px) !important;
     }
     .menu-btn, .quick-actions .hint-btn {
         width: 38px !important; height: 36px !important; min-height: 36px !important;
@@ -679,7 +714,11 @@ body {
     /* 13 cards, an explicit 3px between them, and whatever width is left over —
        capped at 64px so they never outgrow the short viewport's height. */
     #south-cards.human-cards {
-        --cw: min(64px, calc((100vw - 72px) / 13)) !important;
+        /* The board is inset by the side safe areas above, so the row's budget
+           is the space BETWEEN them -- not 100vw. Budgeting from 100vw made
+           the row wider than the board that clips it, which cut ~40px off the
+           end card on a notched phone held sideways. */
+        --cw: min(64px, calc((100vw - var(--sa-l) - var(--sa-r) - 72px) / 13)) !important;
         padding: 2px 6px !important;
     }
     #south-cards.human-cards .card { --card-rank-size: 22px !important; margin-left: 3px !important; }
@@ -689,12 +728,12 @@ body {
     /* Safe areas (installed app): keep the fixed board, hand and corner chrome
        clear of the side notch and the home indicator. */
     .game-board {
-        left: env(safe-area-inset-left) !important;
-        width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+        left: var(--sa-l) !important;
+        width: calc(100vw - var(--sa-l) - var(--sa-r)) !important;
     }
-    .south-player { bottom: env(safe-area-inset-bottom) !important; }
-    .fast-mode-container { left: env(safe-area-inset-left) !important; }
-    .game-control-buttons { right: env(safe-area-inset-right) !important; }
+    .south-player { bottom: var(--sa-b) !important; }
+    .fast-mode-container { left: var(--sa-l) !important; }
+    .game-control-buttons { right: var(--sa-r) !important; }
 }
 
 /* ── 11c. Compact bid panel on mobile (portrait + landscape) ───────────────
@@ -1040,4 +1079,116 @@ body.turn-nudge #south-player .player-info {
     .bid-summary { padding: 11px 15px !important; }
     .bid-summary-total { font-size: 16px !important; }
     .bid-summary-verdict { font-size: 11.5px !important; }
+}
+
+/* ── 12. Fanned hand (opt-in) ───────────────────────────────────────────────
+   A second hand layout that reads as a hand being held: the same rows the
+   unfanned layout produces, bowed on an arc. Nothing overlaps — a single
+   13-card portrait arc leaves a 22px sliver per card, which is the mis-tap
+   problem the two-row split was built to fix.
+
+   The whole arc is driven by --fan-t, the card's place in its own row that
+   layoutHumanHand() stamps (-1 … +1). `1 - t*t` is the bow: it peaks at the
+   row's centre and falls to zero at both ends. Two knobs — --fan-tilt and
+   --fan-bow — are all that separates portrait from landscape.
+
+   Why !important, and why the states below are re-declared: the landscape
+   block in styles.css sets `transform: none !important` on .human-cards
+   .card, so the fan rule has to shout to exist at all. Shouting makes it
+   outrank .card-armed's lift (which carries no !important), so that lift is
+   restored here explicitly — otherwise switching the fan on silently breaks
+   two-stage card selection. The drag path needs no help: it writes its
+   transform inline with !important, which outranks any stylesheet rule, and
+   removeProperty() falls back here. */
+
+/* Desktop and tablets: one overlapping nowrap row of big cards. These are the
+   DEFAULTS — the phone blocks below override them. Declaring them unscoped is
+   what guarantees no viewport is left without magnitudes, which is how the
+   menu toggle came to do nothing on desktop.
+
+   --fan-bow is left at the same -14px used before the --cw narrowing below:
+   as a fraction of card height (--cw * 1.4) it's ~11.9% at the 84px width
+   below, matching portrait's ~12.4% (-9px / (52px * 1.4)) closely enough that
+   it doesn't need to move just because the tilt did. */
+body.hand-fanned #south-cards.human-cards {
+    --fan-tilt: 5deg;
+    --fan-bow: -14px;
+}
+
+/* True desktop only (tablets still fall to the 900px/560px --cw drops in
+   section 9, untouched here): narrowing the card, not just raising the tilt,
+   is what the phone blocks do too (56->52px, 64->60px) — it's the same lever
+   pointed at the same problem: the rotation swing comes out of the card's own
+   height, so a slightly narrower card buys the swing room the tilt spends.
+
+   84px (an 8% cut from the unfanned 91px) is the width picked to reach 5deg
+   with zero measured board clipping across the whole desktop range (901px
+   through 1920px+, both the 95vw-scaled board below ~1053px and the
+   fixed-1000px board above it) while costing the player as little of their
+   own card as the tilt gain is worth: a narrower 68px card would reach 6deg,
+   but only by shrinking the card a full 25% instead of 8% for one more
+   degree, and it also crosses the row's margin-left: min(6px, calc(...))
+   formula onto its other branch at wide-enough windows (~992px and up for
+   68px), which flips the row from overlapping to non-overlapping and changes
+   the hand's visual character — 84px stays on the same (tight/overlapping)
+   branch as the unfanned 91px at every desktop width, so only the tilt and
+   card size change, nothing else does. 6deg still clips at 84px, so 5deg is
+   the ceiling this width buys. */
+@media (min-width: 901px) {
+    body.hand-fanned #south-cards.human-cards {
+        --cw: 84px !important;
+    }
+}
+
+/* --fan-t-all, not --fan-t: the hand is drawn as ONE row everywhere except
+   portrait phones (the break is display:none), so one sweep is what a drawn
+   row gets. The portrait block below, which is the only place the break is
+   drawn, switches back to the per-row number. */
+body.hand-fanned #south-cards.human-cards .card {
+    --t: var(--fan-t-all, 0);
+    transform:
+        translateY(calc((1 - var(--t) * var(--t)) * var(--fan-bow, 0px)))
+        rotate(calc(var(--t) * var(--fan-tilt, 0deg))) !important;
+    transform-origin: 50% 160% !important;
+}
+
+/* Pulling a card out of a real hand straightens it, so the lifted states
+   carry no rotation. These re-declare what the fan rule would otherwise
+   outrank. */
+body.hand-fanned #south-cards.human-cards .card.card-armed {
+    transform: translateY(-24px) scale(1.16) !important;
+}
+@media (hover: hover) and (pointer: fine) {
+    body.hand-fanned #south-cards.human-cards .card:hover {
+        transform: translateY(-15px) scale(1.06) !important;
+    }
+}
+
+/* Portrait phones: two rows, so each row only needs a gentle bow. The card
+   width cap drops 56 -> 52px because rotating about a pivot below the card
+   swings the end cards sideways, and that swing has to come out of the
+   row's width or the outermost card hangs off the screen. */
+@media (orientation: portrait) and (max-width: 760px) {
+    body.hand-fanned #south-cards.human-cards {
+        --fan-tilt: 6deg;
+        --fan-bow: -9px;
+        --cw: min(52px, calc((100vw - 52px) / var(--hand-cols, 7))) !important;
+    }
+    /* The only breakpoint that draws the row break, so the only one that wants
+       a sweep per row rather than one across the hand. */
+    body.hand-fanned #south-cards.human-cards .card {
+        --t: var(--fan-t, 0);
+    }
+}
+
+/* Landscape: one row of 13 with width to spare, so it can take the full
+   sweep and still leave every card wider than a fingertip. */
+@media (orientation: landscape) and (max-height: 500px) {
+    body.hand-fanned #south-cards.human-cards {
+        --fan-tilt: 11deg;
+        --fan-bow: -16px;
+        /* Same notch budget as the unfanned row above, minus the wider margin
+           the rotation swing needs. */
+        --cw: min(60px, calc((100vw - var(--sa-l) - var(--sa-r) - 96px) / 13)) !important;
+    }
 }

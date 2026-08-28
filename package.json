@@ -6,10 +6,12 @@
   "private": true,
   "scripts": {
     "serve": "python3 -m http.server 8000",
-    "test": "npm run test:unit && npm run test:parity && npm run test:cards && npm run test:smoke && npm run test:strength",
+    "test": "npm run test:unit && npm run test:parity && npm run test:cards && npm run test:fan && npm run test:tray && npm run test:smoke && npm run test:strength",
     "test:unit": "node tests/mc-engine.test.mjs",
     "test:parity": "node tests/mc-parity.mjs",
     "test:cards": "node tests/card-selection.mjs",
+    "test:fan": "node tests/hand-fan.mjs",
+    "test:tray": "node tests/bid-tray.mjs",
     "test:strength": "node tests/mc-strength.mjs",
     "test:smoke": "node tests/smoke-test.mjs",
     "www": "node scripts/build-www.mjs",
