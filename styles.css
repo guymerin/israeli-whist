@@ -3156,7 +3156,7 @@ h1 {
     .played-card .card {
         width: 48px !important;
         height: 68px !important;
-        --card-rank-size: 14px !important;
+        --card-rank-size: 18px !important;
     }
 
     .played-card .card .card-rank {
@@ -3350,7 +3350,7 @@ h1 {
         -webkit-transform: none !important;
         transform: none !important;
         position: relative !important;
-        --card-rank-size: 14px !important;
+        --card-rank-size: 18px !important;
     }
 
     .human-cards .card .card-rank {

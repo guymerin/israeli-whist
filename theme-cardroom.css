@@ -507,7 +507,7 @@ body {
     .played-card, .played-card .card {
         width: 56px !important; height: 78px !important; min-width: 56px !important; min-height: 78px !important;
     }
-    .played-card .card { --card-rank-size: 17px !important; }
+    .played-card .card { --card-rank-size: 22px !important; }
     .played-card .card .card-rank { font-weight: 800 !important; }
     .played-card .card .card-center-suit { font-size: 22px !important; }
     /* Nudge the N/S cards out to the square's edges so they don't pile on centre. */
@@ -555,7 +555,7 @@ body {
         width: 100% !important; height: 0 !important;
         margin: 0 !important; padding: 0 !important;
     }
-    #south-cards.human-cards .card { --card-rank-size: 16px !important; }
+    #south-cards.human-cards .card { --card-rank-size: 22px !important; }
     #south-cards.human-cards .card .card-rank { font-weight: 800 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 22px !important; }
 
@@ -613,7 +613,7 @@ body {
     /* Slimmer board + hand so the tray (incl. Bid/Pass) always fits. */
     .game-board { min-height: 96px !important; }
     #south-cards.human-cards { --cw: min(46px, calc((100vw - 36px) / var(--hand-cols, 7))) !important; gap: 3px 2px !important; }
-    #south-cards.human-cards .card { --card-rank-size: 14px !important; }
+    #south-cards.human-cards .card { --card-rank-size: 19px !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 18px !important; }
     /* Tighter bid tray. */
     .bidding-interface, .second-phase-bidding { max-height: 50vh !important; }
@@ -682,7 +682,7 @@ body {
         --cw: min(64px, calc((100vw - 72px) / 13)) !important;
         padding: 2px 6px !important;
     }
-    #south-cards.human-cards .card { --card-rank-size: 18px !important; margin-left: 3px !important; }
+    #south-cards.human-cards .card { --card-rank-size: 22px !important; margin-left: 3px !important; }
     #south-cards.human-cards .card:first-child { margin-left: 0 !important; }
     #south-cards.human-cards .card .card-rank { font-weight: 900 !important; }
     #south-cards.human-cards .card .card-center-suit { font-size: 26px !important; }
@@ -768,17 +768,17 @@ body {
     .bidding-interface h3::after { font-size: 16px; }
     .second-phase-bidding h3, .second-phase-bidding h4, .your-prediction h4 { font-size: .95em !important; margin: 2px 0 8px !important; }
 
-    .tricks-buttons, .suit-buttons { gap: 6px !important; margin-top: 8px !important; }
-    .trick-button, .suit-button { padding: 6px 4px !important; min-height: 40px !important; font-size: 17px !important; }
-    .suit-button { font-size: 26px !important; min-height: 42px !important; }
-    .suit-button[data-value="notrump"] { font-size: 17px !important; }
+    .tricks-buttons, .suit-buttons { gap: 8px !important; margin-top: 10px !important; }
+    .trick-button, .suit-button { padding: 8px 10px !important; min-height: 50px !important; font-size: 21px !important; }
+    .suit-button { font-size: 32px !important; min-height: 52px !important; }
+    .suit-button[data-value="notrump"] { font-size: 21px !important; }
     .bid-controls .input-row { gap: 12px !important; margin: 6px 0 !important; }
     .bid-controls .button-row { gap: 12px !important; margin-top: 12px !important; }
-    #bid-btn, #pass-btn { padding: 11px 18px !important; font-size: 1em !important; min-width: 110px !important; }
+    #bid-btn, #pass-btn { padding: 13px 22px !important; font-size: 1.08em !important; min-width: 124px !important; }
 
     /* Phase 2 "how many tricks". */
-    .trick-btn { width: 42px !important; min-width: 42px !important; height: 42px !important; font-size: 18px !important; }
-    .tricks-buttons-main, #tricks-buttons-main, .tricks-row { gap: 6px !important; }
+    .trick-btn { width: 50px !important; min-width: 50px !important; height: 50px !important; font-size: 22px !important; }
+    .tricks-buttons-main, #tricks-buttons-main, .tricks-row { gap: 8px !important; }
     .more-btn, .less-btn { padding: 9px 14px !important; font-size: .95em !important; }
     .prediction-list { gap: 8px 12px !important; }
     .prediction-item { --pred-value-size: 27px !important; min-width: 82px !important; padding: 6px 8px !important; }
