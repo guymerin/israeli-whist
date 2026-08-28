@@ -43,9 +43,14 @@ await page.evaluate(() => {
 });
 
 const results = [];
+// Every case runs twice: once on the straight rows, once fanned. Rotating a
+// card changes what elementFromPoint returns, so the fan has to satisfy the
+// same selection contract rather than being assumed safe.
+let layoutLabel = 'rows';
 const check = (name, pass, detail = '') => {
-  results.push({ name, pass, detail });
-  console.log(`${pass ? '  ok  ' : '  FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
+  const tagged = `[${layoutLabel}] ${name}`;
+  results.push({ name: tagged, pass, detail });
+  console.log(`${pass ? '  ok  ' : '  FAIL'}  ${tagged}${detail ? '  — ' + detail : ''}`);
 };
 
 /** Puts south on lead (or on turn behind `led`) with a known hand. */
@@ -159,175 +164,182 @@ async function trickPoint() {
   return { x: box.x + box.width / 2, y: box.y + box.height - 24 };
 }
 
-/* ── 1. one TAP arms, plays nothing (touch has no hover) ─────────────── */
-await parkMouse();
-await setUp();
-let p = await cardPoint(0);
-await touchTap(p);
-await page.waitForTimeout(150);
-let s = await state();
-check('one tap arms and plays nothing', s.armedNodes === 1 && s.trick === 0 && s.handSize === 6,
-  `armed=${s.armedNodes} trick=${s.trick} hand=${s.handSize}`);
+for (const layout of ['rows', 'fan']) {
+  layoutLabel = layout;
+  await page.evaluate((l) => window.game.setHandLayout(l === 'fan'), layout);
+  await setUp();
 
-/* ── 2. second tap on the armed card plays it ────────────────────────── */
-await touchTap(p);
-await page.waitForTimeout(250);
-s = await state();
-check('second tap plays', s.trick === 1 && s.handSize === 5 && s.armed === null,
-  `trick=${s.trick} hand=${s.handSize}`);
+  /* ── 1. one TAP arms, plays nothing (touch has no hover) ─────────────── */
+  await parkMouse();
+  await setUp();
+  let p = await cardPoint(0);
+  await touchTap(p);
+  await page.waitForTimeout(150);
+  let s = await state();
+  check('one tap arms and plays nothing', s.armedNodes === 1 && s.trick === 0 && s.handSize === 6,
+    `armed=${s.armedNodes} trick=${s.trick} hand=${s.handSize}`);
 
-/* ── 3. tapping another card moves the lift, plays nothing ───────────── */
-await parkMouse();
-await setUp();
-p = await cardPoint(0);
-await touchTap(p);
-await page.waitForTimeout(120);
-const p2 = await cardPoint(2);
-await touchTap(p2);
-await page.waitForTimeout(150);
-s = await state();
-check('tapping a different card moves the lift', s.armedNodes === 1 && s.trick === 0,
-  `armed=${s.armedNodes} trick=${s.trick}`);
+  /* ── 2. second tap on the armed card plays it ────────────────────────── */
+  await touchTap(p);
+  await page.waitForTimeout(250);
+  s = await state();
+  check('second tap plays', s.trick === 1 && s.handSize === 5 && s.armed === null,
+    `trick=${s.trick} hand=${s.handSize}`);
 
-/* ── 4. drag onto the trick area plays ───────────────────────────────── */
-await setUp();
-p = await cardPoint(1);
-let t = await trickPoint();
-await page.mouse.move(p.x, p.y);
-await page.mouse.down();
-await page.mouse.move(t.x, t.y, { steps: 12 });
-const ringLit = await page.evaluate(() => !!document.querySelector('.trick-area.drop-active'));
-await page.mouse.up();
-await page.waitForTimeout(250);
-s = await state();
-check('drop ring lights while dragging over the trick area', ringLit);
-check('drag onto the trick area plays', s.trick === 1 && s.handSize === 5,
-  `trick=${s.trick} hand=${s.handSize}`);
+  /* ── 3. tapping another card moves the lift, plays nothing ───────────── */
+  await parkMouse();
+  await setUp();
+  p = await cardPoint(0);
+  await touchTap(p);
+  await page.waitForTimeout(120);
+  const p2 = await cardPoint(2);
+  await touchTap(p2);
+  await page.waitForTimeout(150);
+  s = await state();
+  check('tapping a different card moves the lift', s.armedNodes === 1 && s.trick === 0,
+    `armed=${s.armedNodes} trick=${s.trick}`);
 
-/* ── 5. drag released elsewhere plays nothing and stays lifted ───────── */
-await setUp();
-p = await cardPoint(1);
-await page.mouse.move(p.x, p.y);
-await page.mouse.down();
-await page.mouse.move(p.x - 120, p.y + 40, { steps: 10 });
-await page.mouse.up();
-await page.waitForTimeout(200);
-s = await state();
-check('drag released off the felt plays nothing', s.trick === 0 && s.handSize === 6,
-  `trick=${s.trick} hand=${s.handSize}`);
-check('...and the card stays lifted', s.armedNodes === 1 && s.armed !== null,
-  `armed=${s.armedNodes}`);
+  /* ── 4. drag onto the trick area plays ───────────────────────────────── */
+  await setUp();
+  p = await cardPoint(1);
+  let t = await trickPoint();
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  await page.mouse.move(t.x, t.y, { steps: 12 });
+  const ringLit = await page.evaluate(() => !!document.querySelector('.trick-area.drop-active'));
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+  s = await state();
+  check('drop ring lights while dragging over the trick area', ringLit);
+  check('drag onto the trick area plays', s.trick === 1 && s.handSize === 5,
+    `trick=${s.trick} hand=${s.handSize}`);
 
-/* ── 6. tapping the trick area plays the lifted card ─────────────────── */
-await setUp();
-p = await cardPoint(0);
-await page.mouse.click(p.x, p.y);          // lift
-await page.waitForTimeout(150);
-t = await trickPoint();
-await page.mouse.click(t.x, t.y);          // commit on the felt
-await page.waitForTimeout(250);
-s = await state();
-check('tapping the felt plays the lifted card', s.trick === 1 && s.handSize === 5,
-  `trick=${s.trick} hand=${s.handSize}`);
+  /* ── 5. drag released elsewhere plays nothing and stays lifted ───────── */
+  await setUp();
+  p = await cardPoint(1);
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  await page.mouse.move(p.x - 120, p.y + 40, { steps: 10 });
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+  s = await state();
+  check('drag released off the felt plays nothing', s.trick === 0 && s.handSize === 6,
+    `trick=${s.trick} hand=${s.handSize}`);
+  check('...and the card stays lifted', s.armedNodes === 1 && s.armed !== null,
+    `armed=${s.armedNodes}`);
 
-/* ── 7. follow-suit: illegal cards are dimmed and refuse the lift ────── */
-await setUp({ rank: '5', suit: 'hearts' });   // east led hearts; south holds two
-s = await state();
-check('cards that break follow-suit are dimmed', s.illegal === 4, `dimmed=${s.illegal} (expected 4)`);
+  /* ── 6. tapping the trick area plays the lifted card ─────────────────── */
+  await setUp();
+  p = await cardPoint(0);
+  await page.mouse.click(p.x, p.y);          // lift
+  await page.waitForTimeout(150);
+  t = await trickPoint();
+  await page.mouse.click(t.x, t.y);          // commit on the felt
+  await page.waitForTimeout(250);
+  s = await state();
+  check('tapping the felt plays the lifted card', s.trick === 1 && s.handSize === 5,
+    `trick=${s.trick} hand=${s.handSize}`);
 
-const illegalIndex = await page.evaluate(() => {
-  const cards = [...document.querySelectorAll('#south-cards .card')];
-  return cards.findIndex(c => c.classList.contains('card-illegal'));
-});
-p = await cardPoint(illegalIndex);
-await parkMouse();
-await touchTap(p);
-await page.waitForTimeout(120);
-await touchTap(p);
-await page.waitForTimeout(200);
-s = await state();
-check('a dimmed card cannot be lifted or played', s.armedNodes === 0 && s.trick === 1 && s.handSize === 6,
-  `armed=${s.armedNodes} trick=${s.trick} hand=${s.handSize}`);
+  /* ── 7. follow-suit: illegal cards are dimmed and refuse the lift ────── */
+  await setUp({ rank: '5', suit: 'hearts' });   // east led hearts; south holds two
+  s = await state();
+  check('cards that break follow-suit are dimmed', s.illegal === 4, `dimmed=${s.illegal} (expected 4)`);
 
-/* ── 8. mouse hover lifts the card under the cursor ──────────────────── */
-await setUp();
-p = await cardPoint(3);
-await page.mouse.move(p.x, p.y);
-await page.waitForTimeout(150);
-s = await state();
-const hoveredIsThird = await page.evaluate(() => {
-  const cards = [...document.querySelectorAll('#south-cards .card')];
-  return cards.findIndex(c => c.classList.contains('card-armed'));
-});
-check('hover lifts the card under the cursor', s.armedNodes === 1 && s.trick === 0 && hoveredIsThird === 3,
-  `armed=${s.armedNodes} index=${hoveredIsThird}`);
+  const illegalIndex = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('#south-cards .card')];
+    return cards.findIndex(c => c.classList.contains('card-illegal'));
+  });
+  p = await cardPoint(illegalIndex);
+  await parkMouse();
+  await touchTap(p);
+  await page.waitForTimeout(120);
+  await touchTap(p);
+  await page.waitForTimeout(200);
+  s = await state();
+  check('a dimmed card cannot be lifted or played', s.armedNodes === 0 && s.trick === 1 && s.handSize === 6,
+    `armed=${s.armedNodes} trick=${s.trick} hand=${s.handSize}`);
 
-// ...and with it already lifted, one deliberate click plays it
-await page.mouse.click(p.x, p.y);
-await page.waitForTimeout(250);
-s = await state();
-check('a click on the hovered card plays it', s.trick === 1 && s.handSize === 5,
-  `trick=${s.trick} hand=${s.handSize}`);
+  /* ── 8. mouse hover lifts the card under the cursor ──────────────────── */
+  await setUp();
+  p = await cardPoint(3);
+  await page.mouse.move(p.x, p.y);
+  await page.waitForTimeout(150);
+  s = await state();
+  const hoveredIsThird = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('#south-cards .card')];
+    return cards.findIndex(c => c.classList.contains('card-armed'));
+  });
+  check('hover lifts the card under the cursor', s.armedNodes === 1 && s.trick === 0 && hoveredIsThird === 3,
+    `armed=${s.armedNodes} index=${hoveredIsThird}`);
 
-/* ── 9. press + slide along the fan moves the lift, plays nothing ─────── */
-await parkMouse();
-await setUp();
-p = await cardPoint(0);
-const p4 = await cardPoint(4);
-await touchSlide(p, p4, 14);            // slide sideways, staying in the hand
-const scrubbed = await page.evaluate(() => {
-  const cards = [...document.querySelectorAll('#south-cards .card')];
-  return cards.findIndex(c => c.classList.contains('card-armed'));
-});
-await touchSeq([{ type: 'pointerup', x: p4.x, y: p4.y }]);
-await page.waitForTimeout(200);
-s = await state();
-check('sliding along the fan moves the lift', scrubbed === 4 && s.trick === 0 && s.handSize === 6,
-  `lifted=${scrubbed} trick=${s.trick}`);
+  // ...and with it already lifted, one deliberate click plays it
+  await page.mouse.click(p.x, p.y);
+  await page.waitForTimeout(250);
+  s = await state();
+  check('a click on the hovered card plays it', s.trick === 1 && s.handSize === 5,
+    `trick=${s.trick} hand=${s.handSize}`);
 
-/* ── 10. press + pull up carries the card straight away ──────────────── */
-await parkMouse();
-await setUp();
-p = await cardPoint(2);
-// A short upward move, still inside the hand row: the card should already be
-// travelling with the finger, not merely lifted.
-await touchSlide(p, { x: p.x + 2, y: p.y - 22 }, 6);
-const carrying = await page.evaluate(() => {
-  const el = document.querySelector('#south-cards .card.card-armed');
-  return !!el && /translate/.test(el.style.transform);
-});
-check('pulling up carries the card immediately', carrying);
+  /* ── 9. press + slide along the fan moves the lift, plays nothing ─────── */
+  await parkMouse();
+  await setUp();
+  p = await cardPoint(0);
+  const p4 = await cardPoint(4);
+  await touchSlide(p, p4, 14);            // slide sideways, staying in the hand
+  const scrubbed = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('#south-cards .card')];
+    return cards.findIndex(c => c.classList.contains('card-armed'));
+  });
+  await touchSeq([{ type: 'pointerup', x: p4.x, y: p4.y }]);
+  await page.waitForTimeout(200);
+  s = await state();
+  check('sliding along the fan moves the lift', scrubbed === 4 && s.trick === 0 && s.handSize === 6,
+    `lifted=${scrubbed} trick=${s.trick}`);
 
-// ...and continuing to the felt in the same movement plays it
-t = await trickPoint();
-await touchSeq([
-  { type: 'pointermove', x: t.x, y: t.y },
-  { type: 'pointerup', x: t.x, y: t.y }
-]);
-await page.waitForTimeout(250);
-s = await state();
-check('press → drag → drop plays in one movement', s.trick === 1 && s.handSize === 5,
-  `trick=${s.trick} hand=${s.handSize}`);
+  /* ── 10. press + pull up carries the card straight away ──────────────── */
+  await parkMouse();
+  await setUp();
+  p = await cardPoint(2);
+  // A short upward move, still inside the hand row: the card should already be
+  // travelling with the finger, not merely lifted.
+  await touchSlide(p, { x: p.x + 2, y: p.y - 22 }, 6);
+  const carrying = await page.evaluate(() => {
+    const el = document.querySelector('#south-cards .card.card-armed');
+    return !!el && /translate/.test(el.style.transform);
+  });
+  check('pulling up carries the card immediately', carrying);
 
-/* ── 11. the played card actually flies (flip animation runs) ────────── */
-await setUp();
-const flies = await page.evaluate(async () => {
-  const g = window.game;
-  const slot = document.getElementById('south-played');
-  g.armedCard = { ...g.hands.south[0] };
-  g.playArmedCard();
-  await new Promise(r => setTimeout(r, 40));
-  const card = slot.querySelector('.card');
-  return !!card && card.getAnimations().length > 0;
-});
-check('the played card animates into its slot', flies);
+  // ...and continuing to the felt in the same movement plays it
+  t = await trickPoint();
+  await touchSeq([
+    { type: 'pointermove', x: t.x, y: t.y },
+    { type: 'pointerup', x: t.x, y: t.y }
+  ]);
+  await page.waitForTimeout(250);
+  s = await state();
+  check('press → drag → drop plays in one movement', s.trick === 1 && s.handSize === 5,
+    `trick=${s.trick} hand=${s.handSize}`);
 
-/* ── 12. the suit watermark is gone from the card face ───────────────── */
-const watermarkHidden = await page.evaluate(() => {
-  const el = document.querySelector('#south-cards .card .card-center-suit');
-  return !!el && getComputedStyle(el).display === 'none' && !!el.textContent.trim();
-});
-check('centre suit is not drawn but still readable by the code', watermarkHidden);
+  /* ── 11. the played card actually flies (flip animation runs) ────────── */
+  await setUp();
+  const flies = await page.evaluate(async () => {
+    const g = window.game;
+    const slot = document.getElementById('south-played');
+    g.armedCard = { ...g.hands.south[0] };
+    g.playArmedCard();
+    await new Promise(r => setTimeout(r, 40));
+    const card = slot.querySelector('.card');
+    return !!card && card.getAnimations().length > 0;
+  });
+  check('the played card animates into its slot', flies);
+
+  /* ── 12. the suit watermark is gone from the card face ───────────────── */
+  const watermarkHidden = await page.evaluate(() => {
+    const el = document.querySelector('#south-cards .card .card-center-suit');
+    return !!el && getComputedStyle(el).display === 'none' && !!el.textContent.trim();
+  });
+  check('centre suit is not drawn but still readable by the code', watermarkHidden);
+}
+await page.evaluate(() => window.game.setHandLayout(false));
 
 console.log('\n=== RESULT ===');
 const failed = results.filter(r => !r.pass);
@@ -337,6 +349,6 @@ if (failed.length || errors.length) {
   await browser.close(); served?.close();
   process.exit(1);
 }
-console.log(`CARD SELECTION PASSED ✅ (${results.length} checks: hover, scrub, arm/commit, drag, cancel, follow-suit, flight)`);
+console.log(`CARD SELECTION PASSED ✅ (${results.length} checks × rows and fanned: hover, scrub, arm/commit, drag, cancel, follow-suit, flight)`);
 await browser.close();
 served?.close();
