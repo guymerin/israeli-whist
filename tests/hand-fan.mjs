@@ -137,6 +137,40 @@ const liftWorks = await page.evaluate(async () => {
 });
 check('an armed card still rises', liftWorks < -20, `translateY ${liftWorks.toFixed(1)}px`);
 
+/* ── 6. the setting persists and defaults to the current layout ──────── */
+const pref = await page.evaluate(() => {
+  const g = window.game;
+  const key = g.HAND_LAYOUT_KEY;
+  localStorage.removeItem(key);
+  document.body.classList.remove('hand-fanned');
+  const defaultsOff = g.applyHandLayout() === false &&
+                      !document.body.classList.contains('hand-fanned');
+  g.setHandLayout(true);
+  const onNow = document.body.classList.contains('hand-fanned') &&
+                localStorage.getItem(key) === 'fan';
+  document.body.classList.remove('hand-fanned');
+  const restored = g.applyHandLayout() === true &&
+                   document.body.classList.contains('hand-fanned');
+  const box = document.getElementById('fan-layout-checkbox');
+  const boxSynced = !!box && box.checked === true;
+  g.setHandLayout(false);
+  const offAgain = localStorage.getItem(key) === 'rows';
+  return { defaultsOff, onNow, restored, boxSynced, offAgain };
+});
+check('defaults to the straight rows', pref.defaultsOff);
+check('turning it on sets the class and remembers it', pref.onNow);
+check('a reload restores the fan', pref.restored);
+check('the menu checkbox reflects the saved value', pref.boxSynced);
+check('turning it off is remembered too', pref.offAgain);
+
+/* The preference must outlive a session reset. */
+const survives = await page.evaluate(() => {
+  window.game.setHandLayout(true);
+  window.clearWhistSession();
+  return localStorage.getItem(window.game.HAND_LAYOUT_KEY) === 'fan';
+});
+check('clearing the session keeps the layout choice', survives);
+
 console.log('\n=== RESULT ===');
 const failed = results.filter(r => !r.pass);
 if (errors.length) console.log('page errors:', errors);

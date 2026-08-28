@@ -49,6 +49,10 @@ class IsraeliWhist {
         this.southIndex = this.players.indexOf('south'); // always 2; named to avoid magic number
         this.playerName = 'Player'; // Human player's name (default)
         this.SESSION_KEY = 'israeliWhist_session'; // localStorage key for the persisted session (see saveSession)
+        // Hand layout preference. Deliberately NOT inside SESSION_KEY:
+        // clearWhistSession() forgets a session, but which layout you like
+        // should outlive that.
+        this.HAND_LAYOUT_KEY = 'israeliWhist_handLayout';
         this.botNames = {
             north: 'Botti (N)',
             east: 'Droidi (E)',
@@ -268,6 +272,10 @@ class IsraeliWhist {
         // exists. This runs before the name modal so the restored playerName and
         // scores are already in place when the board first renders.
         this.restoreSession();
+
+        // Hand layout preference, applied before the board first renders so
+        // the hand never flashes in the wrong arrangement.
+        this.applyHandLayout();
 
         // Card Room theme: keep the turn spotlight and trick-progress bar in
         // sync with game state via a lightweight poller (decoupled from the
@@ -3334,6 +3342,34 @@ class IsraeliWhist {
                 el.style.setProperty('--fan-t', t.toFixed(4));
             }
         }
+    }
+
+    /**
+     * Reads the saved hand-layout preference and applies it to the board.
+     * Called once during initializeGame(), before the first render.
+     * @returns {boolean} true when the fanned layout is on.
+     */
+    applyHandLayout() {
+        let fanned = false;
+        try {
+            fanned = localStorage.getItem(this.HAND_LAYOUT_KEY) === 'fan';
+        } catch (e) { /* Safari private mode: fall back to the default */ }
+        document.body.classList.toggle('hand-fanned', fanned);
+        const box = document.getElementById('fan-layout-checkbox');
+        if (box) box.checked = fanned;
+        return fanned;
+    }
+
+    /**
+     * Switches the hand layout and remembers the choice. A class flip only —
+     * --fan-t is stamped on every layout regardless, so nothing re-renders.
+     * @param {boolean} fanned Whether to fan the hand.
+     */
+    setHandLayout(fanned) {
+        document.body.classList.toggle('hand-fanned', !!fanned);
+        try {
+            localStorage.setItem(this.HAND_LAYOUT_KEY, fanned ? 'fan' : 'rows');
+        } catch (e) { /* private mode: the class still applies for this session */ }
     }
 
     /**
@@ -6739,6 +6775,14 @@ class IsraeliWhist {
                 }
                 
                 dlog(`Fast mode ${this.fastMode ? 'enabled' : 'disabled'}`);
+            });
+        }
+
+        // Hand layout checkbox
+        const fanLayoutCheckbox = document.getElementById('fan-layout-checkbox');
+        if (fanLayoutCheckbox) {
+            fanLayoutCheckbox.addEventListener('change', (e) => {
+                this.setHandLayout(e.target.checked);
             });
         }
 
