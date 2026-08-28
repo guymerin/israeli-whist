@@ -29,6 +29,8 @@
        the home indicator reads these instead of env() directly, so a test can
        stand in for a notched phone -- Chromium has no way to emulate one, and
        the landscape hand is sized against exactly this budget. */
+    --sa-t: env(safe-area-inset-top, 0px);
+    --sa-b: env(safe-area-inset-bottom, 0px);
     --sa-l: env(safe-area-inset-left, 0px);
     --sa-r: env(safe-area-inset-right, 0px);
 }
@@ -428,10 +430,10 @@ body {
         /* Keep chrome + hand clear of the notch and home indicator (installed app,
            viewport-fit=cover). */
         padding:
-            calc(6px + env(safe-area-inset-top))
-            calc(6px + env(safe-area-inset-right))
-            env(safe-area-inset-bottom)
-            calc(6px + env(safe-area-inset-left)) !important;
+            calc(6px + var(--sa-t))
+            calc(6px + var(--sa-r))
+            var(--sa-b)
+            calc(6px + var(--sa-l)) !important;
         gap: 3px !important;
         box-sizing: border-box !important; overflow: hidden !important;
     }
@@ -448,12 +450,12 @@ body {
        top edge, same height, one centre line. */
     .game-control-buttons {
         position: absolute !important; z-index: 1300 !important;
-        top: calc(env(safe-area-inset-top) + 6px) !important; right: calc(env(safe-area-inset-right) + 6px) !important;
+        top: calc(var(--sa-t) + 6px) !important; right: calc(var(--sa-r) + 6px) !important;
         transform: none !important; margin: 0 !important;
     }
     .quick-actions {
         position: absolute !important; z-index: 1300 !important;
-        top: calc(env(safe-area-inset-top) + 6px) !important; left: calc(env(safe-area-inset-left) + 6px) !important;
+        top: calc(var(--sa-t) + 6px) !important; left: calc(var(--sa-l) + 6px) !important;
         transform: none !important; margin: 0 !important;
     }
     .menu-btn, .quick-actions .hint-btn {
@@ -574,12 +576,38 @@ body {
        thinner than the hand below. */
     .bidding-interface, .second-phase-bidding {
         position: fixed !important;
-        left: 50% !important; top: 51% !important;
-        right: auto !important; bottom: auto !important;
-        transform: translate(-50%, -50%) !important;
+        left: 50% !important;
+        right: auto !important;
+        /* Centred in the band BETWEEN the chrome and the hand, not on the raw
+           viewport. Everything else in portrait lives inside .game-container,
+           which is padded by the safe areas; a tray centred on the viewport is
+           the one thing that isn't, so on a phone with a notch and a home
+           indicator the hand rose, the chrome dropped, and the takes tray --
+           the tallest of the two -- came down on the top row of the hand and
+           hid the ranks. Cards are never coverable: they are the one thing a
+           player must see while bidding.
+
+           top:    the chrome above the board measures ~110px below the notch
+                   at every phone size (title strip + status + compact score).
+           bottom: the hand's own band. Two rows of --cw * 1.4, the 4px row gap,
+                   and ~29px of seat padding below: 190px at the 56px card cap,
+                   less on a narrower phone, where the extra just becomes air.
+           Both top and bottom set, `height: fit-content` and `margin: auto 0`
+           centre the tray in what's left and clamp it to that band -- so a tray
+           too tall for a small phone scrolls inside itself instead of growing
+           over the hand. */
+        top: calc(var(--sa-t) + 110px) !important;
+        bottom: calc(var(--sa-b) + 190px) !important;
+        transform: translateX(-50%) !important;
+        height: fit-content !important;
         width: min(90vw, 400px) !important; max-width: none !important; min-width: 0 !important;
-        margin: 0 !important;
-        max-height: 68vh !important; overflow: auto !important;
+        margin: auto 0 !important;
+        /* fit-content alone can't shrink below the tray's min-content height,
+           and a tray that big would grow back over the hand -- so the band is
+           also an explicit cap, and the content scrolls inside it. */
+        max-height: calc(100vh - var(--sa-t) - var(--sa-b) - 300px) !important;
+        max-height: calc(100dvh - var(--sa-t) - var(--sa-b) - 300px) !important;
+        overflow: auto !important;
         padding: 12px 14px 14px !important;
         border-radius: 16px !important;
         border: 1px solid color-mix(in oklab, var(--cr-brass) 45%, transparent) !important;
@@ -645,12 +673,12 @@ body {
        top edge at 40px tall, so a 36px button 2px down centres with it. */
     .game-control-buttons {
         transform: none !important; top: 2px !important;
-        right: calc(env(safe-area-inset-right) + 6px) !important;
+        right: calc(var(--sa-r) + 6px) !important;
     }
     .quick-actions {
         position: fixed !important; z-index: 1300 !important;
         transform: none !important; top: 2px !important;
-        left: calc(env(safe-area-inset-left) + 6px) !important;
+        left: calc(var(--sa-l) + 6px) !important;
     }
     .menu-btn, .quick-actions .hint-btn {
         width: 38px !important; height: 36px !important; min-height: 36px !important;
@@ -703,9 +731,9 @@ body {
         left: var(--sa-l) !important;
         width: calc(100vw - var(--sa-l) - var(--sa-r)) !important;
     }
-    .south-player { bottom: env(safe-area-inset-bottom) !important; }
-    .fast-mode-container { left: env(safe-area-inset-left) !important; }
-    .game-control-buttons { right: env(safe-area-inset-right) !important; }
+    .south-player { bottom: var(--sa-b) !important; }
+    .fast-mode-container { left: var(--sa-l) !important; }
+    .game-control-buttons { right: var(--sa-r) !important; }
 }
 
 /* ── 11c. Compact bid panel on mobile (portrait + landscape) ───────────────
