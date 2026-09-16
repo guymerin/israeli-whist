@@ -52,7 +52,20 @@ ON YOUR IPHONE, IPAD AND MAC
 No ads, no accounts, no in-app purchases. Nothing leaves your device, and it plays offline.
 ```
 
-## What's New (version 1.2)
+## What's New (version 1.3)
+```
+Now called Whist, and now on iPad and Mac.
+
+• Plays on Apple silicon Macs, and the table grows to fill a big window or an iPad screen.
+• Fixed: tapping a prediction twice could freeze the hand on the last trick.
+• The Hint now suggests the card the bots themselves would play, and never a prediction the rules forbid.
+• Rules rewritten, including when you're allowed to trump and what happens when everyone misses.
+• The game history scorecard is readable again.
+```
+
+<details>
+<summary>What's New (version 1.2)</summary>
+
 ```
 Your hand, easier to read and easier to hit.
 
@@ -63,6 +76,7 @@ Your hand, easier to read and easier to hit.
 • The name card stays above the keyboard instead of behind it, and no longer opens the keyboard before you ask for it.
 • Tidier top bar: the trump, the bid count and the menu finally sit on one line.
 ```
+</details>
 
 <details>
 <summary>What's New (version 1.1)</summary>
@@ -211,7 +225,7 @@ Catalyst, no library for this platform was found"*.
   Macs** → make available. Intel Macs can't run it.
 - Local run: select the **My Mac (Designed for iPad)** destination in Xcode. Signing
   needs this Mac registered as a device on the team (Xcode offers to do it; from the CLI
-  add `-allowProvisioningUpdates -allowDeviceRegistration`). A compile-only check needs
+  add `-allowProvisioningUpdates -allowProvisioningDeviceRegistration`; to run it, press ⌘R in Xcode — a Designed-for-iPad `.app` can't be opened directly). A compile-only check needs
   no signing:
 
   ```bash
@@ -221,6 +235,24 @@ Catalyst, no library for this platform was found"*.
   ```
 - Window layouts are covered by `theme-cardroom.css` §12 (compact score box below
   1440px, board scaled up by `fitBoardToWindow()` in large windows).
+
+## Automated release (App Store Connect API)
+
+After archiving and exporting (above), `scripts/asc-release.mjs` does the App Store
+Connect side from this file and `screenshots/`:
+
+```bash
+export ASC_ISSUER_ID=<issuer uuid> ASC_KEY_ID=<key id>   # key at ~/.appstoreconnect/private_keys/
+node scripts/asc-release.mjs plan      # offline check of text lengths, screenshot sizes, IPA
+node scripts/asc-release.mjs status    # versions and build state
+node scripts/asc-release.mjs upload    # altool validate + upload
+node scripts/asc-release.mjs prepare   # version, text, name/subtitle, screenshots, waits for the build
+node scripts/asc-release.mjs submit    # send to App Review
+```
+
+The What's New text comes from the `## What's New (version X)` heading matching
+`MARKETING_VERSION`, so add that section before running `prepare`. If the name is refused,
+`prepare` falls back to the one listed under App information.
 
 ## Then, in App Store Connect (things only you can do)
 
