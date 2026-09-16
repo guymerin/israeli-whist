@@ -1271,3 +1271,42 @@ body.hand-fanned #south-cards.human-cards .card.card-armed {
         z-index: 70 !important;
     }
 }
+
+/* ── 12. Resizable windows: Mac ("Designed for iPad") and iPad Stage Manager ─
+   The score box is pinned at top:165px left:10px, which only clears the west
+   seat when the 1000px board starts right of it (windows ≥1440px). In every
+   narrower window — including the 1194×834 an iPad app opens at on a Mac — it
+   sat on Chati's nameplate. West's plate never starts above y≈281 (measured
+   800–1440px wide, including the 0.88-scaled short-landscape board), so the
+   box drops its title row and tightens its rows to end above it. The "+" moves
+   just outside the box's right edge, over empty felt. */
+@media (min-width: 761px) and (max-width: 1439px) and (min-height: 501px) {
+    .total-score-box:not(.expanded) {
+        max-height: none !important;
+        width: 164px !important; min-width: 164px !important;
+        padding: 3px 4px !important;
+    }
+    .total-score-box:not(.expanded) .total-score-header {
+        position: absolute !important; top: 0 !important; left: calc(100% + 6px) !important;
+        margin: 0 !important; padding: 0 !important; border: none !important;
+    }
+    .total-score-box:not(.expanded) .total-score-title { display: none !important; }
+    .total-score-box:not(.expanded) .extended-view-btn {
+        min-width: 28px !important; min-height: 28px !important; padding: 0 !important;
+    }
+    .total-score-box:not(.expanded) .score-item { padding: 2px 8px !important; line-height: 1.2 !important; }
+    .total-score-box:not(.expanded) .score-value { padding: 0 2px !important; line-height: 1.2 !important; }
+}
+
+/* Big windows: the board is a fixed 1000×650 table, which left a third of a
+   16" MacBook screen as empty space under it. fitBoardToWindow() (script.js)
+   sets --board-scale from the window, and the board grows from its top edge.
+   Scaling (not resizing) keeps every seat and card position the tested 1000px
+   layout; the margin gives the transformed height back to the page. */
+@media (min-width: 1051px) and (min-height: 761px) {
+    .game-board {
+        transform: scale(var(--board-scale, 1)) !important;
+        transform-origin: top center !important;
+        margin-bottom: calc(650px * (var(--board-scale, 1) - 1)) !important;
+    }
+}

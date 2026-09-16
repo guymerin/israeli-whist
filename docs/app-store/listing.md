@@ -7,7 +7,11 @@ offline, **collects no data**.
 
 ## App information
 
-- **Name:** `Whist`
+- **Name:** `Whist` — renamed from "Israeli Whist". Store names are unique, so App Store
+  Connect may refuse it; no US app used the exact name as of 2026-09-16, but ~20 "Whist …"
+  apps exist. Fallback: `Whist: Call Your Tricks`. The home-screen label
+  (`CFBundleDisplayName`) is `Whist` either way. **The bundle id does not change** — a new id
+  would be a new app with no ratings or installs.
 - **Subtitle** (≤30 chars): `Trick-taking bidding card game`
 - **Bundle ID:** `com.guymerin.israeliwhist`
 - **Primary category:** Games → **Card**
@@ -197,6 +201,32 @@ xcrun altool --upload-app -f build/ios-export/App.ipa -t ios \
 ```
 
 …or open `build/App.xcarchive` in Xcode Organizer → **Distribute App**.
+
+## iPad and Mac
+
+**iPad** ships from the same build (`TARGETED_DEVICE_FAMILY = 1,2`); it needs 13″ iPad
+screenshots (2064×2752 or 2048×2732) on the version page.
+
+**Mac** ships as *iPad app on Apple silicon Mac* ("Designed for iPad") — the same arm64
+binary, same bundle id, one universal purchase. Mac Catalyst is **not** an option today:
+Capacitor's SPM package (`capacitor-swift-pm`) ships `Capacitor`/`Cordova` xcframeworks
+with no Mac Catalyst slice, so a Catalyst build fails with *"While building for Mac
+Catalyst, no library for this platform was found"*.
+
+- App Store Connect → **Pricing and Availability → iPhone and iPad Apps on Apple Silicon
+  Macs** → make available. Intel Macs can't run it.
+- Local run: select the **My Mac (Designed for iPad)** destination in Xcode. Signing
+  needs this Mac registered as a device on the team (Xcode offers to do it; from the CLI
+  add `-allowProvisioningUpdates -allowDeviceRegistration`). A compile-only check needs
+  no signing:
+
+  ```bash
+  xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+    -destination 'platform=macOS,arch=arm64,variant=Designed for iPad' \
+    CODE_SIGNING_ALLOWED=NO build
+  ```
+- Window layouts are covered by `theme-cardroom.css` §12 (compact score box below
+  1440px, board scaled up by `fitBoardToWindow()` in large windows).
 
 ## Then, in App Store Connect (things only you can do)
 

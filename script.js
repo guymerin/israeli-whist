@@ -279,6 +279,10 @@ class Whist {
         // the hand never flashes in the wrong arrangement.
         this.applyHandLayout();
 
+        // Grow the fixed 1000×650 table into big Mac/iPad windows (CSS §12).
+        this.fitBoardToWindow();
+        window.addEventListener('resize', () => this.fitBoardToWindow());
+
         // Card Room theme: keep the turn spotlight and trick-progress bar in
         // sync with game state via a lightweight poller (decoupled from the
         // phase/turn control flow, so it can't break gameplay).
@@ -2567,8 +2571,10 @@ class Whist {
 
         const seatRotation = getComputedStyle(cardElement.parentElement)
             .getPropertyValue('--card-rotation').trim() || '0deg';
-        const dx = (origin.left + origin.width / 2) - (to.left + to.width / 2);
-        const dy = (origin.top + origin.height / 2) - (to.top + to.height / 2);
+        // Screen-space distance, converted into the board's own (possibly scaled) pixels.
+        const k = this.boardScale();
+        const dx = ((origin.left + origin.width / 2) - (to.left + to.width / 2)) / k;
+        const dy = ((origin.top + origin.height / 2) - (to.top + to.height / 2)) / k;
         const scale = Math.min(origin.width / to.width, 1.6) || 1;
 
         cardElement.animate([
@@ -2770,9 +2776,10 @@ class Whist {
         const gameBoard = document.querySelector('.game-board');
         const boardRect = gameBoard.getBoundingClientRect();
         
-        // Position relative to the game board
-        plusOneElement.style.left = `${nameRect.left - boardRect.left + nameRect.width / 2}px`;
-        plusOneElement.style.top = `${nameRect.top - boardRect.top + nameRect.height / 2}px`;
+        // Position relative to the game board, in its own (possibly scaled) pixels
+        const k = this.boardScale();
+        plusOneElement.style.left = `${(nameRect.left - boardRect.left + nameRect.width / 2) / k}px`;
+        plusOneElement.style.top = `${(nameRect.top - boardRect.top + nameRect.height / 2) / k}px`;
         
         // Add to game board
         gameBoard.appendChild(plusOneElement);
@@ -2829,8 +2836,9 @@ class Whist {
                 const cardRect = card.getBoundingClientRect();
                 
                 // Calculate relative movement to the center of the player's name
-                const deltaX = (winnerRect.left + winnerRect.width / 2) - (cardRect.left + cardRect.width / 2);
-                const deltaY = (winnerRect.top + winnerRect.height / 2) - (cardRect.top + cardRect.height / 2);
+                const k = this.boardScale();
+                const deltaX = ((winnerRect.left + winnerRect.width / 2) - (cardRect.left + cardRect.width / 2)) / k;
+                const deltaY = ((winnerRect.top + winnerRect.height / 2) - (cardRect.top + cardRect.height / 2)) / k;
                 
                 // Apply transform animation
                 card.style.transition = 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -3447,6 +3455,33 @@ class Whist {
         vv.addEventListener('scroll', fit);
         fit();
         this._fitNameModal = fit;
+    }
+
+    /**
+     * Scales the desktop board up to fill a large window (Mac, iPad). Only the
+     * fixed 1000×650 layout grows — below 1051×761 the breakpoint layouts own
+     * the board and --board-scale is left unset. From 1440px the full score
+     * box stands beside the table and reaches down to the west seat, so the
+     * width budget keeps 200px each side for it; narrower, the box is the
+     * compact one (CSS §12) that ends above the west seat and may sit on felt.
+     */
+    fitBoardToWindow() {
+        const board = document.querySelector('.game-board');
+        if (!board) return;
+        board.style.removeProperty('--board-scale');
+        const w = window.innerWidth, h = window.innerHeight;
+        if (w < 1051 || h < 761) return;
+        const top = board.getBoundingClientRect().top;   // transform-origin is the top edge, so unscaled
+        const gutters = w >= 1440 ? 400 : 40;
+        const scale = Math.min((h - top - 24) / 650, (w - gutters) / 1000, 1.6);
+        if (scale > 1.02) board.style.setProperty('--board-scale', scale.toFixed(3));
+    }
+
+    /** How much the board is visually scaled (1 unless a transform is applied). */
+    boardScale() {
+        const board = document.querySelector('.game-board');
+        if (!board || !board.offsetWidth) return 1;
+        return board.getBoundingClientRect().width / board.offsetWidth || 1;
     }
 
     /**
@@ -8162,17 +8197,19 @@ class Whist {
             const gameBoard = document.querySelector('.game-board');
             const gameBoardRect = gameBoard.getBoundingClientRect();
             
-            // Position animation above the player (adjust for North player)
+            // Position animation above the player (adjust for North player),
+            // in the board's own (possibly scaled) pixels
+            const k = this.boardScale();
             let animationTop, animationLeft;
             
             if (player === 'north') {
                 // For North player, position below instead of above
-                animationTop = (playerRect.bottom - gameBoardRect.top + 10) + 'px';
-                animationLeft = (playerRect.left - gameBoardRect.left + playerRect.width / 2) + 'px';
+                animationTop = ((playerRect.bottom - gameBoardRect.top) / k + 10) + 'px';
+                animationLeft = ((playerRect.left - gameBoardRect.left + playerRect.width / 2) / k) + 'px';
             } else {
                 // For other players, position above
-                animationTop = (playerRect.top - gameBoardRect.top - 50) + 'px';
-                animationLeft = (playerRect.left - gameBoardRect.left + playerRect.width / 2) + 'px';
+                animationTop = ((playerRect.top - gameBoardRect.top) / k - 50) + 'px';
+                animationLeft = ((playerRect.left - gameBoardRect.left + playerRect.width / 2) / k) + 'px';
             }
             
 
