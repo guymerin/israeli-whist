@@ -1,6 +1,6 @@
-# Copilot instructions — Israeli Whist
+# Copilot instructions — Whist
 
-A browser-based implementation of the Israeli Whist card game. Pure, dependency-free
+A browser-based implementation of the Whist card game. Pure, dependency-free
 vanilla JavaScript / HTML / CSS — no build step, no package manager, no tests, no linter.
 
 ## Running the project
@@ -41,7 +41,7 @@ Just three files at the repository root:
   Phase 2 predictions panel uses a 3×3 grid (`.prediction-list`) where each
   `.prediction-item:nth-child(N)` is pinned to a compass position via
   `grid-column`/`grid-row`.
-- `script.js` — single `IsraeliWhist` class (~8k lines). Instantiated once on
+- `script.js` — single `Whist` class (~8k lines). Instantiated once on
   `DOMContentLoaded` and assigned to `window.game`. A few debug helpers are also
   exposed on `window` (e.g. `window.forceUpdate`, `window.debugPhase2Bids`,
   `window.refreshPhase2Displays`, `window.testBidUpdate`).
@@ -51,7 +51,7 @@ Just three files at the repository root:
 The game runs as a single state machine on `this.currentPhase`, which transitions
 `dealing → phase1 → phase2 → phase3 → scoring` and then back to `dealing` for the next
 gamlet (hand). All state — hands, bids, scores, AI memory — lives as fields on the
-single `IsraeliWhist` instance; there is no module system and no separation between
+single `Whist` instance; there is no module system and no separation between
 model, view, and controller.
 
 The four players are always referenced by the compass keys `'north'`, `'east'`,

@@ -1,6 +1,6 @@
-# Israeli Whist
+# Whist
 
-A browser-based implementation of the Israeli Whist card game. Vanilla JavaScript, HTML, and CSS — no build step, no package manager, no test framework.
+A browser-based implementation of the Whist card game. Vanilla JavaScript, HTML, and CSS with no build step and no runtime dependencies. Ships to iPhone, iPad and Mac through a Capacitor wrapper; Playwright tests are dev-only.
 
 ## Run it
 
@@ -49,12 +49,12 @@ Native haptics are called through `window.Capacitor.Plugins.Haptics` (see `_hapt
 
 ## Rules
 
-Tap the **📖 Rules** button in-game. Quick summary:
+Open **☰ → Rules** in-game for the full text. Quick summary:
 
-1. **Phase 1 — Trump bidding.** Bid a minimum number of tricks + trump suit, or pass. Each bid must beat the previous (more tricks, or same tricks with a higher-ranked trump: ♣ < ♦ < ♥ < ♠ < NT). Highest bidder sets the trump and a minimum-takes floor for Phase 2.
+1. **Phase 1 — Trump bidding.** Bid a minimum number of tricks + trump suit, or pass. Each bid must beat the previous (more tricks, or same tricks with a higher-ranked trump: ♣ < ♦ < ♥ < ♠ < NT). Once you pass you're out of the bidding. Highest bidder sets the trump and a minimum-takes floor for Phase 2; if all four pass, redeal.
 2. **Phase 2 — Takes prediction.** Starting with the trump winner and going clockwise, every player predicts how many tricks they will win. The four predictions cannot total exactly 13 (the "over/under" rule).
-3. **Phase 3 — Play.** Trump winner leads. Follow suit if able; otherwise play anything (including trump). Highest of the led suit wins unless trumped.
-4. **Scoring.** +10 per trick taken, +10 bonus if tricks equal bid, −10 per trick over or under. Game ends at 200 cumulative points or 10 gamlets.
+3. **Phase 3 — Play.** Trump winner leads. Follow suit if able; otherwise play anything (including trump). Highest trump wins; with no trump played, highest of the led suit wins.
+4. **Scoring.** Exact: (bid × bid) + 10. Miss: −10 per trick over or under. Bid 0: ±50 in an Under hand (total < 13), ±25 in an Over hand. If all four miss, the gamlet is cancelled. A game ends when someone reaches 200 or after 10 gamlets.
 
 ## Repository layout
 
@@ -62,7 +62,7 @@ Tap the **📖 Rules** button in-game. Quick summary:
 |------|--------------|
 | `index.html` | Single-page DOM, compass-style board, all conditional panels. |
 | `styles.css` | Single stylesheet incl. compass layout and mobile breakpoints. |
-| `script.js` | Single `IsraeliWhist` class instantiated as `window.game`. |
+| `script.js` | Single `Whist` class instantiated as `window.game`. |
 | `mc-engine.js` | Pure Monte Carlo (PIMC) engine as an ES module — integer-only, no DOM. Imported by Node tests; exposed to the game as `window.MCEngine`. |
 | `package.json` | Dev-only: `playwright` devDependency and `npm test` scripts. |
 | `tests/` | `mc-engine.test.mjs` (Node-native), `mc-parity.mjs`, `mc-strength.mjs`, `smoke-test.mjs`, plus a self-starting `static-server.mjs`. |
@@ -74,5 +74,5 @@ Tap the **📖 Rules** button in-game. Quick summary:
 - **Tests.** `npm install && npx playwright install chromium`, then `npm test` (unit + parity + strength) or `npm run test:smoke`. `npm run test:unit` needs no browser. The suites boot their own static server. The game itself still ships with **zero runtime dependencies**.
 - **Debug logging.** Silent by default; open the page with `?debug` (e.g. `index.html?debug`) to see the color-coded `logPlayer` events and other diagnostics. `console.error` always shows.
 - **State is on `window.game`.** Useful fields: `currentPhase`, `phase1Bids`, `phase2Bids`, `trumpSuit`, `trumpWinner`, `minimumTakes`, `tricksWon`, `hands`, `currentTrick`. Score fields: `gameScores` accumulates within one full game (200 pts / 10 gamlets ends a game); `sessionScores` aggregates across multiple full games. Per-gamlet deltas live in `gamletHistory`.
-- **Mobile.** Designed for landscape on small screens; portrait shows a rotate overlay. Don't introduce APIs that break iOS Safari — there is an explicit `setupSafariEmergencyFix()`.
+- **Layouts.** Portrait and landscape phones, iPad, and resizable Mac windows (`theme-cardroom.css` §11–12). Don't introduce APIs that break iOS Safari — there is an explicit `setupSafariEmergencyFix()`.
 - **Conventions.** See `.github/copilot-instructions.md` for required helpers (`getDelay`, `getSuitSymbol`, `getPlayerDisplayName`, `logPlayer`, `refreshAllPhase2Displays`) and the per-phase state-machine contract.

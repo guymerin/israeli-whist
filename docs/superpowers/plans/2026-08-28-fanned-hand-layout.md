@@ -51,7 +51,7 @@ Create `tests/hand-fan.mjs`:
 
 ```javascript
 /**
- * Israeli Whist — fanned hand layout test.
+ * Whist — fanned hand layout test.
  *
  * The fan is one CSS rule fed by --fan-t, the card's place in its own row,
  * which layoutHumanHand() stamps as a number from -1 (left end) through 0

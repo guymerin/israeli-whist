@@ -1,4 +1,4 @@
-# App Store listing — Israeli Whist
+# App Store listing — Whist
 
 Copy‑paste fields for App Store Connect. App is single‑player vs. 3 AI bots, fully
 offline, **collects no data**.
@@ -7,7 +7,11 @@ offline, **collects no data**.
 
 ## App information
 
-- **Name:** `Israeli Whist`
+- **Name:** `Whist` — renamed from "Israeli Whist". Store names are unique, so App Store
+  Connect may refuse it; no US app used the exact name as of 2026-09-16, but ~20 "Whist …"
+  apps exist. Fallback: `Whist: Call Your Tricks`. The home-screen label
+  (`CFBundleDisplayName`) is `Whist` either way. **The bundle id does not change** — a new id
+  would be a new app with no ratings or installs.
 - **Subtitle** (≤30 chars): `Trick-taking bidding card game`
 - **Bundle ID:** `com.guymerin.israeliwhist`
 - **Primary category:** Games → **Card**
@@ -17,41 +21,35 @@ offline, **collects no data**.
 
 ## Promotional text (≤170 chars)
 ```
-Outbid and outplay three world-class AI opponents in the classic Israeli Whist. Predict your tricks exactly to win. No ads, no accounts, fully offline.
+Call trump, then call your number. Take exactly that many tricks against three bots that never see your cards. No ads, no accounts, works offline.
 ```
 
 ## Keywords (≤100 chars, comma-separated, no spaces after commas)
 ```
-whist,israeli whist,card game,trick taking,bidding,cards,strategy,offline,bridge,spades,oh hell
+trick taking,bidding,trump,predict,tricks,card game,strategy,offline,solo,classic
 ```
-<!-- 95 chars; App Store limit is 100. -->
+<!-- 80 chars; limit 100. No other games' names (2.3.7): "whist" is already in the name. -->
 
 
 ## Description (≤4000 chars)
 ```
-Israeli Whist is a sharp, addictive trick-taking card game — bid the exact number of tricks you can win, then fight to hit your number against three world-class AI opponents.
+Call trump, then call your number. Four players each predict exactly how many of the 13 tricks they'll take, and the predictions can never add up to 13. Every hand, somebody is going to miss. Make sure it isn't you.
 
-It plays in two bids and a battle:
+HOW A HAND GOES
+• Bid for trump. Name a number of tricks, from 5 to 13, and a suit, or pass. The highest bid picks trump.
+• Predict. Starting with the trump winner, each player says how many tricks they'll take, in turn and in the open. The last player can't make the total 13.
+• Play. Follow suit if you can. Take exactly your number and score (bid × bid) + 10. Every trick over or under costs 10. Sometimes the best card is the one that loses the trick.
 
-• Phase 1 — Trump bidding. Bid a minimum number of tricks and a trump suit, or pass. The highest bidder sets the trump for the hand.
-• Phase 2 — Takes. Every player privately predicts how many tricks they'll win. The four predictions can never total exactly 13 — someone will be over, someone under.
-• Phase 3 — Play. Win tricks. Match your bid EXACTLY to score big; every trick over or under costs you. Sometimes the smartest move is to lose a trick on purpose.
+THE BOTS
+Botti, Droidi and Chati see only their own cards and what's been played, the same as you. Before every card, each one deals out dozens of ways the hidden cards could lie and plays whatever scores best across them. They will duck a trick they don't need, and they will set you when you overbid.
 
-WORLD-CLASS OPPONENTS
-The three bots — Botti, Droidi, and Chati — don't cheat and don't play dumb. They run a Determinized Monte Carlo engine (the same technique behind top computer card players), sampling thousands of possible hands to make genuinely tough, human-like decisions. Beating them feels earned.
+ON YOUR IPHONE, IPAD AND MAC
+• Drag a card onto the table, or tap to lift it and tap again. Cards you can't play are dimmed.
+• The table scales to fit an iPad screen or a Mac window.
+• A hint when you want one, a look back at the last trick, and Turbo when you want the bots to hurry.
+• Your scorecard is saved between sessions.
 
-BUILT FOR QUICK, SATISFYING PLAY
-• Clean "card room" table designed for phones — portrait or landscape.
-• A hint button when you want strategic advice, and a "last trick" review.
-• Turbo mode to speed through the bots' turns.
-• Your session and running scorecard are saved automatically.
-
-RESPECTS YOU
-• No ads. No accounts. No in-app purchases.
-• No data collection and no tracking — everything stays on your device.
-• Fully offline. Play on a plane, a subway, anywhere.
-
-Whether you grew up playing Israeli Whist (Ashkelon Whist / "Oh Hell"-style bidding) or you're a Spades/Bridge player looking for your next obsession, this is a fast, brainy hand you'll keep coming back to.
+No ads, no accounts, no in-app purchases. Nothing leaves your device, and it plays offline.
 ```
 
 ## What's New (version 1.2)
@@ -86,7 +84,7 @@ Bigger cards and a whole new way to play them.
 <summary>What's New (version 1.0)</summary>
 
 ```
-First release. Play Israeli Whist against three world-class AI opponents — offline, no ads, no accounts.
+First release. Play Whist against three world-class AI opponents — offline, no ads, no accounts.
 ```
 </details>
 
@@ -197,6 +195,32 @@ xcrun altool --upload-app -f build/ios-export/App.ipa -t ios \
 ```
 
 …or open `build/App.xcarchive` in Xcode Organizer → **Distribute App**.
+
+## iPad and Mac
+
+**iPad** ships from the same build (`TARGETED_DEVICE_FAMILY = 1,2`); it needs 13″ iPad
+screenshots (2064×2752 or 2048×2732) on the version page.
+
+**Mac** ships as *iPad app on Apple silicon Mac* ("Designed for iPad") — the same arm64
+binary, same bundle id, one universal purchase. Mac Catalyst is **not** an option today:
+Capacitor's SPM package (`capacitor-swift-pm`) ships `Capacitor`/`Cordova` xcframeworks
+with no Mac Catalyst slice, so a Catalyst build fails with *"While building for Mac
+Catalyst, no library for this platform was found"*.
+
+- App Store Connect → **Pricing and Availability → iPhone and iPad Apps on Apple Silicon
+  Macs** → make available. Intel Macs can't run it.
+- Local run: select the **My Mac (Designed for iPad)** destination in Xcode. Signing
+  needs this Mac registered as a device on the team (Xcode offers to do it; from the CLI
+  add `-allowProvisioningUpdates -allowDeviceRegistration`). A compile-only check needs
+  no signing:
+
+  ```bash
+  xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+    -destination 'platform=macOS,arch=arm64,variant=Designed for iPad' \
+    CODE_SIGNING_ALLOWED=NO build
+  ```
+- Window layouts are covered by `theme-cardroom.css` §12 (compact score box below
+  1440px, board scaled up by `fitBoardToWindow()` in large windows).
 
 ## Then, in App Store Connect (things only you can do)
 

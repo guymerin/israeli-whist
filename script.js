@@ -1,7 +1,7 @@
 /**
- * Israeli Whist browser game architecture
+ * Whist browser game architecture
  * ---------------------------------------
- * This file owns the entire game: one IsraeliWhist instance is created on
+ * This file owns the entire game: one Whist instance is created on
  * DOMContentLoaded and assigned to window.game for smoke tests and debug helpers.
  *
  * The game is a single state machine on this.currentPhase:
@@ -41,7 +41,7 @@ const WHIST_DEBUG = typeof location !== 'undefined' && /[?&]debug\b/i.test(locat
 function dlog(...args) { if (WHIST_DEBUG) console.log(...args); }
 function dwarn(...args) { if (WHIST_DEBUG) console.warn(...args); }
 
-class IsraeliWhist {
+class Whist {
     constructor() {
         this.debug = WHIST_DEBUG; // also exposed on window.game for the console
         // Seat identity and clockwise turn order.
@@ -49,6 +49,8 @@ class IsraeliWhist {
         this.southIndex = this.players.indexOf('south'); // always 2; named to avoid magic number
         this.playerName = 'Player'; // Human player's name (default)
         this.SESSION_KEY = 'israeliWhist_session'; // localStorage key for the persisted session (see saveSession)
+        // Storage keys keep their pre-rename 'israeliWhist_' prefix on purpose: renaming
+        // them would silently wipe every existing player's saved session and name.
         // Hand layout preference. Deliberately NOT inside SESSION_KEY:
         // clearWhistSession() forgets a session, but which layout you like
         // should outlive that.
@@ -276,6 +278,10 @@ class IsraeliWhist {
         // Hand layout preference, applied before the board first renders so
         // the hand never flashes in the wrong arrangement.
         this.applyHandLayout();
+
+        // Grow the fixed 1000×650 table into big Mac/iPad windows (CSS §12).
+        this.fitBoardToWindow();
+        window.addEventListener('resize', () => this.fitBoardToWindow());
 
         // Card Room theme: keep the turn spotlight and trick-progress bar in
         // sync with game state via a lightweight poller (decoupled from the
@@ -1020,7 +1026,7 @@ class IsraeliWhist {
             return;
         }
         
-                 // Validate minimum bid of 5 according to official Israeli Whist rules
+                 // Validate minimum bid of 5 according to official Whist rules
          if (minTakes < 5) {
              console.error('Minimum bid must be 5 or higher');
             return;
@@ -1213,7 +1219,20 @@ class IsraeliWhist {
      * @param {number} takes Predicted trick count; trumpWinner must meet minimumTakes.
      * Side effects: refreshes displays and starts Phase 3 once all four bids exist.
      */
+    /** True while it's `player`'s turn to predict and they haven't yet. */
+    isPhase2Turn(player) {
+        return this.currentPhase === 'phase2'
+            && this.players[this.currentBidder] === player
+            && (this.phase2Bids[player] === null || this.phase2Bids[player] === undefined);
+    }
+
     makePhase2Bid(player, takes) {
+        // One prediction per seat, on its turn. The takes buttons stay up for
+        // a moment after a click, and when south predicted last a second click
+        // re-ran the "all bids in" branch below, started Phase 3 twice and
+        // froze the hand on trick 13. Overlapping bot timers hit the same path.
+        if (!this.isPhase2Turn(player)) return;
+
         // Validate minimum bid for trump winner
         if (player === this.trumpWinner && takes < this.minimumTakes) {
             const playerDisplayName = this.getPlayerDisplayName(player);
@@ -2394,7 +2413,7 @@ class IsraeliWhist {
         const card = hand[cardIndex];
         dlog('🃏 Playing card:', card);
         
-        // Validate card play according to Israeli Whist rules (before removing from hand)
+        // Validate card play according to Whist rules (before removing from hand)
         dlog('🔍 Validating card play...');
         dlog('🔍 isValidCardPlay result:', this.isValidCardPlay(player, card));
         
@@ -2565,8 +2584,10 @@ class IsraeliWhist {
 
         const seatRotation = getComputedStyle(cardElement.parentElement)
             .getPropertyValue('--card-rotation').trim() || '0deg';
-        const dx = (origin.left + origin.width / 2) - (to.left + to.width / 2);
-        const dy = (origin.top + origin.height / 2) - (to.top + to.height / 2);
+        // Screen-space distance, converted into the board's own (possibly scaled) pixels.
+        const k = this.boardScale();
+        const dx = ((origin.left + origin.width / 2) - (to.left + to.width / 2)) / k;
+        const dy = ((origin.top + origin.height / 2) - (to.top + to.height / 2)) / k;
         const scale = Math.min(origin.width / to.width, 1.6) || 1;
 
         cardElement.animate([
@@ -2683,7 +2704,7 @@ class IsraeliWhist {
             );
             return;
         }
-        // Determine trick winner according to Israeli Whist rules
+        // Determine trick winner according to Whist rules
         const winner = this.determineTrickWinner();
         this.tricksWon[winner]++;
         this.tricksPlayed++;
@@ -2768,9 +2789,10 @@ class IsraeliWhist {
         const gameBoard = document.querySelector('.game-board');
         const boardRect = gameBoard.getBoundingClientRect();
         
-        // Position relative to the game board
-        plusOneElement.style.left = `${nameRect.left - boardRect.left + nameRect.width / 2}px`;
-        plusOneElement.style.top = `${nameRect.top - boardRect.top + nameRect.height / 2}px`;
+        // Position relative to the game board, in its own (possibly scaled) pixels
+        const k = this.boardScale();
+        plusOneElement.style.left = `${(nameRect.left - boardRect.left + nameRect.width / 2) / k}px`;
+        plusOneElement.style.top = `${(nameRect.top - boardRect.top + nameRect.height / 2) / k}px`;
         
         // Add to game board
         gameBoard.appendChild(plusOneElement);
@@ -2827,8 +2849,9 @@ class IsraeliWhist {
                 const cardRect = card.getBoundingClientRect();
                 
                 // Calculate relative movement to the center of the player's name
-                const deltaX = (winnerRect.left + winnerRect.width / 2) - (cardRect.left + cardRect.width / 2);
-                const deltaY = (winnerRect.top + winnerRect.height / 2) - (cardRect.top + cardRect.height / 2);
+                const k = this.boardScale();
+                const deltaX = ((winnerRect.left + winnerRect.width / 2) - (cardRect.left + cardRect.width / 2)) / k;
+                const deltaY = ((winnerRect.top + winnerRect.height / 2) - (cardRect.top + cardRect.height / 2)) / k;
                 
                 // Apply transform animation
                 card.style.transition = 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -3448,6 +3471,33 @@ class IsraeliWhist {
     }
 
     /**
+     * Scales the desktop board up to fill a large window (Mac, iPad). Only the
+     * fixed 1000×650 layout grows — below 1051×761 the breakpoint layouts own
+     * the board and --board-scale is left unset. From 1440px the full score
+     * box stands beside the table and reaches down to the west seat, so the
+     * width budget keeps 200px each side for it; narrower, the box is the
+     * compact one (CSS §12) that ends above the west seat and may sit on felt.
+     */
+    fitBoardToWindow() {
+        const board = document.querySelector('.game-board');
+        if (!board) return;
+        board.style.removeProperty('--board-scale');
+        const w = window.innerWidth, h = window.innerHeight;
+        if (w < 1051 || h < 761) return;
+        const top = board.getBoundingClientRect().top;   // transform-origin is the top edge, so unscaled
+        const gutters = w >= 1440 ? 400 : 40;
+        const scale = Math.min((h - top - 24) / 650, (w - gutters) / 1000, 1.6);
+        if (scale > 1.02) board.style.setProperty('--board-scale', scale.toFixed(3));
+    }
+
+    /** How much the board is visually scaled (1 unless a transform is applied). */
+    boardScale() {
+        const board = document.querySelector('.game-board');
+        if (!board || !board.offsetWidth) return 1;
+        return board.getBoundingClientRect().width / board.offsetWidth || 1;
+    }
+
+    /**
      * Says out loud what the four predictions add up to, the moment the last
      * one lands. The total decides the shape of the whole hand — over means
      * somebody is going to miss, under means there are spare tricks going
@@ -3493,7 +3543,7 @@ class IsraeliWhist {
         );
     }
     
-    // SMARTER: Assess trump potential based on Israeli Whist guidance
+    // SMARTER: Assess trump potential based on Whist guidance
     getBestTrumpSuit(player, handStrength) {
         const hand = this.hands[player];
         const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
@@ -6859,6 +6909,9 @@ class IsraeliWhist {
         trickButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const takes = parseInt(button.getAttribute('data-value'), 10);
+                // A late or repeated click must not warn about 13 or re-bid
+                // (see makePhase2Bid).
+                if (!this.isPhase2Turn('south')) return;
                 if (!isNaN(takes)) {
                     // Over/under-13 rule: only the LAST bidder is constrained
                     // (their bid is what could make the four-player total
@@ -8160,17 +8213,19 @@ class IsraeliWhist {
             const gameBoard = document.querySelector('.game-board');
             const gameBoardRect = gameBoard.getBoundingClientRect();
             
-            // Position animation above the player (adjust for North player)
+            // Position animation above the player (adjust for North player),
+            // in the board's own (possibly scaled) pixels
+            const k = this.boardScale();
             let animationTop, animationLeft;
             
             if (player === 'north') {
                 // For North player, position below instead of above
-                animationTop = (playerRect.bottom - gameBoardRect.top + 10) + 'px';
-                animationLeft = (playerRect.left - gameBoardRect.left + playerRect.width / 2) + 'px';
+                animationTop = ((playerRect.bottom - gameBoardRect.top) / k + 10) + 'px';
+                animationLeft = ((playerRect.left - gameBoardRect.left + playerRect.width / 2) / k) + 'px';
             } else {
                 // For other players, position above
-                animationTop = (playerRect.top - gameBoardRect.top - 50) + 'px';
-                animationLeft = (playerRect.left - gameBoardRect.left + playerRect.width / 2) + 'px';
+                animationTop = ((playerRect.top - gameBoardRect.top) / k - 50) + 'px';
+                animationLeft = ((playerRect.left - gameBoardRect.left + playerRect.width / 2) / k) + 'px';
             }
             
 
@@ -9135,7 +9190,7 @@ class IsraeliWhist {
          const phase2Bid = this.phase2Bids.south;
          
          if (phase2Bid !== null && phase2Bid !== undefined) {
-             return '<p>✅ You have already bid. Wait for other players.</p>';
+             return '<p>You have already predicted. Waiting for the other players.</p>';
          }
          
          let hint = `<p><strong>Trump:</strong> ${this.getSuitSymbol(trumpSuit)} ${trumpSuit.charAt(0).toUpperCase() + trumpSuit.slice(1)}</p>`;
@@ -9144,22 +9199,44 @@ class IsraeliWhist {
          if (trumpSuit !== 'notrump') {
              const trumpCards = hand.filter(card => card.suit === trumpSuit);
              if (trumpCards.length >= 5) {
-                 hint += '<p>🔥 <strong>Excellent trump support</strong> - bid aggressively</p>';
+                 hint += `<p><strong>Strong trump support:</strong> ${trumpCards.length} trumps.</p>`;
              } else if (trumpCards.length >= 3) {
-                 hint += '<p>✅ <strong>Good trump support</strong> - moderate bidding</p>';
+                 hint += `<p><strong>Fair trump support:</strong> ${trumpCards.length} trumps.</p>`;
              } else {
-                 hint += '<p>⚠️ <strong>Weak trump support</strong> - be conservative</p>';
+                 hint += `<p><strong>Weak trump support:</strong> ${trumpCards.length === 1 ? '1 trump' : `${trumpCards.length} trumps`}.</p>`;
              }
          }
          
-         // Suggested bid
-         const suggestedBid = this.calculateSmartPhase2Bid('south', handStrength, 0, 0, 7);
+         // Suggested prediction, from the same inputs a bot in this seat gets:
+         // the real running total, the trump winner's floor, and the full 0–13
+         // range. (It used to pass total 0, floor 0 and a cap of 7, so it could
+         // suggest less than your contract, the forbidden number, or never 8+.)
+         const others = this.players.filter(p => p !== 'south');
+         const currentTotal = others.reduce((sum, p) => sum + (this.phase2Bids[p] || 0), 0);
+         const minBid = this.trumpWinner === 'south' ? this.minimumTakes : 0;
+         let suggestedBid = Math.max(minBid, Math.min(13,
+             this.calculateSmartPhase2Bid('south', handStrength, currentTotal, minBid, 13)));
+
+         const lastToBid = others.every(p => this.phase2Bids[p] !== null && this.phase2Bids[p] !== undefined);
+         const forbidden = lastToBid ? 13 - currentTotal : null;
+         if (suggestedBid === forbidden) {
+             // The trump winner predicts first, so the last seat has no floor.
+             suggestedBid = (suggestedBid + 1 <= 13) ? suggestedBid + 1 : suggestedBid - 1;
+         }
+
          hint += `<div class="card-suggestion">`;
-         hint += `<strong>💡 Suggested: ${suggestedBid} tricks</strong><br>`;
-         hint += `Based on hand strength and trump support`;
+         hint += `<strong>Suggested: ${suggestedBid} ${suggestedBid === 1 ? 'trick' : 'tricks'}</strong><br>`;
+         hint += `From playing out many possible deals of the cards you can't see.`;
          hint += `</div>`;
-         
-         hint += '<p><strong>Key:</strong> Count Aces, Kings, and trump cards. Better to under-bid than over-bid!</p>';
+
+         if (minBid > 0) {
+             hint += `<p>You won the trump, so you must predict at least ${minBid}.</p>`;
+         }
+         if (forbidden !== null && forbidden >= 0 && forbidden <= 13) {
+             hint += `<p>You predict last, so you can't choose ${forbidden}: the total would be exactly 13.</p>`;
+         } else {
+             hint += '<p>Missing high or low costs the same: 10 points per trick.</p>';
+         }
          
          return hint;
      }
@@ -9171,31 +9248,61 @@ class IsraeliWhist {
          const targetBid = this.phase2Bids.south;
          
          if (!hand || hand.length === 0) {
-             return '<p>No cards left to play!</p>';
+             return '<p>No cards left to play.</p>';
          }
          
          const tricksNeeded = targetBid - tricksWon;
          const tricksRemaining = 13 - this.tricksPlayed;
          
          let hint = `<p><strong>Bid:</strong> ${targetBid} | <strong>Taken:</strong> ${tricksWon} | <strong>Need:</strong> ${Math.max(0, tricksNeeded)}</p>`;
-         
-         // Get suggested card to play
-         const suggestedCard = this.getSuggestedCard(hand, currentTrick, tricksNeeded, tricksRemaining);
-         
-         if (suggestedCard) {
-             hint += `<div class="card-suggestion">`;
-             hint += `<strong>💡 Play: ${suggestedCard.rank}${this.getSuitSymbol(suggestedCard.suit)}</strong><br>`;
-             hint += `${suggestedCard.reason}`;
-             hint += `</div>`;
+
+         // The card engine assumes this seat plays next, so only suggest a card
+         // when it really is south's turn.
+         const southToPlay = currentTrick.length < 4
+             && (this.trickLeader + currentTrick.length) % 4 === this.southIndex;
+
+         if (southToPlay) {
+             // Same engine the bots use (it reads only south's hand and public
+             // play). The rule-based getSuggestedCard is the fallback when the
+             // engine is off or can't sample; it ignored trump when judging
+             // who's winning the trick.
+             const legalCount = hand.filter(card => this.isValidCardPlay('south', card)).length;
+             const idx = this.mcTryPhase3('south');
+             let suggestedCard = null;
+             if (idx !== null && idx !== undefined && hand[idx]) {
+                 const card = hand[idx];
+                 let reason;
+                 if (legalCount === 1) {
+                     reason = "It's your only legal card.";
+                 } else if (tricksNeeded <= 0) {
+                     reason = 'Played out against many possible deals of the hidden cards, this card is least likely to win you a trick you don\'t want.';
+                 } else {
+                     reason = `Played out against many possible deals of the hidden cards, this card gives a prediction of ${targetBid} the best score.`;
+                 }
+                 suggestedCard = { rank: card.rank, suit: card.suit, reason };
+             } else {
+                 suggestedCard = this.getSuggestedCard(hand, currentTrick, tricksNeeded, tricksRemaining);
+             }
+
+             if (suggestedCard) {
+                 hint += `<div class="card-suggestion">`;
+                 hint += `<strong>Play: ${suggestedCard.rank}${this.getSuitSymbol(suggestedCard.suit)}</strong><br>`;
+                 hint += `${suggestedCard.reason}`;
+                 hint += `</div>`;
+             }
+         } else {
+             hint += '<p>A card suggestion appears when it is your turn to play.</p>';
          }
          
          // Brief strategy note
          if (tricksNeeded <= 0) {
-             hint += '<p>🎯 <strong>Avoid extra tricks</strong> to prevent penalty</p>';
+             hint += '<p><strong>You have your number.</strong> Every extra trick costs 10 points.</p>';
          } else if (tricksNeeded > tricksRemaining) {
-             hint += '<p>🔥 <strong>Must win every remaining trick!</strong></p>';
+             hint += '<p><strong>You can no longer reach your number.</strong> Keep the miss as small as you can.</p>';
+         } else if (tricksNeeded === tricksRemaining) {
+             hint += '<p><strong>You need every remaining trick.</strong></p>';
          } else {
-             hint += `<p>📈 <strong>Need ${tricksNeeded} from ${tricksRemaining} remaining</strong></p>`;
+             hint += `<p><strong>Need ${tricksNeeded} of the ${tricksRemaining} tricks left.</strong></p>`;
          }
          
          return hint;
@@ -9964,8 +10071,8 @@ class IsraeliWhist {
 document.addEventListener('DOMContentLoaded', () => {
     dlog('DOM loaded, initializing game...');
     try {
-        window.game = new IsraeliWhist();
-        dlog('Israeli Whist game loaded successfully!');
+        window.game = new Whist();
+        dlog('Whist game loaded successfully!');
         
                  // Expose debug methods globally for console access
          window.clearWhistSession = () => window.game.clearSession();

@@ -30,6 +30,8 @@ npm test                          # unit + parity + strength
 - `npm run test:unit` — **`tests/mc-engine.test.mjs`**: Node-native, no browser. Imports `mc-engine.js` directly and checks encode/decode, trick-winner parity, playout=13, sampler sizes/coverage/voids. Sub-second.
 - `npm run test:parity` — **`tests/mc-parity.mjs`**: in-browser parity of the live engine vs `determineTrickWinner`.
 - `npm run test:strength` — **`tests/mc-strength.mjs`**: MC vs heuristic A/B (exact-hit rate, score/seat, decision-time p95). `WHIST_DEALS=N` to resize.
+- `npm run test:phase2` — **`tests/phase2-double-bid.mjs`**: one prediction per seat, one Phase 3 — double clicks, late/out-of-turn clicks and bot double-fires are ignored (`isPhase2Turn`).
+- `npm run test:hints` — **`tests/hints.mjs`**: the takes hint respects the real total, the forbidden 13 and the trump winner's floor; the card hint comes from the MC engine, is legal, and only appears on south's turn.
 - `npm run test:smoke` — **`tests/smoke-test.mjs`**: one full gamlet, phase flow, scoring rules, over/under rule, no page errors.
 
 The Playwright suites boot their own ephemeral static server via `tests/static-server.mjs` (set `WHIST_URL` to point at an external one instead). The repo also ships `.mcp.json` registering a Playwright MCP server for interactive agent-driven checks — drive Deal → Phase 1 → Phase 2 → a few tricks, and read `window.game` state (`currentPhase`, `phase2Bids`, `gameScores`) directly.
@@ -41,7 +43,7 @@ No build, no framework. `script.js` is a classic (non-module) script; the pure M
 - **`index.html`** — static DOM. All elements exist at load time; script.js toggles `style.display` and writes `textContent` imperatively. Never renders from JS templates. Loads `mc-engine.js` via a tiny `type="module"` shim that assigns the namespace to `window.MCEngine` (runs before `DOMContentLoaded`), then loads `script.js` classic.
 - **`mc-engine.js`** — the pure Determinized Monte Carlo core, extracted as an ES module: integer-only, no DOM, no `this`. Exports `mcTrickWinner`, `mcPlayout`, `mcSampleDeal`, `mcRolloutMove`, `mcEncode/Decode`, etc. `script.js`'s `mc*` simulation methods delegate here (`window.MCEngine.*`); Node tests import it directly. Keeping `script.js` a classic script avoids forcing ~9k lines into strict mode in one step.
 - **`styles.css`** — ~4.5k lines. Compass layout via `.north-player`, `.east-player`, `.south-player`, `.west-player`. Phase 2 predictions use a 3×3 grid (`.prediction-list`) with each `.prediction-item:nth-child(N)` pinned to a compass position.
-- **`script.js`** — single `IsraeliWhist` class (~9k lines), instantiated once as `window.game`. State machine on `this.currentPhase`: `dealing → phase1 → phase2 → phase3 → scoring`, then back to `dealing` for the next gamlet.
+- **`script.js`** — single `Whist` class (~9k lines), instantiated once as `window.game`. State machine on `this.currentPhase`: `dealing → phase1 → phase2 → phase3 → scoring`, then back to `dealing` for the next gamlet.
 
 ### Session persistence
 

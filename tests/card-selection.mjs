@@ -1,5 +1,5 @@
 /**
- * Israeli Whist — card selection interaction test.
+ * Whist — card selection interaction test.
  *
  * Selection in Phase 3 is deliberately two-stage (see "Card selection" in
  * script.js): a press lifts a card out of the fan and only a drag onto the

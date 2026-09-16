@@ -1,11 +1,12 @@
 {
   "appId": "com.guymerin.israeliwhist",
-  "appName": "Israeli Whist",
+  "appName": "Whist",
   "webDir": "www",
   "backgroundColor": "#0e2016",
   "ios": {
     "contentInset": "never",
-    "backgroundColor": "#0e2016"
+    "backgroundColor": "#0e2016",
+    "scrollEnabled": false
   },
   "plugins": {
     "SplashScreen": {

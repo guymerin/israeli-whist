@@ -1,7 +1,7 @@
 {
-  "name": "Israeli Whist",
+  "name": "Whist",
   "short_name": "Whist",
-  "description": "Play Israeli Whist against three world-class AI bots.",
+  "description": "Bid, predict your tricks, and hit your number against three bots. Offline, no ads.",
   "start_url": "./index.html?pwa=1",
   "scope": "./",
   "display": "standalone",

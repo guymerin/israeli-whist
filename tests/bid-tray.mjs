@@ -1,5 +1,5 @@
 /**
- * Israeli Whist — the bid trays must never sit on the player's cards.
+ * Whist — the bid trays must never sit on the player's cards.
  *
  * Portrait phones lay the game out as a flex column inside .game-container,
  * which is padded by the safe areas; the two bid trays are position: fixed and
