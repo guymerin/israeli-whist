@@ -344,64 +344,70 @@ Whist DOM map:
         <div class="rules-modal" id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title" style="display: none;">
             <div class="rules-content">
                 <div class="rules-header">
-                    <h2 id="rules-modal-title">📖 Whist Rules</h2>
+                    <h2 id="rules-modal-title">How to play</h2>
                     <button id="close-rules-btn" class="close-btn" aria-label="Close rules">×</button>
                 </div>
                 <div class="rules-body">
                     <div class="rules-section">
-                        <h3>🎯 Game Overview</h3>
-                        <p>Whist is a trick-taking card game for 4 players. The goal is to win exactly the number of tricks you bid for.</p>
+                        <h3>The idea</h3>
+                        <p>Four players, 52 cards, 13 tricks. First you bid for the right to name trump. Then everyone predicts exactly how many tricks they'll take. You score for hitting your number, not for winning the most tricks.</p>
                     </div>
-                    
+
                     <div class="rules-section">
-                        <h3>🃏 Phase 1: Trump Bidding</h3>
+                        <h3>1. Bid for trump</h3>
                         <ul>
-                            <li>Players bid on trump suit and minimum number of tricks (5-13)</li>
-                            <li>Each bid must be higher than the previous (more tricks OR same tricks with higher trump)</li>
-                            <li>Trump ranking: Clubs (♣) < Diamonds (♦) < Hearts (♥) < Spades (♠) < No Trump</li>
-                            <li>Trump winner leads the first trick</li>
+                            <li>A bid is a number of tricks (5 to 13) plus a trump suit, or No Trump. Or you pass.</li>
+                            <li>Each bid must beat the last one: more tricks, or the same number of tricks in a higher suit. Suits rank ♣ &lt; ♦ &lt; ♥ &lt; ♠ &lt; No Trump.</li>
+                            <li>Once you pass, you're out of the bidding for this hand.</li>
+                            <li>When three players have passed, the last bidder wins. Their suit is trump, and their number is the minimum they must predict next.</li>
+                            <li>If all four pass, the cards are dealt again.</li>
                         </ul>
                     </div>
-                    
+
                     <div class="rules-section">
-                        <h3>🎲 Phase 2: Takes Bidding</h3>
+                        <h3>2. Predict your tricks</h3>
                         <ul>
-                            <li>All players bid on how many tricks they will take</li>
-                            <li>Trump winner must bid at least their Phase 1 minimum</li>
-                            <li><strong>Total bids cannot equal exactly 13</strong></li>
-                            <li>Bidding order: Trump winner, then clockwise</li>
+                            <li>Starting with the trump winner and going clockwise, each player says how many tricks they'll take. Everyone sees each prediction as it's made.</li>
+                            <li>The trump winner must predict at least the number they bid.</li>
+                            <li><strong>The four predictions can't add up to exactly 13</strong>, so the last player to predict can't pick the number that would make 13. At least one player will miss.</li>
+                            <li>A total over 13 makes an <strong>Over hand</strong> (players want more tricks than exist); under 13 makes an <strong>Under hand</strong>.</li>
                         </ul>
                     </div>
-                    
+
                     <div class="rules-section">
-                        <h3>🃏 Phase 3: Playing</h3>
+                        <h3>3. Play the tricks</h3>
                         <ul>
-                            <li>Trump winner leads first trick, then clockwise</li>
-                            <li>Must follow suit if possible</li>
-                            <li>Trump can be played anytime</li>
-                            <li>Highest card of led suit wins, unless trumped</li>
-                            <li>Winner of each trick leads the next</li>
+                            <li>The trump winner leads the first trick. Play goes clockwise.</li>
+                            <li>You must follow the suit that was led if you can.</li>
+                            <li>If you can't follow suit, you may play a trump or any other card.</li>
+                            <li>The highest trump wins the trick. If no trump was played, the highest card of the suit led wins.</li>
+                            <li>Whoever wins a trick leads the next one.</li>
                         </ul>
                     </div>
-                    
+
                     <div class="rules-section">
-                        <h3>🏆 Scoring</h3>
+                        <h3>Scoring</h3>
                         <ul>
-                            <li>Meet your bid exactly: score (bid × bid) + 10 points</li>
-                            <li>Miss your bid: lose 10 points for each trick over or under</li>
-                            <li>Bid 0 in an Under hand (total bids &lt; 13): +50 if you take 0 tricks, −50 if you take any</li>
-                            <li>Bid 0 in an Over hand (total bids &gt; 13): +25 if you take 0 tricks, −25 if you take any</li>
+                            <li>Take exactly the number you predicted: <strong>(prediction × prediction) + 10</strong>. Predict 4 and take 4 for 26 points.</li>
+                            <li>Miss: <strong>−10 for every trick</strong> you are over or under.</li>
+                            <li>Predict 0 in an Under hand: <strong>+50</strong> if you take no tricks, <strong>−50</strong> if you take any.</li>
+                            <li>Predict 0 in an Over hand: <strong>+25</strong> if you take no tricks, <strong>−25</strong> if you take any.</li>
+                            <li>If all four players miss, the hand is cancelled and nobody scores.</li>
                         </ul>
                     </div>
-                    
+
                     <div class="rules-section">
-                        <h3>💡 Strategy Tips</h3>
+                        <h3>Winning</h3>
                         <ul>
-                            <li>Trump bidding: Consider hand strength and distribution</li>
-                            <li>Takes bidding: Be realistic about your hand's potential</li>
-                            <li>Playing: Adapt strategy based on whether you need more tricks or have enough</li>
-                            <li>Sometimes it's better to lose a trick than win an unwanted one</li>
+                            <li>Each hand is a <strong>gamlet</strong>. A game ends as soon as someone reaches 200 points, or after 10 gamlets. The highest score wins.</li>
+                            <li>A <strong>round</strong> on the status bar is one trick.</li>
                         </ul>
+                    </div>
+
+                    <div class="rules-section">
+                        <h3>One tip</h3>
+                        <p>Once you have your number, start losing tricks on purpose. The card that ducks under the one already on the table is often the best card you hold.</p>
+                    </div>
                     </div>
                 </div>
             </div>

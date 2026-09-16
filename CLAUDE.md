@@ -31,6 +31,7 @@ npm test                          # unit + parity + strength
 - `npm run test:parity` — **`tests/mc-parity.mjs`**: in-browser parity of the live engine vs `determineTrickWinner`.
 - `npm run test:strength` — **`tests/mc-strength.mjs`**: MC vs heuristic A/B (exact-hit rate, score/seat, decision-time p95). `WHIST_DEALS=N` to resize.
 - `npm run test:phase2` — **`tests/phase2-double-bid.mjs`**: one prediction per seat, one Phase 3 — double clicks, late/out-of-turn clicks and bot double-fires are ignored (`isPhase2Turn`).
+- `npm run test:hints` — **`tests/hints.mjs`**: the takes hint respects the real total, the forbidden 13 and the trump winner's floor; the card hint comes from the MC engine, is legal, and only appears on south's turn.
 - `npm run test:smoke` — **`tests/smoke-test.mjs`**: one full gamlet, phase flow, scoring rules, over/under rule, no page errors.
 
 The Playwright suites boot their own ephemeral static server via `tests/static-server.mjs` (set `WHIST_URL` to point at an external one instead). The repo also ships `.mcp.json` registering a Playwright MCP server for interactive agent-driven checks — drive Deal → Phase 1 → Phase 2 → a few tricks, and read `window.game` state (`currentPhase`, `phase2Bids`, `gameScores`) directly.

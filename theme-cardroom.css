@@ -114,6 +114,11 @@ body {
 .total-score-title, #score-view-title { font-family: var(--cr-serif) !important; color: var(--cr-ivory) !important; text-shadow: none !important; font-weight: 600 !important; }
 .total-score-content *, .extended-score-content * { color: var(--cr-ink) !important; text-shadow: none !important; font-style: normal !important; }
 .total-score-content .score-value, .extended-score-content .score-value { color: var(--cr-brass) !important; font-variant-numeric: tabular-nums; }
+/* The Game History view is drawn on white notebook paper (styles.css), so the
+   felt's cream ink above made it nearly invisible. On paper it gets pen ink,
+   and brass darkens until it passes AA on white. */
+.extended-score-content * { color: #2b2a26 !important; }
+.extended-score-content .score-value { color: #6f5212 !important; }
 
 /* ── 5. One button system ──────────────────────────────────────────────── */
 .action-btn, #start-game-btn, #bid-btn, #deal-btn, .more-btn,

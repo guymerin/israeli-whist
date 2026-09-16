@@ -9190,7 +9190,7 @@ class Whist {
          const phase2Bid = this.phase2Bids.south;
          
          if (phase2Bid !== null && phase2Bid !== undefined) {
-             return '<p>✅ You have already bid. Wait for other players.</p>';
+             return '<p>You have already predicted. Waiting for the other players.</p>';
          }
          
          let hint = `<p><strong>Trump:</strong> ${this.getSuitSymbol(trumpSuit)} ${trumpSuit.charAt(0).toUpperCase() + trumpSuit.slice(1)}</p>`;
@@ -9199,22 +9199,44 @@ class Whist {
          if (trumpSuit !== 'notrump') {
              const trumpCards = hand.filter(card => card.suit === trumpSuit);
              if (trumpCards.length >= 5) {
-                 hint += '<p>🔥 <strong>Excellent trump support</strong> - bid aggressively</p>';
+                 hint += `<p><strong>Strong trump support:</strong> ${trumpCards.length} trumps.</p>`;
              } else if (trumpCards.length >= 3) {
-                 hint += '<p>✅ <strong>Good trump support</strong> - moderate bidding</p>';
+                 hint += `<p><strong>Fair trump support:</strong> ${trumpCards.length} trumps.</p>`;
              } else {
-                 hint += '<p>⚠️ <strong>Weak trump support</strong> - be conservative</p>';
+                 hint += `<p><strong>Weak trump support:</strong> ${trumpCards.length === 1 ? '1 trump' : `${trumpCards.length} trumps`}.</p>`;
              }
          }
          
-         // Suggested bid
-         const suggestedBid = this.calculateSmartPhase2Bid('south', handStrength, 0, 0, 7);
+         // Suggested prediction, from the same inputs a bot in this seat gets:
+         // the real running total, the trump winner's floor, and the full 0–13
+         // range. (It used to pass total 0, floor 0 and a cap of 7, so it could
+         // suggest less than your contract, the forbidden number, or never 8+.)
+         const others = this.players.filter(p => p !== 'south');
+         const currentTotal = others.reduce((sum, p) => sum + (this.phase2Bids[p] || 0), 0);
+         const minBid = this.trumpWinner === 'south' ? this.minimumTakes : 0;
+         let suggestedBid = Math.max(minBid, Math.min(13,
+             this.calculateSmartPhase2Bid('south', handStrength, currentTotal, minBid, 13)));
+
+         const lastToBid = others.every(p => this.phase2Bids[p] !== null && this.phase2Bids[p] !== undefined);
+         const forbidden = lastToBid ? 13 - currentTotal : null;
+         if (suggestedBid === forbidden) {
+             // The trump winner predicts first, so the last seat has no floor.
+             suggestedBid = (suggestedBid + 1 <= 13) ? suggestedBid + 1 : suggestedBid - 1;
+         }
+
          hint += `<div class="card-suggestion">`;
-         hint += `<strong>💡 Suggested: ${suggestedBid} tricks</strong><br>`;
-         hint += `Based on hand strength and trump support`;
+         hint += `<strong>Suggested: ${suggestedBid} ${suggestedBid === 1 ? 'trick' : 'tricks'}</strong><br>`;
+         hint += `From playing out many possible deals of the cards you can't see.`;
          hint += `</div>`;
-         
-         hint += '<p><strong>Key:</strong> Count Aces, Kings, and trump cards. Better to under-bid than over-bid!</p>';
+
+         if (minBid > 0) {
+             hint += `<p>You won the trump, so you must predict at least ${minBid}.</p>`;
+         }
+         if (forbidden !== null && forbidden >= 0 && forbidden <= 13) {
+             hint += `<p>You predict last, so you can't choose ${forbidden}: the total would be exactly 13.</p>`;
+         } else {
+             hint += '<p>Missing high or low costs the same: 10 points per trick.</p>';
+         }
          
          return hint;
      }
@@ -9226,31 +9248,61 @@ class Whist {
          const targetBid = this.phase2Bids.south;
          
          if (!hand || hand.length === 0) {
-             return '<p>No cards left to play!</p>';
+             return '<p>No cards left to play.</p>';
          }
          
          const tricksNeeded = targetBid - tricksWon;
          const tricksRemaining = 13 - this.tricksPlayed;
          
          let hint = `<p><strong>Bid:</strong> ${targetBid} | <strong>Taken:</strong> ${tricksWon} | <strong>Need:</strong> ${Math.max(0, tricksNeeded)}</p>`;
-         
-         // Get suggested card to play
-         const suggestedCard = this.getSuggestedCard(hand, currentTrick, tricksNeeded, tricksRemaining);
-         
-         if (suggestedCard) {
-             hint += `<div class="card-suggestion">`;
-             hint += `<strong>💡 Play: ${suggestedCard.rank}${this.getSuitSymbol(suggestedCard.suit)}</strong><br>`;
-             hint += `${suggestedCard.reason}`;
-             hint += `</div>`;
+
+         // The card engine assumes this seat plays next, so only suggest a card
+         // when it really is south's turn.
+         const southToPlay = currentTrick.length < 4
+             && (this.trickLeader + currentTrick.length) % 4 === this.southIndex;
+
+         if (southToPlay) {
+             // Same engine the bots use (it reads only south's hand and public
+             // play). The rule-based getSuggestedCard is the fallback when the
+             // engine is off or can't sample; it ignored trump when judging
+             // who's winning the trick.
+             const legalCount = hand.filter(card => this.isValidCardPlay('south', card)).length;
+             const idx = this.mcTryPhase3('south');
+             let suggestedCard = null;
+             if (idx !== null && idx !== undefined && hand[idx]) {
+                 const card = hand[idx];
+                 let reason;
+                 if (legalCount === 1) {
+                     reason = "It's your only legal card.";
+                 } else if (tricksNeeded <= 0) {
+                     reason = 'Played out against many possible deals of the hidden cards, this card is least likely to win you a trick you don\'t want.';
+                 } else {
+                     reason = `Played out against many possible deals of the hidden cards, this card gives a prediction of ${targetBid} the best score.`;
+                 }
+                 suggestedCard = { rank: card.rank, suit: card.suit, reason };
+             } else {
+                 suggestedCard = this.getSuggestedCard(hand, currentTrick, tricksNeeded, tricksRemaining);
+             }
+
+             if (suggestedCard) {
+                 hint += `<div class="card-suggestion">`;
+                 hint += `<strong>Play: ${suggestedCard.rank}${this.getSuitSymbol(suggestedCard.suit)}</strong><br>`;
+                 hint += `${suggestedCard.reason}`;
+                 hint += `</div>`;
+             }
+         } else {
+             hint += '<p>A card suggestion appears when it is your turn to play.</p>';
          }
          
          // Brief strategy note
          if (tricksNeeded <= 0) {
-             hint += '<p>🎯 <strong>Avoid extra tricks</strong> to prevent penalty</p>';
+             hint += '<p><strong>You have your number.</strong> Every extra trick costs 10 points.</p>';
          } else if (tricksNeeded > tricksRemaining) {
-             hint += '<p>🔥 <strong>Must win every remaining trick!</strong></p>';
+             hint += '<p><strong>You can no longer reach your number.</strong> Keep the miss as small as you can.</p>';
+         } else if (tricksNeeded === tricksRemaining) {
+             hint += '<p><strong>You need every remaining trick.</strong></p>';
          } else {
-             hint += `<p>📈 <strong>Need ${tricksNeeded} from ${tricksRemaining} remaining</strong></p>`;
+             hint += `<p><strong>Need ${tricksNeeded} of the ${tricksRemaining} tricks left.</strong></p>`;
          }
          
          return hint;

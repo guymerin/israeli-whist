@@ -21,41 +21,35 @@ offline, **collects no data**.
 
 ## Promotional text (≤170 chars)
 ```
-Outbid and outplay three world-class AI opponents in the classic game of Whist. Predict your tricks exactly to win. No ads, no accounts, fully offline.
+Call trump, then call your number. Take exactly that many tricks against three bots that never see your cards. No ads, no accounts, works offline.
 ```
 
 ## Keywords (≤100 chars, comma-separated, no spaces after commas)
 ```
-whist,card game,trick taking,bidding,cards,strategy,offline,bridge,spades,oh hell
+trick taking,bidding,trump,predict,tricks,card game,strategy,offline,solo,classic
 ```
-<!-- 95 chars; App Store limit is 100. -->
+<!-- 80 chars; limit 100. No other games' names (2.3.7): "whist" is already in the name. -->
 
 
 ## Description (≤4000 chars)
 ```
-Whist is a sharp, addictive trick-taking card game — bid the exact number of tricks you can win, then fight to hit your number against three world-class AI opponents.
+Call trump, then call your number. Four players each predict exactly how many of the 13 tricks they'll take, and the predictions can never add up to 13. Every hand, somebody is going to miss. Make sure it isn't you.
 
-It plays in two bids and a battle:
+HOW A HAND GOES
+• Bid for trump. Name a number of tricks, from 5 to 13, and a suit, or pass. The highest bid picks trump.
+• Predict. Starting with the trump winner, each player says how many tricks they'll take, in turn and in the open. The last player can't make the total 13.
+• Play. Follow suit if you can. Take exactly your number and score (bid × bid) + 10. Every trick over or under costs 10. Sometimes the best card is the one that loses the trick.
 
-• Phase 1 — Trump bidding. Bid a minimum number of tricks and a trump suit, or pass. The highest bidder sets the trump for the hand.
-• Phase 2 — Takes. Every player privately predicts how many tricks they'll win. The four predictions can never total exactly 13 — someone will be over, someone under.
-• Phase 3 — Play. Win tricks. Match your bid EXACTLY to score big; every trick over or under costs you. Sometimes the smartest move is to lose a trick on purpose.
+THE BOTS
+Botti, Droidi and Chati see only their own cards and what's been played, the same as you. Before every card, each one deals out dozens of ways the hidden cards could lie and plays whatever scores best across them. They will duck a trick they don't need, and they will set you when you overbid.
 
-WORLD-CLASS OPPONENTS
-The three bots — Botti, Droidi, and Chati — don't cheat and don't play dumb. They run a Determinized Monte Carlo engine (the same technique behind top computer card players), sampling thousands of possible hands to make genuinely tough, human-like decisions. Beating them feels earned.
+ON YOUR IPHONE, IPAD AND MAC
+• Drag a card onto the table, or tap to lift it and tap again. Cards you can't play are dimmed.
+• The table scales to fit an iPad screen or a Mac window.
+• A hint when you want one, a look back at the last trick, and Turbo when you want the bots to hurry.
+• Your scorecard is saved between sessions.
 
-BUILT FOR QUICK, SATISFYING PLAY
-• Clean "card room" table designed for phones — portrait or landscape.
-• A hint button when you want strategic advice, and a "last trick" review.
-• Turbo mode to speed through the bots' turns.
-• Your session and running scorecard are saved automatically.
-
-RESPECTS YOU
-• No ads. No accounts. No in-app purchases.
-• No data collection and no tracking — everything stays on your device.
-• Fully offline. Play on a plane, a subway, anywhere.
-
-Whether you grew up playing Whist (Ashkelon Whist / "Oh Hell"-style bidding) or you're a Spades/Bridge player looking for your next obsession, this is a fast, brainy hand you'll keep coming back to.
+No ads, no accounts, no in-app purchases. Nothing leaves your device, and it plays offline.
 ```
 
 ## What's New (version 1.2)
