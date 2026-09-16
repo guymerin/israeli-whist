@@ -1,6 +1,6 @@
-# Israeli Whist
+# Whist
 
-A browser-based implementation of the Israeli Whist card game. Vanilla JavaScript, HTML, and CSS — no build step, no package manager, no test framework.
+A browser-based implementation of the Whist card game. Vanilla JavaScript, HTML, and CSS — no build step, no package manager, no test framework.
 
 ## Run it
 
@@ -62,7 +62,7 @@ Tap the **📖 Rules** button in-game. Quick summary:
 |------|--------------|
 | `index.html` | Single-page DOM, compass-style board, all conditional panels. |
 | `styles.css` | Single stylesheet incl. compass layout and mobile breakpoints. |
-| `script.js` | Single `IsraeliWhist` class instantiated as `window.game`. |
+| `script.js` | Single `Whist` class instantiated as `window.game`. |
 | `mc-engine.js` | Pure Monte Carlo (PIMC) engine as an ES module — integer-only, no DOM. Imported by Node tests; exposed to the game as `window.MCEngine`. |
 | `package.json` | Dev-only: `playwright` devDependency and `npm test` scripts. |
 | `tests/` | `mc-engine.test.mjs` (Node-native), `mc-parity.mjs`, `mc-strength.mjs`, `smoke-test.mjs`, plus a self-starting `static-server.mjs`. |

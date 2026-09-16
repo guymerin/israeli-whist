@@ -1,4 +1,4 @@
-// The Israeli Whist mark, as one reusable SVG.
+// The Whist mark, as one reusable SVG.
 //
 // Structure follows the other apps on this account (SongCatcher, Mycelia): a
 // dark saturated ground with a circular emblem, and the subject living INSIDE

@@ -41,7 +41,7 @@ No build, no framework. `script.js` is a classic (non-module) script; the pure M
 - **`index.html`** — static DOM. All elements exist at load time; script.js toggles `style.display` and writes `textContent` imperatively. Never renders from JS templates. Loads `mc-engine.js` via a tiny `type="module"` shim that assigns the namespace to `window.MCEngine` (runs before `DOMContentLoaded`), then loads `script.js` classic.
 - **`mc-engine.js`** — the pure Determinized Monte Carlo core, extracted as an ES module: integer-only, no DOM, no `this`. Exports `mcTrickWinner`, `mcPlayout`, `mcSampleDeal`, `mcRolloutMove`, `mcEncode/Decode`, etc. `script.js`'s `mc*` simulation methods delegate here (`window.MCEngine.*`); Node tests import it directly. Keeping `script.js` a classic script avoids forcing ~9k lines into strict mode in one step.
 - **`styles.css`** — ~4.5k lines. Compass layout via `.north-player`, `.east-player`, `.south-player`, `.west-player`. Phase 2 predictions use a 3×3 grid (`.prediction-list`) with each `.prediction-item:nth-child(N)` pinned to a compass position.
-- **`script.js`** — single `IsraeliWhist` class (~9k lines), instantiated once as `window.game`. State machine on `this.currentPhase`: `dealing → phase1 → phase2 → phase3 → scoring`, then back to `dealing` for the next gamlet.
+- **`script.js`** — single `Whist` class (~9k lines), instantiated once as `window.game`. State machine on `this.currentPhase`: `dealing → phase1 → phase2 → phase3 → scoring`, then back to `dealing` for the next gamlet.
 
 ### Session persistence
 

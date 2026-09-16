@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-Israeli Whist DOM map:
+Whist DOM map:
 - Top chrome is the ☰ menu (Turbo + game actions), status, and the score box.
 - .game-board is the compass table: north/east/west bots, south human, center trick/won piles.
 - Phase 1 and Phase 2 panels are present in the DOM and toggled by script.js.
@@ -20,7 +20,7 @@ Israeli Whist DOM map:
     <!-- Safari specific meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Israeli Whist">
+    <meta name="apple-mobile-web-app-title" content="Whist">
     
     <!-- Prevent text size adjustment on mobile Safari -->
     <meta name="format-detection" content="telephone=no">
@@ -31,7 +31,7 @@ Israeli Whist DOM map:
     
     <!-- Firefox specific optimizations -->
     <meta name="msapplication-tap-highlight" content="no">
-    <title>Israeli Whist</title>
+    <title>Whist</title>
 
     <!-- PWA: installable app with offline support -->
     <link rel="manifest" href="manifest.webmanifest">
@@ -61,7 +61,7 @@ Israeli Whist DOM map:
     </div>
     
     <div class="game-container">
-        <h1>Israeli Whist</h1>
+        <h1>Whist</h1>
         
         <!-- Hint stays out on the table: it's a mid-play action and shouldn't
              cost two taps. On phones the label is hidden by CSS and only the 💡
@@ -330,7 +330,7 @@ Israeli Whist DOM map:
         <div class="name-modal" id="name-modal" role="dialog" aria-modal="true" aria-labelledby="name-modal-title" style="display: block;">
             <div class="name-content">
                 <div class="name-header">
-                    <h2 id="name-modal-title">🎮 Welcome to Israeli Whist!</h2>
+                    <h2 id="name-modal-title">🎮 Welcome to Whist!</h2>
                 </div>
                 <div class="name-body">
                     <p>Please enter your name to begin:</p>
@@ -344,13 +344,13 @@ Israeli Whist DOM map:
         <div class="rules-modal" id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title" style="display: none;">
             <div class="rules-content">
                 <div class="rules-header">
-                    <h2 id="rules-modal-title">📖 Israeli Whist Rules</h2>
+                    <h2 id="rules-modal-title">📖 Whist Rules</h2>
                     <button id="close-rules-btn" class="close-btn" aria-label="Close rules">×</button>
                 </div>
                 <div class="rules-body">
                     <div class="rules-section">
                         <h3>🎯 Game Overview</h3>
-                        <p>Israeli Whist is a trick-taking card game for 4 players. The goal is to win exactly the number of tricks you bid for.</p>
+                        <p>Whist is a trick-taking card game for 4 players. The goal is to win exactly the number of tricks you bid for.</p>
                     </div>
                     
                     <div class="rules-section">

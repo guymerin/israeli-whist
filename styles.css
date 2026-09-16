@@ -3108,7 +3108,7 @@ h1 {
     h1 {
         /* The game-control-buttons cluster on iPad-class viewports occupies
            more than half the available width, leaving no room for a
-           centered title without overlap. The h1 ("Israeli Whist") is
+           centered title without overlap. The h1 ("Whist") is
            branding, not functional — the score box and status bar already
            convey context — so we hide it but preserve the vertical spacer
            it provides (otherwise `.game-status` slides up and overlaps the

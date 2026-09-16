@@ -1,5 +1,5 @@
 /**
- * Israeli Whist — Playwright smoke test.
+ * Whist — Playwright smoke test.
  *
  * Drives one full gamlet in a real browser and asserts that the live game
  * scores exactly as the rules define:
@@ -211,7 +211,7 @@ if (!end) {
   const allFailed = seats.every(p => end.bids[p] !== end.tricks[p]);
 
   if (allFailed && !anyScored) {
-    // Israeli Whist: if EVERY seat misses its bid the gamlet is cancelled and
+    // Whist: if EVERY seat misses its bid the gamlet is cancelled and
     // nothing is scored. In this single-gamlet test that means scores stay 0.
     console.log('\n=== GAMLET CANCELLED (all four seats missed their bids) ===');
     console.log('scores correctly unchanged (cancellation rule held)  OK');

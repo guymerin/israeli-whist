@@ -8,7 +8,7 @@
 // importable and Node-testable without a browser or a running server.
 //
 //   • In the browser: index.html loads this as a module and assigns the
-//     namespace to window.MCEngine; the IsraeliWhist class delegates its
+//     namespace to window.MCEngine; the Whist class delegates its
 //     mc* simulation methods here.
 //   • In Node: tests/mc-engine.test.mjs (and the Playwright suites) import
 //     these functions directly.

@@ -1,7 +1,7 @@
 /**
- * Israeli Whist browser game architecture
+ * Whist browser game architecture
  * ---------------------------------------
- * This file owns the entire game: one IsraeliWhist instance is created on
+ * This file owns the entire game: one Whist instance is created on
  * DOMContentLoaded and assigned to window.game for smoke tests and debug helpers.
  *
  * The game is a single state machine on this.currentPhase:
@@ -41,7 +41,7 @@ const WHIST_DEBUG = typeof location !== 'undefined' && /[?&]debug\b/i.test(locat
 function dlog(...args) { if (WHIST_DEBUG) console.log(...args); }
 function dwarn(...args) { if (WHIST_DEBUG) console.warn(...args); }
 
-class IsraeliWhist {
+class Whist {
     constructor() {
         this.debug = WHIST_DEBUG; // also exposed on window.game for the console
         // Seat identity and clockwise turn order.
@@ -49,6 +49,8 @@ class IsraeliWhist {
         this.southIndex = this.players.indexOf('south'); // always 2; named to avoid magic number
         this.playerName = 'Player'; // Human player's name (default)
         this.SESSION_KEY = 'israeliWhist_session'; // localStorage key for the persisted session (see saveSession)
+        // Storage keys keep their pre-rename 'israeliWhist_' prefix on purpose: renaming
+        // them would silently wipe every existing player's saved session and name.
         // Hand layout preference. Deliberately NOT inside SESSION_KEY:
         // clearWhistSession() forgets a session, but which layout you like
         // should outlive that.
@@ -1020,7 +1022,7 @@ class IsraeliWhist {
             return;
         }
         
-                 // Validate minimum bid of 5 according to official Israeli Whist rules
+                 // Validate minimum bid of 5 according to official Whist rules
          if (minTakes < 5) {
              console.error('Minimum bid must be 5 or higher');
             return;
@@ -2394,7 +2396,7 @@ class IsraeliWhist {
         const card = hand[cardIndex];
         dlog('🃏 Playing card:', card);
         
-        // Validate card play according to Israeli Whist rules (before removing from hand)
+        // Validate card play according to Whist rules (before removing from hand)
         dlog('🔍 Validating card play...');
         dlog('🔍 isValidCardPlay result:', this.isValidCardPlay(player, card));
         
@@ -2683,7 +2685,7 @@ class IsraeliWhist {
             );
             return;
         }
-        // Determine trick winner according to Israeli Whist rules
+        // Determine trick winner according to Whist rules
         const winner = this.determineTrickWinner();
         this.tricksWon[winner]++;
         this.tricksPlayed++;
@@ -3493,7 +3495,7 @@ class IsraeliWhist {
         );
     }
     
-    // SMARTER: Assess trump potential based on Israeli Whist guidance
+    // SMARTER: Assess trump potential based on Whist guidance
     getBestTrumpSuit(player, handStrength) {
         const hand = this.hands[player];
         const suits = ['clubs', 'diamonds', 'hearts', 'spades', 'notrump'];
@@ -9964,8 +9966,8 @@ class IsraeliWhist {
 document.addEventListener('DOMContentLoaded', () => {
     dlog('DOM loaded, initializing game...');
     try {
-        window.game = new IsraeliWhist();
-        dlog('Israeli Whist game loaded successfully!');
+        window.game = new Whist();
+        dlog('Whist game loaded successfully!');
         
                  // Expose debug methods globally for console access
          window.clearWhistSession = () => window.game.clearSession();

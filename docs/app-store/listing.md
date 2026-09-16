@@ -1,4 +1,4 @@
-# App Store listing — Israeli Whist
+# App Store listing — Whist
 
 Copy‑paste fields for App Store Connect. App is single‑player vs. 3 AI bots, fully
 offline, **collects no data**.
@@ -7,7 +7,7 @@ offline, **collects no data**.
 
 ## App information
 
-- **Name:** `Israeli Whist`
+- **Name:** `Whist`
 - **Subtitle** (≤30 chars): `Trick-taking bidding card game`
 - **Bundle ID:** `com.guymerin.israeliwhist`
 - **Primary category:** Games → **Card**
@@ -17,19 +17,19 @@ offline, **collects no data**.
 
 ## Promotional text (≤170 chars)
 ```
-Outbid and outplay three world-class AI opponents in the classic Israeli Whist. Predict your tricks exactly to win. No ads, no accounts, fully offline.
+Outbid and outplay three world-class AI opponents in the classic game of Whist. Predict your tricks exactly to win. No ads, no accounts, fully offline.
 ```
 
 ## Keywords (≤100 chars, comma-separated, no spaces after commas)
 ```
-whist,israeli whist,card game,trick taking,bidding,cards,strategy,offline,bridge,spades,oh hell
+whist,card game,trick taking,bidding,cards,strategy,offline,bridge,spades,oh hell
 ```
 <!-- 95 chars; App Store limit is 100. -->
 
 
 ## Description (≤4000 chars)
 ```
-Israeli Whist is a sharp, addictive trick-taking card game — bid the exact number of tricks you can win, then fight to hit your number against three world-class AI opponents.
+Whist is a sharp, addictive trick-taking card game — bid the exact number of tricks you can win, then fight to hit your number against three world-class AI opponents.
 
 It plays in two bids and a battle:
 
@@ -51,7 +51,7 @@ RESPECTS YOU
 • No data collection and no tracking — everything stays on your device.
 • Fully offline. Play on a plane, a subway, anywhere.
 
-Whether you grew up playing Israeli Whist (Ashkelon Whist / "Oh Hell"-style bidding) or you're a Spades/Bridge player looking for your next obsession, this is a fast, brainy hand you'll keep coming back to.
+Whether you grew up playing Whist (Ashkelon Whist / "Oh Hell"-style bidding) or you're a Spades/Bridge player looking for your next obsession, this is a fast, brainy hand you'll keep coming back to.
 ```
 
 ## What's New (version 1.2)
@@ -86,7 +86,7 @@ Bigger cards and a whole new way to play them.
 <summary>What's New (version 1.0)</summary>
 
 ```
-First release. Play Israeli Whist against three world-class AI opponents — offline, no ads, no accounts.
+First release. Play Whist against three world-class AI opponents — offline, no ads, no accounts.
 ```
 </details>
 

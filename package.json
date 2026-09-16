@@ -1,7 +1,7 @@
 {
-  "name": "israeli-whist",
+  "name": "whist",
   "version": "1.0.0",
-  "description": "Browser-based Israeli Whist card game \u2014 vanilla JS, no build step.",
+  "description": "Browser-based Whist card game \u2014 vanilla JS, no build step.",
   "type": "module",
   "private": true,
   "scripts": {
