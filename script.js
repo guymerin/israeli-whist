@@ -1219,7 +1219,20 @@ class Whist {
      * @param {number} takes Predicted trick count; trumpWinner must meet minimumTakes.
      * Side effects: refreshes displays and starts Phase 3 once all four bids exist.
      */
+    /** True while it's `player`'s turn to predict and they haven't yet. */
+    isPhase2Turn(player) {
+        return this.currentPhase === 'phase2'
+            && this.players[this.currentBidder] === player
+            && (this.phase2Bids[player] === null || this.phase2Bids[player] === undefined);
+    }
+
     makePhase2Bid(player, takes) {
+        // One prediction per seat, on its turn. The takes buttons stay up for
+        // a moment after a click, and when south predicted last a second click
+        // re-ran the "all bids in" branch below, started Phase 3 twice and
+        // froze the hand on trick 13. Overlapping bot timers hit the same path.
+        if (!this.isPhase2Turn(player)) return;
+
         // Validate minimum bid for trump winner
         if (player === this.trumpWinner && takes < this.minimumTakes) {
             const playerDisplayName = this.getPlayerDisplayName(player);
@@ -6896,6 +6909,9 @@ class Whist {
         trickButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const takes = parseInt(button.getAttribute('data-value'), 10);
+                // A late or repeated click must not warn about 13 or re-bid
+                // (see makePhase2Bid).
+                if (!this.isPhase2Turn('south')) return;
                 if (!isNaN(takes)) {
                     // Over/under-13 rule: only the LAST bidder is constrained
                     // (their bid is what could make the four-player total
