@@ -7,11 +7,10 @@ offline, **collects no data**.
 
 ## App information
 
-- **Name:** `Whist` — renamed from "The Whist Card Game" in 1.3. Store names are unique, so App Store
-  Connect may refuse it; no US app used the exact name as of 2026-09-16, but ~20 "Whist …"
-  apps exist. Fallback: `Whist: Call Your Tricks`. The home-screen label
-  (`CFBundleDisplayName`) is `Whist` either way. **The bundle id does not change** — a new id
-  would be a new app with no ratings or installs.
+- **Name:** `Whist: Bid & Take` — renamed from "The Whist Card Game" in 1.3. Plain "Whist" is
+  taken by another developer's app (App Store Connect refused it on 2026-09-16). The
+  home-screen label (`CFBundleDisplayName`) is still `Whist`. **The bundle id does not
+  change** — a new id would be a new app with no ratings or installs.
 - **Subtitle** (≤30 chars): `Trick-taking bidding card game`
 - **Bundle ID:** `com.guymerin.israeliwhist`
 - **Primary category:** Games → **Card**
@@ -140,7 +139,8 @@ per size if you want to add more.
 |---|---|---|---|---|
 | 1.0 | 2 | `f67444b` | 2026-07-29 | READY_FOR_SALE |
 | 1.1 | 3 | `8406043` | 2026-08-15 | approved — train closed to new builds |
-| 1.2 | 4 | `eb06fc2` | 2026-08-24 | WAITING_FOR_REVIEW (submitted 2026-08-24) |
+| 1.2 | 4 | `eb06fc2` | 2026-08-24 | READY_FOR_SALE |
+| 1.3 | 5 | `e0309eb` | 2026-09-16 | WAITING_FOR_REVIEW (submitted 2026-09-16 via `scripts/asc-release.mjs`) |
 
 **Keep this table honest.** 1.1 was left here as PREPARE_FOR_SUBMISSION long
 after it had actually been approved, and a build 4 was cut against `1.1` on the
