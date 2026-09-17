@@ -7,11 +7,10 @@ offline, **collects no data**.
 
 ## App information
 
-- **Name:** `Whist` — renamed from "Israeli Whist". Store names are unique, so App Store
-  Connect may refuse it; no US app used the exact name as of 2026-09-16, but ~20 "Whist …"
-  apps exist. Fallback: `Whist: Call Your Tricks`. The home-screen label
-  (`CFBundleDisplayName`) is `Whist` either way. **The bundle id does not change** — a new id
-  would be a new app with no ratings or installs.
+- **Name:** `Whist: Bid & Take` — renamed from "The Whist Card Game" in 1.3. Plain "Whist" is
+  taken by another developer's app (App Store Connect refused it on 2026-09-16). The
+  home-screen label (`CFBundleDisplayName`) is still `Whist`. **The bundle id does not
+  change** — a new id would be a new app with no ratings or installs.
 - **Subtitle** (≤30 chars): `Trick-taking bidding card game`
 - **Bundle ID:** `com.guymerin.israeliwhist`
 - **Primary category:** Games → **Card**
@@ -52,7 +51,20 @@ ON YOUR IPHONE, IPAD AND MAC
 No ads, no accounts, no in-app purchases. Nothing leaves your device, and it plays offline.
 ```
 
-## What's New (version 1.2)
+## What's New (version 1.3)
+```
+Now called Whist, and now on iPad and Mac.
+
+• Plays on Apple silicon Macs, and the table grows to fill a big window or an iPad screen.
+• Fixed: tapping a prediction twice could freeze the hand on the last trick.
+• The Hint now suggests the card the bots themselves would play, and never a prediction the rules forbid.
+• Rules rewritten, including when you're allowed to trump and what happens when everyone misses.
+• The game history scorecard is readable again.
+```
+
+<details>
+<summary>What's New (version 1.2)</summary>
+
 ```
 Your hand, easier to read and easier to hit.
 
@@ -63,6 +75,7 @@ Your hand, easier to read and easier to hit.
 • The name card stays above the keyboard instead of behind it, and no longer opens the keyboard before you ask for it.
 • Tidier top bar: the trump, the bid count and the menu finally sit on one line.
 ```
+</details>
 
 <details>
 <summary>What's New (version 1.1)</summary>
@@ -126,7 +139,8 @@ per size if you want to add more.
 |---|---|---|---|---|
 | 1.0 | 2 | `f67444b` | 2026-07-29 | READY_FOR_SALE |
 | 1.1 | 3 | `8406043` | 2026-08-15 | approved — train closed to new builds |
-| 1.2 | 4 | `eb06fc2` | 2026-08-24 | WAITING_FOR_REVIEW (submitted 2026-08-24) |
+| 1.2 | 4 | `eb06fc2` | 2026-08-24 | READY_FOR_SALE |
+| 1.3 | 5 | `e0309eb` | 2026-09-16 | WAITING_FOR_REVIEW (submitted 2026-09-16 via `scripts/asc-release.mjs`) |
 
 **Keep this table honest.** 1.1 was left here as PREPARE_FOR_SUBMISSION long
 after it had actually been approved, and a build 4 was cut against `1.1` on the
@@ -211,7 +225,7 @@ Catalyst, no library for this platform was found"*.
   Macs** → make available. Intel Macs can't run it.
 - Local run: select the **My Mac (Designed for iPad)** destination in Xcode. Signing
   needs this Mac registered as a device on the team (Xcode offers to do it; from the CLI
-  add `-allowProvisioningUpdates -allowDeviceRegistration`). A compile-only check needs
+  add `-allowProvisioningUpdates -allowProvisioningDeviceRegistration`; to run it, press ⌘R in Xcode — a Designed-for-iPad `.app` can't be opened directly). A compile-only check needs
   no signing:
 
   ```bash
@@ -221,6 +235,25 @@ Catalyst, no library for this platform was found"*.
   ```
 - Window layouts are covered by `theme-cardroom.css` §12 (compact score box below
   1440px, board scaled up by `fitBoardToWindow()` in large windows).
+
+## Automated release (App Store Connect API)
+
+After archiving and exporting (above), `scripts/asc-release.mjs` does the App Store
+Connect side from this file and `screenshots/`:
+
+```bash
+# credentials: ~/.appstoreconnect/config.json {"issuerId","keyId"} (outside the repo),
+# key file at ~/.appstoreconnect/private_keys/AuthKey_<keyId>.p8
+node scripts/asc-release.mjs plan      # offline check of text lengths, screenshot sizes, IPA
+node scripts/asc-release.mjs status    # versions and build state
+node scripts/asc-release.mjs upload    # altool validate + upload
+node scripts/asc-release.mjs prepare   # version, text, name/subtitle, screenshots, waits for the build
+node scripts/asc-release.mjs submit    # send to App Review
+```
+
+The What's New text comes from the `## What's New (version X)` heading matching
+`MARKETING_VERSION`, so add that section before running `prepare`. If the name is refused,
+`prepare` falls back to the one listed under App information.
 
 ## Then, in App Store Connect (things only you can do)
 
