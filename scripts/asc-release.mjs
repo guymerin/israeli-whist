@@ -6,8 +6,9 @@
 //   node scripts/asc-release.mjs prepare   # version page: text, name, screenshots, build
 //   node scripts/asc-release.mjs submit    # send the prepared version to App Review
 //
-// Credentials (never printed): ASC_ISSUER_ID and ASC_KEY_ID in the environment,
-// with the key at ~/.appstoreconnect/private_keys/AuthKey_<ASC_KEY_ID>.p8.
+// Credentials (never printed): issuerId and keyId from ~/.appstoreconnect/config.json
+// (or ASC_ISSUER_ID / ASC_KEY_ID), with the key at
+// ~/.appstoreconnect/private_keys/AuthKey_<keyId>.p8.
 //
 // Single source of truth is the repo. The version and build come from
 // project.pbxproj; the promotional text, keywords, description, What's New,
@@ -94,11 +95,16 @@ function screenshots() {
 }
 
 // ── App Store Connect API ────────────────────────────────────────────────
+// ~/.appstoreconnect/config.json ({ "issuerId", "keyId" }) holds the defaults, kept
+// out of this public repo; ASC_ISSUER_ID / ASC_KEY_ID override it.
 function credentials() {
-    const issuer = process.env.ASC_ISSUER_ID, keyId = process.env.ASC_KEY_ID;
-    if (!issuer || !keyId) fail('Set ASC_ISSUER_ID and ASC_KEY_ID (App Store Connect → Users and Access → Integrations).');
+    const configPath = path.join(homedir(), '.appstoreconnect/config.json');
+    const config = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf8')) : {};
+    const issuer = process.env.ASC_ISSUER_ID || config.issuerId;
+    const keyId = process.env.ASC_KEY_ID || config.keyId;
+    if (!issuer || !keyId) fail('Set issuerId and keyId in ~/.appstoreconnect/config.json, or ASC_ISSUER_ID and ASC_KEY_ID (App Store Connect → Users and Access → Integrations).');
     const keyPath = path.join(homedir(), '.appstoreconnect/private_keys', `AuthKey_${keyId}.p8`);
-    if (!existsSync(keyPath)) fail(`No key file for ASC_KEY_ID ${keyId}`);
+    if (!existsSync(keyPath)) fail(`No key file ~/.appstoreconnect/private_keys/AuthKey_${keyId}.p8 (Apple only lets you download it once, when the key is created)`);
     return { issuer, keyId, keyPath };
 }
 

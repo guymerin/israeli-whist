@@ -7,7 +7,7 @@ offline, **collects no data**.
 
 ## App information
 
-- **Name:** `Whist` — renamed from "Israeli Whist". Store names are unique, so App Store
+- **Name:** `Whist` — renamed from "The Whist Card Game" in 1.3. Store names are unique, so App Store
   Connect may refuse it; no US app used the exact name as of 2026-09-16, but ~20 "Whist …"
   apps exist. Fallback: `Whist: Call Your Tricks`. The home-screen label
   (`CFBundleDisplayName`) is `Whist` either way. **The bundle id does not change** — a new id
@@ -242,7 +242,8 @@ After archiving and exporting (above), `scripts/asc-release.mjs` does the App St
 Connect side from this file and `screenshots/`:
 
 ```bash
-export ASC_ISSUER_ID=<issuer uuid> ASC_KEY_ID=<key id>   # key at ~/.appstoreconnect/private_keys/
+# credentials: ~/.appstoreconnect/config.json {"issuerId","keyId"} (outside the repo),
+# key file at ~/.appstoreconnect/private_keys/AuthKey_<keyId>.p8
 node scripts/asc-release.mjs plan      # offline check of text lengths, screenshot sizes, IPA
 node scripts/asc-release.mjs status    # versions and build state
 node scripts/asc-release.mjs upload    # altool validate + upload
