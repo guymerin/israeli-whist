@@ -169,6 +169,7 @@ per size if you want to add more.
 | 1.1 | 3 | `8406043` | 2026-08-15 | approved — train closed to new builds |
 | 1.2 | 4 | `eb06fc2` | 2026-08-24 | READY_FOR_SALE |
 | 1.3 | 6 | `3deba0d` | 2026-09-17 | READY_FOR_SALE |
+| 1.4 | 7 | `c39c406` | 2026-09-18 | WAITING_FOR_REVIEW (submitted 2026-09-18 via `scripts/asc-release.mjs`) |
 
 Build 5 was submitted on 2026-09-16 and replaced the next morning by build 6, which
 carries the UIScene adoption (`3deba0d`) that stops the iOS 26 launch crash. Build 6
