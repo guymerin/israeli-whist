@@ -281,7 +281,10 @@ class Whist {
 
         // Grow the fixed 1000×650 table into big Mac/iPad windows (CSS §12).
         this.fitBoardToWindow();
-        window.addEventListener('resize', () => this.fitBoardToWindow());
+        window.addEventListener('resize', () => {
+            this.fitBoardToWindow();
+            this.fitPhase2Tray();
+        });
 
         // Card Room theme: keep the turn spotlight and trick-progress bar in
         // sync with game state via a lightweight poller (decoupled from the
@@ -847,6 +850,8 @@ class Whist {
             
             // Remember user preference for this round
             this.phase2BiddingExpanded = true;
+            // The strip just changed height — re-seat the tray above the hand.
+            this.fitPhase2Tray();
         }
     }
 
@@ -867,6 +872,7 @@ class Whist {
             
             // Update user preference
             this.phase2BiddingExpanded = false;
+            this.fitPhase2Tray();
         }
     }
 
@@ -1136,6 +1142,7 @@ class Whist {
             
              // Refresh all Phase 2 displays
              this.refreshAllPhase2Displays();
+             this.fitPhase2Tray();
         }
     }
 
@@ -1211,6 +1218,10 @@ class Whist {
             turnMessage.textContent = `Your turn to bid! Choose how many tricks you think you'll take.`;
             turnMessage.style.display = 'block';
         }
+
+        // The takes buttons are what makes the tray tall enough to reach the
+        // hand, so it gets re-fitted now that they're on screen.
+        this.fitPhase2Tray();
     }
 
     /**
@@ -3488,6 +3499,62 @@ class Whist {
         const gutters = w >= 1440 ? 400 : 40;
         const scale = Math.min((h - top - 24) / 650, (w - gutters) / 1000, 1.6);
         if (scale > 1.02) board.style.setProperty('--board-scale', scale.toFixed(3));
+    }
+
+    /**
+     * Keeps the Phase 2 takes tray off the human's hand.
+     *
+     * The tray is an absolute overlay pinned at a fixed top (styles.css
+     * §.second-phase-bidding), which only clears the south seat while the tray
+     * is short. Once the "How many tricks will you take?" strip is showing it
+     * is ~450px tall, and on a desktop window — where fitBoardToWindow() also
+     * scales the board up and pushes the seat down — it came down over the
+     * middle of the hand, so the player couldn't see the cards they were
+     * bidding on. Portrait phones already solve this with a top/bottom band
+     * (theme-cardroom.css §11); this is the desktop equivalent: bottom-align
+     * the tray just above the south seat, and when the felt above it is
+     * shorter than the tray, shrink the tray to fit (--tray-scale, the same
+     * trick the board plays with --board-scale).
+     *
+     * Bottom alignment is the invariant, not the scale: even when the tray is
+     * clamped at its smallest it grows upward over empty felt, never down onto
+     * the cards.
+     */
+    fitPhase2Tray() {
+        const tray = document.querySelector('.second-phase-bidding');
+        if (!tray) return;
+        tray.style.removeProperty('--tray-scale');
+        tray.style.removeProperty('top');
+        if (getComputedStyle(tray).display === 'none') return;
+        // The phone layouts pin the tray with `position: fixed !important` and
+        // already keep it clear of the hand; only the absolute desktop/tablet
+        // tray is ours to place.
+        if (getComputedStyle(tray).position !== 'absolute') return;
+
+        const north = document.querySelector('.north-player .player-info');
+        const seat = document.querySelector('.south-player');
+        if (!north || !seat) return;
+
+        const GAP = 10;
+        const trayRect = tray.getBoundingClientRect();
+        const height = tray.offsetHeight;          // unscaled: --tray-scale is cleared above
+        if (!height) return;
+
+        // The band of felt the tray may use: below Botti's nameplate, above the
+        // south seat's own (which sits above the cards — covering it is no
+        // better than covering them). Nothing else is in the way: in Phase 2
+        // the trick square is empty, and the side seats are far outside a tray
+        // that's 300px wide on a 1000px table.
+        const ceiling = north.getBoundingClientRect().bottom + GAP;
+        const floor = seat.getBoundingClientRect().top - GAP;
+        const scale = Math.min(1, Math.max(0.75, (floor - ceiling) / height));
+
+        // Re-anchor by the measured delta rather than by the offset parent:
+        // the tray's containing block differs between breakpoints (and its
+        // `top` may be a percentage), and a delta absorbs both.
+        const top = parseFloat(getComputedStyle(tray).top) || 0;
+        if (scale < 1) tray.style.setProperty('--tray-scale', scale.toFixed(3));
+        tray.style.top = `${top + (floor - height * scale - trayRect.top)}px`;
     }
 
     /** How much the board is visually scaled (1 unless a transform is applied). */
@@ -6038,6 +6105,36 @@ class Whist {
         try { if (navigator.vibrate) navigator.vibrate(style === 'MEDIUM' ? [45, 40, 45] : 18); } catch (e) { /* unsupported */ }
     }
 
+    /**
+     * Ask the App Store for a rating, at most once per release.
+     *
+     * Only inside the packaged app — there's no plugin in a browser, so the web
+     * version silently does nothing. Apple caps the prompt at three a year and
+     * may draw nothing at all, which is why this is fire-and-forget: it never
+     * blocks, never reports back, and the game carries on regardless.
+     *
+     * REVIEW_TAG is the once-per-release latch. Bump it in a future version to
+     * ask again someone who has already been asked; leave it alone and they
+     * never see it twice.
+     */
+    maybeAskForRating() {
+        const REVIEW_TAG = '1.4';
+        const cap = (typeof window !== 'undefined') ? window.Capacitor : null;
+        const ReviewPrompt = cap && cap.Plugins && cap.Plugins.ReviewPrompt;
+        if (!ReviewPrompt || typeof ReviewPrompt.request !== 'function') return;
+        try {
+            if (localStorage.getItem('israeliWhist_reviewAsked') === REVIEW_TAG) return;
+            localStorage.setItem('israeliWhist_reviewAsked', REVIEW_TAG);
+        } catch (e) { return; }   // no storage: don't risk asking on every win
+        // Not getDelay(): this waits for the win banner to land and be read,
+        // which takes as long as it takes whether or not Turbo is on. A system
+        // dialog on top of the celebration reads as a bug.
+        setTimeout(() => {
+            try { ReviewPrompt.request().catch(() => {}); } catch (e) { /* presentation only */ }
+        }, 2500);
+        dlog('Requested an App Store review prompt after a full-game win');
+    }
+
     displayCards() {
         // Add safety check for hands
         if (!this.hands || typeof this.hands !== 'object') {
@@ -8400,6 +8497,12 @@ class Whist {
             // Fireworks only for gamlet wins, not full game wins
             
             this.showGameNotification(`🎉 ${winnerDisplayName} WINS THE FULL GAME ${winReason}`, 'success', 5000);
+
+             // Beating three bots over a whole game is the one moment worth
+             // interrupting to ask for a rating. Losers are never asked.
+             const fullGameWinner = winnerBy200 || this.players.reduce((leader, player) =>
+                 this.gameScores[player] > this.gameScores[leader] ? player : leader);
+             if (fullGameWinner === 'south') this.maybeAskForRating();
              
              // Update the session-long grand total. The per-gamlet record is
              // already in gamletHistory (saveGamletToHistory ran a few lines
@@ -9277,7 +9380,7 @@ class Whist {
                  } else if (tricksNeeded <= 0) {
                      reason = 'Played out against many possible deals of the hidden cards, this card is least likely to win you a trick you don\'t want.';
                  } else {
-                     reason = `Played out against many possible deals of the hidden cards, this card gives a prediction of ${targetBid} the best score.`;
+                     reason = `Played out against many possible deals of the hidden cards, this card scores best for your prediction of ${targetBid}.`;
                  }
                  suggestedCard = { rank: card.rank, suit: card.suit, reason };
              } else {
