@@ -11,7 +11,12 @@ offline, **collects no data**.
   taken by another developer's app (App Store Connect refused it on 2026-09-16). The
   home-screen label (`CFBundleDisplayName`) is still `Whist`. **The bundle id does not
   change** — a new id would be a new app with no ratings or installs.
-- **Subtitle** (≤30 chars): `Trick-taking bidding card game`
+- **Subtitle** (≤30 chars): `Predict tricks, outplay 3 bots` — changed in 1.4. The old
+  "Trick-taking bidding card game" spent all 30 characters on words Apple had
+  already indexed from the name (*bid*, *take*) or that this app can't rank for
+  (*card game*). Name, subtitle and keywords are concatenated into one search
+  index and the description is not indexed at all, so a word in two fields is a
+  word wasted.
 - **Bundle ID:** `com.guymerin.israeliwhist`
 - **Primary category:** Games → **Card**
 - **Secondary category (optional):** Games → Board
@@ -25,9 +30,14 @@ Call trump, then call your number. Take exactly that many tricks against three b
 
 ## Keywords (≤100 chars, comma-separated, no spaces after commas)
 ```
-trick taking,bidding,trump,predict,tricks,card game,strategy,offline,solo,classic
+israeli,trick taking,oh hell,estimation,contract,trump,offline,solo,ai,bots,classic,strategy,cards
 ```
-<!-- 80 chars; limit 100. No other games' names (2.3.7): "whist" is already in the name. -->
+<!-- 98 chars; limit 100. Rewritten in 1.4: every word here is one the name and
+     subtitle don't already carry (they share one index, so repeats buy nothing).
+     "oh hell", "estimation" and "contract" are this same game under its other
+     names, not other apps — 2.3.7 is about other developers' app names, and no
+     unrelated game (hearts, spades, euchre, rummy) is listed. "israeli" is what
+     most people call this game and is the highest-intent word on the list. -->
 
 
 ## Description (≤4000 chars)
@@ -51,7 +61,18 @@ ON YOUR IPHONE, IPAD AND MAC
 No ads, no accounts, no in-app purchases. Nothing leaves your device, and it plays offline.
 ```
 
-## What's New (version 1.3)
+## What's New (version 1.4)
+```
+The takes round no longer covers your hand.
+
+• Call your number with all thirteen cards still in view. The panel now sits above your hand, clear of the seat names, and sizes itself to the space it has — on iPad, on a Mac, and in any window big enough to matter.
+• Win a full game and the game asks, once, whether you'd like to rate it. Once, and never again.
+• The Hint's explanation of its card is a sentence again.
+```
+
+<details>
+<summary>What's New (version 1.3)</summary>
+
 ```
 Now called Whist, and now on iPad and Mac.
 
@@ -61,6 +82,8 @@ Now called Whist, and now on iPad and Mac.
 • Rules rewritten, including when you're allowed to trump and what happens when everyone misses.
 • The game history scorecard is readable again.
 ```
+
+</details>
 
 <details>
 <summary>What's New (version 1.2)</summary>
@@ -113,7 +136,8 @@ Answer in App Store Connect → App Privacy:
 - No tracking. Matches the bundled `PrivacyInfo.xcprivacy`.
 
 ## Screenshots
-Provided at `docs/app-store/screenshots/`, three sets, one shot per phase of the game:
+Provided at `docs/app-store/screenshots/`, three sets, one shot per phase of the game
+plus the Hint:
 
 | Folder | Size | Slot |
 |---|---|---|
@@ -125,6 +149,10 @@ Provided at `docs/app-store/screenshots/`, three sets, one shot per phase of the
 2. `02-takes.png` — the takes round, with the other seats' predictions in and the
    value that would total 13 greyed out.
 3. `03-play.png` — a trick in play on the felt.
+4. `04-hint.png` — the Hint naming the card the engine would play (added in 1.4).
+   The store shows the first three in search results, so this one is for the
+   product page. It's captured on a trick south *leads*: mid-trick, following
+   suit dims most of the hand, which reads as a broken app to a browser.
 
 Regenerate them all with `node scripts/make-store-screenshots.mjs` (or pass
 profile names, e.g. `… 6.9 ipad`). It drives the real game headless at each
@@ -140,7 +168,12 @@ per size if you want to add more.
 | 1.0 | 2 | `f67444b` | 2026-07-29 | READY_FOR_SALE |
 | 1.1 | 3 | `8406043` | 2026-08-15 | approved — train closed to new builds |
 | 1.2 | 4 | `eb06fc2` | 2026-08-24 | READY_FOR_SALE |
-| 1.3 | 5 | `e0309eb` | 2026-09-16 | WAITING_FOR_REVIEW (submitted 2026-09-16 via `scripts/asc-release.mjs`) |
+| 1.3 | 6 | `3deba0d` | 2026-09-17 | READY_FOR_SALE |
+| 1.4 | 7 | `c39c406` | 2026-09-18 | WAITING_FOR_REVIEW (submitted 2026-09-18 via `scripts/asc-release.mjs`) |
+
+Build 5 was submitted on 2026-09-16 and replaced the next morning by build 6, which
+carries the UIScene adoption (`3deba0d`) that stops the iOS 26 launch crash. Build 6
+is what shipped as 1.3.
 
 **Keep this table honest.** 1.1 was left here as PREPARE_FOR_SUBMISSION long
 after it had actually been approved, and a build 4 was cut against `1.1` on the

@@ -32,6 +32,7 @@ npm test                          # unit + parity + strength
 - `npm run test:strength` — **`tests/mc-strength.mjs`**: MC vs heuristic A/B (exact-hit rate, score/seat, decision-time p95). `WHIST_DEALS=N` to resize.
 - `npm run test:phase2` — **`tests/phase2-double-bid.mjs`**: one prediction per seat, one Phase 3 — double clicks, late/out-of-turn clicks and bot double-fires are ignored (`isPhase2Turn`).
 - `npm run test:hints` — **`tests/hints.mjs`**: the takes hint respects the real total, the forbidden 13 and the trump winner's floor; the card hint comes from the MC engine, is legal, and only appears on south's turn.
+- `npm run test:review` — **`tests/review-prompt.mjs`**: the App Store rating ask fires once per release, only when south wins a full game, and no-ops (without throwing) in a browser, where the native bridge doesn't exist.
 - `npm run test:smoke` — **`tests/smoke-test.mjs`**: one full gamlet, phase flow, scoring rules, over/under rule, no page errors.
 
 The Playwright suites boot their own ephemeral static server via `tests/static-server.mjs` (set `WHIST_URL` to point at an external one instead). The repo also ships `.mcp.json` registering a Playwright MCP server for interactive agent-driven checks — drive Deal → Phase 1 → Phase 2 → a few tricks, and read `window.game` state (`currentPhase`, `phase2Bids`, `gameScores`) directly.
@@ -44,6 +45,17 @@ No build, no framework. `script.js` is a classic (non-module) script; the pure M
 - **`mc-engine.js`** — the pure Determinized Monte Carlo core, extracted as an ES module: integer-only, no DOM, no `this`. Exports `mcTrickWinner`, `mcPlayout`, `mcSampleDeal`, `mcRolloutMove`, `mcEncode/Decode`, etc. `script.js`'s `mc*` simulation methods delegate here (`window.MCEngine.*`); Node tests import it directly. Keeping `script.js` a classic script avoids forcing ~9k lines into strict mode in one step.
 - **`styles.css`** — ~4.5k lines. Compass layout via `.north-player`, `.east-player`, `.south-player`, `.west-player`. Phase 2 predictions use a 3×3 grid (`.prediction-list`) with each `.prediction-item:nth-child(N)` pinned to a compass position.
 - **`script.js`** — single `Whist` class (~9k lines), instantiated once as `window.game`. State machine on `this.currentPhase`: `dealing → phase1 → phase2 → phase3 → scoring`, then back to `dealing` for the next gamlet.
+
+### Native bridge (iOS)
+
+The packaged app is a Capacitor shell around the same files. One app-local
+plugin lives in `ios/App/App/ReviewPrompt.swift`: `ReviewPromptPlugin` (StoreKit
+rating prompt) plus `MainViewController`, the `CAPBridgeViewController` subclass
+the storyboard instantiates so `capacitorDidLoad()` can register it — Capacitor 8
+only auto-registers plugins that come from npm packages, so an app-local plugin
+must be registered by hand or it silently never exists. `maybeAskForRating()` in
+`script.js` is the web half; it reads `window.Capacitor.Plugins.ReviewPrompt` and
+does nothing at all in a browser.
 
 ### Session persistence
 

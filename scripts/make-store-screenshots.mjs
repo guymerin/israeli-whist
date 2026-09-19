@@ -217,6 +217,35 @@ for (const p of profiles) {
         await sleep(120);
     }
     await page.evaluate(() => { window.game.__holdTrick = false; }).catch(() => {});
+
+    // ── 04 — the Hint, mid-hand ──────────────────────────────────────────
+    // Slot four is for the product page rather than search results (the store
+    // shows the first three there), so it gets the thing a browsing player
+    // can't see from the other shots: the game will tell you the card the bots
+    // themselves would play. #hint-btn opens the modal on south's turn; asked
+    // at any other moment it has nothing to say, so wait for the turn — and
+    // for a trick south LEADS, where every card is legal. Mid-trick, following
+    // suit dims most of the hand, which reads as "half my hand is disabled" to
+    // someone browsing the store (the same reason 03 waits for a full trick).
+    let shot04 = false;
+    t = Date.now();
+    while (Date.now() - t < 60000 && !shot04) {
+        const st = await page.evaluate(() => ({
+            phase: window.game.currentPhase,
+            southTurn: document.getElementById('south-cards')?.classList.contains('player-turn'),
+            leading: window.game.currentTrick.length === 0,
+        }));
+        if (st.phase !== 'phase3' || !st.southTurn || !st.leading) { await sleep(150); continue; }
+        await page.click('#hint-btn').catch(() => {});
+        await sleep(600);
+        if (await visible('#hint-modal')) {
+            await shot('04-hint.png');
+            shot04 = true;
+            await page.evaluate(() => window.game.hideHint()).catch(() => {});
+        }
+    }
+    if (!shot04) console.log(`  !! ${p.dir}: no hint shot captured — re-run this profile`);
+
     // Intermittent: the gamlet occasionally ends (phase back to 'dealing')
     // before the loop gets its full trick, and the window then expires. Re-run
     // the profile — `node scripts/make-store-screenshots.mjs 6.5` — rather than

@@ -2317,6 +2317,27 @@ h1 {
     min-width: 260px;
     max-width: 300px;
     z-index: 1000;
+    /* fitPhase2Tray() (script.js) owns this tray's vertical placement: the
+       fixed top: 325px above is only right for a tray that ends above the
+       south seat, and once the "how many tricks" strip is on screen the tray
+       is ~450px tall and came down on the middle of the hand. JS bottom-aligns
+       it just above the seat and, when the felt above is shorter than the
+       tray, shrinks it with --tray-scale. The scale rides in a variable so the
+       entry animation below, which also writes transform, can't fight it. */
+    transform: translateX(-50%) scale(var(--tray-scale, 1));
+    transform-origin: top center;
+    animation: trayFadeIn 0.3s ease-out;
+}
+
+/* The tray's own entry: fade and a hair of growth, and — unlike
+   interfaceSlideUp — no Y translation. fitPhase2Tray() measures the tray's top
+   edge to seat it above the hand, and an animation that slides the tray up
+   from +30px made that measurement wrong for the first 0.3s (the tray landed
+   30px high). With transform-origin at the top edge, neither this animation
+   nor --tray-scale moves the edge being measured. */
+@keyframes trayFadeIn {
+    from { opacity: 0; transform: translateX(-50%) scale(calc(var(--tray-scale, 1) * 0.96)); }
+    to   { opacity: 1; transform: translateX(-50%) scale(var(--tray-scale, 1)); }
 }
 
 .phase2-header {
@@ -2823,7 +2844,9 @@ h1 {
         transform: translate(-50%, -50%);
     }
     
-    .second-phase-bidding, .trump-announcement {
+    /* The takes tray is placed by fitPhase2Tray(); centring it on the board
+       here just put it back on top of the hand. */
+    .trump-announcement {
         top: calc(50% - 20px);
         transform: translate(-50%, -50%);
     }
